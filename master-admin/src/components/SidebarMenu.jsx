@@ -14,10 +14,6 @@ const SidebarMenu = ({ collapsed, setCollapsed, isSmallScreen }) => {
     if (location.pathname === "/dashboard") return "1";
     if (location.pathname === "/organisation") return "2";
     if (location.pathname === "/plans") return "3";
-    if (location.pathname === "/schedule") return "4";
-    if (location.pathname === "/driver") return "5";
-    if (location.pathname === "/routes") return "6";
-    if (location.pathname === "/buses") return "7";
     return "1";
   };
 
@@ -57,30 +53,8 @@ const SidebarMenu = ({ collapsed, setCollapsed, isSmallScreen }) => {
             icon: <Calendar size={18} />, // Use any icon for Plans
             label: <Link to="/plans">Plans</Link>,
           },
-
           {
             key: "4",
-            icon: <BusFront size={18} />,
-            label: <Link to="/buses">Buses</Link>,
-          },
-          {
-            key: "5",
-            icon: <CalendarCheck size={18} />,
-            label: <Link to="/schedule">Schedule</Link>,
-          },
-          {
-            key: "6",
-            icon: <User size={18} />,
-            label: <Link to="/driver">Driver</Link>,
-          },
-          {
-            key: "7",
-            icon: <User size={18} />,
-            label: <Link to="/routes">Routes</Link>,
-          },
-
-          {
-            key: "8",
             icon: <SettingOutlined />,
             label: "Settings",
           },

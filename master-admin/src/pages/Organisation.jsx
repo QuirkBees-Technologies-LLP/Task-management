@@ -10,7 +10,11 @@ import {
   Popconfirm,
   Switch,
   Typography,
+  Input,
 } from "antd";
+import { SearchOutlined } from "@ant-design/icons";
+import { debounce } from "lodash";
+
 import { PlusOutlined } from "@ant-design/icons";
 import { Pencil, Trash } from "lucide-react";
 import { organizationAPI } from "../services/api";
@@ -27,6 +31,7 @@ const Organisation = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [editInitialValues, setEditInitialValues] = useState(null);
   const [toggleLoading, setToggleLoading] = useState(false);
+  const [search, setSearch] = useState("");
 
   const [paginationState, setPaginationState] = useState({
     current: 1,
@@ -39,7 +44,7 @@ const Organisation = () => {
     async (page = 1, pageSize = PAGE_SIZE) => {
       try {
         setLoading(true);
-        const res = await organizationAPI.list({ page, limit: pageSize });
+        const res = await organizationAPI.list({ page, limit: pageSize, search });
 
         setData(res.data?.organizations ?? []);
         setPaginationState((prev) => ({
@@ -54,12 +59,26 @@ const Organisation = () => {
         setLoading(false);
       }
     },
-    []
+    [search]
   );
 
   useEffect(() => {
     fetchOrganizations();
   }, [fetchOrganizations]);
+  /* -------------------- Search -------------------- */
+  const debouncedSearch = useMemo(
+  () =>
+    debounce((value) => {
+      setSearch(value);
+      fetchOrganizations(1, paginationState.pageSize);
+    }, 500),
+  [fetchOrganizations, paginationState.pageSize]
+);
+
+
+  useEffect(() => {
+    return () => debouncedSearch.cancel();
+  }, [debouncedSearch]);
 
   /* -------------------- Submit -------------------- */
   const handleSubmit = useCallback(
@@ -139,10 +158,17 @@ const Organisation = () => {
       },
 
       {
-        title: "Slug",
-        dataIndex: "slug",
-        render: (text) => <span style={{ color: "#595959" }}>{text}</span>,
+        title: "Owner Name",
+        key: "ownerName",
+        render: (_, record) => (
+          <span style={{ color: "#595959" }}>
+            {`${record.ownerFirstName || ""} ${
+              record.ownerLastName || ""
+            }`.trim()}
+          </span>
+        ),
       },
+
       {
         title: "Owner Email",
         dataIndex: "ownerEmail",
@@ -222,6 +248,18 @@ const Organisation = () => {
           >
             Add Organization
           </Button>
+        </Col>
+      </Row>
+      {/* Search Bar */}
+      <Row style={{ marginBottom: 16 }}>
+        <Col span={24}>
+          <Input
+            placeholder="Search organization name"
+            prefix={<SearchOutlined />}
+            allowClear
+            onChange={(e) => debouncedSearch(e.target.value)}
+            style={{ width: "40%" }}
+          />
         </Col>
       </Row>
 
