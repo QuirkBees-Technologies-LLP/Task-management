@@ -1,21 +1,20 @@
 'use client';
 import React from 'react';
-import { Check, Edit, MoreVert, Visibility } from '@mui/icons-material';
+import { Check, Edit, Visibility, DeleteOutline } from '@mui/icons-material';
 import {
+  Avatar,
   Box,
   Chip,
   IconButton,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
-  Menu,
-  MenuItem,
-  Paper,
+  Stack,
+  TableCell,
+  TableRow,
+  Tooltip,
   Typography,
 } from '@mui/material';
 
 const getStatusColor = (status) => {
-  switch (status.toLowerCase()) {
+  switch (status?.toLowerCase()) {
     case 'paid':
       return 'success';
     case 'pending':
@@ -32,85 +31,85 @@ export default function InvoiceItem({
   handleEditClick,
   handleViewDetails,
   handleStatusChange,
+  handleDeleteClick,
 }) {
-  const [anchorEl, setAnchorEl] = React.useState(null);
-  const open = Boolean(anchorEl);
-  const handleClickMore = (event) => {
-    setAnchorEl(event.currentTarget);
+  const displayName = invoice.clientName || invoice.project || 'N/A';
+  const initial = displayName?.[0]?.toUpperCase() || '#';
+  const currentStatus = invoice.status?.toLowerCase() || 'pending';
+  const isPaid = currentStatus === 'paid';
+  const getCurrencySymbol = (code?: string) => {
+    switch ((code || 'USD').toUpperCase()) {
+      case 'USD':
+        return '$';
+      case 'EUR':
+        return '€';
+      case 'GBP':
+        return '£';
+      case 'INR':
+        return '₹';
+      case 'JPY':
+        return '¥';
+      default:
+        return '$';
+    }
   };
-  const handleClose = () => {
-    setAnchorEl(null);
-  };
+  const formattedAmount = Number(invoice.amount || 0).toLocaleString();
+  const currencySymbol = getCurrencySymbol(invoice.currency);
 
   return (
-    <ListItem component={Paper} sx={{ marginBottom: 2, padding: 2 }}>
-      <ListItemText
-        primary={
-          <Box display="flex" justifyContent="space-between" alignItems="center">
-            <Typography variant="h6">
-              {invoice.project} (#{invoice.invoiceNumber})
+    <TableRow hover>
+      <TableCell>
+        <Stack direction="row" spacing={2} alignItems="center">
+          <Avatar>{initial}</Avatar>
+          <Box>
+            <Typography variant="subtitle1">{displayName}</Typography>
+            <Typography variant="body2" color="text.secondary">
+              #{invoice.invoiceNumber || 'N/A'}
             </Typography>
-            <IconButton onClick={handleClickMore}>
-              <MoreVert />
+          </Box>
+        </Stack>
+      </TableCell>
+      <TableCell>
+        <Typography fontWeight={600}>
+          {currencySymbol}
+          {formattedAmount}
+        </Typography>
+      </TableCell>
+      <TableCell>
+        <Chip label={invoice.status || 'Pending'} color={getStatusColor(invoice.status)} size="small" />
+      </TableCell>
+      <TableCell>
+        <Typography variant="body2">{invoice.dueDate || 'N/A'}</Typography>
+      </TableCell>
+      <TableCell align="right">
+        <Stack direction="row" spacing={1} justifyContent="flex-end">
+          <IconButton aria-label="view invoice" size="small" onClick={() => handleViewDetails(invoice)}>
+            <Visibility fontSize="small" />
+          </IconButton>
+          <Tooltip title={`Mark as ${isPaid ? 'Pending' : 'Paid'}`}>
+            <IconButton
+              aria-label={`mark as ${isPaid ? 'pending' : 'paid'}`}
+              size="small"
+              onClick={() => handleStatusChange(invoice, isPaid ? 'Pending' : 'Paid')}
+            >
+              <Check fontSize="small" color={isPaid ? 'warning' : 'success'} />
             </IconButton>
-          </Box>
-        }
-        secondary={
-          <Box display="flex" justifyContent="space-between" alignItems="center">
-            <Box>
-              <Typography variant="body1" gutterBottom>
-                Amount: ${invoice.amount.toLocaleString()}
-              </Typography>
-              <Chip
-                label={invoice.status}
-                color={getStatusColor(invoice.status)}
-                sx={{ width: 80 }}
-              />
-            </Box>
-            <Typography variant="body2">Due Date: {invoice.dueDate}</Typography>
-          </Box>
-        }
-        secondaryTypographyProps={{
-          component: 'div',
-        }}
-      />
-      <Menu
-        anchorEl={anchorEl}
-        open={open}
-        onClose={handleClose}
-        anchorOrigin={{
-          vertical: 'bottom',
-          horizontal: 'center',
-        }}
-        transformOrigin={{
-          vertical: 'top',
-          horizontal: 'right',
-        }}
-      >
-        <MenuItem onClick={() => handleViewDetails(invoice)}>
-          <ListItemIcon>
-            <Visibility />{' '}
-          </ListItemIcon>
-          View
-        </MenuItem>
-        <MenuItem onClick={() => handleEditClick(invoice)}>
-          {' '}
-          <ListItemIcon>
-            <Edit />{' '}
-          </ListItemIcon>
-          Edit
-        </MenuItem>
-        <MenuItem
-          onClick={() =>
-            handleStatusChange(invoice, invoice.status === 'Paid' ? 'Pending' : 'Paid')
-          }
-        >
-          <ListItemIcon>
-            <Check />{' '}
-          </ListItemIcon>
-          Mark as {invoice.status === 'Paid' ? 'Pending' : 'Paid'}
-        </MenuItem>
-      </Menu>
-    </ListItem>
+          </Tooltip>
+          <IconButton aria-label="edit invoice" size="small" onClick={() => handleEditClick(invoice)}>
+            <Edit fontSize="small" />
+          </IconButton>
+          {handleDeleteClick && (
+            <IconButton
+              aria-label="delete invoice"
+              size="small"
+              color="error"
+              onClick={() => handleDeleteClick(invoice)}
+            >
+              <DeleteOutline fontSize="small" />
+            </IconButton>
+          )}
+        </Stack>
+      </TableCell>
+    </TableRow>
   );
 }

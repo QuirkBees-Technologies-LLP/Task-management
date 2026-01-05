@@ -1,11 +1,21 @@
 export type ColumnAlignment = 'left' | 'center' | 'right';
 
 export interface Client {
-  id: number;
-  clientName: string;
-  contactPerson: string;
+  id?: number | string;
+  _id?: string;
+  clientName?: string;
+  name?: string;
+  projectName?: string;
   email: string;
-  projectsCount: number;
+  phone?: string;
+  company?: string;
+  address?: string;
+  city?: string;
+  country?: string;
+  notes?: string;
+  projectsCount?: number;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface ResponsiveTableColumn {
@@ -25,5 +35,6 @@ export interface ClientModalProps {
   open: boolean;
   setOpen: (open: boolean) => void;
   client: Client | null;
-  handleSaveClient: (client: Client) => void;
+  handleSaveClient: (client: Partial<Client>) => void;
+  saving?: boolean;
 }

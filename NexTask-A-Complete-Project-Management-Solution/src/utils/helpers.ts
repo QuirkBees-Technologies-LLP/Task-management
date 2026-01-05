@@ -1,17 +1,18 @@
 import axios from 'axios';
 import { enqueueSnackbar } from 'notistack';
-import jwt from 'jsonwebtoken';
-import { JWT_SECRET } from '@/app/api/config';
+import { jwtDecode } from 'jwt-decode';
 
 export function isTokenExpired(token: string): boolean {
   try {
-    jwt.verify(token, JWT_SECRET);
-    return false;
-  } catch (error: any) {
-    if (error.name === 'TokenExpiredError') {
-      return true;
+    const decoded = jwtDecode<{ exp?: number }>(token);
+    if (!decoded.exp) {
+      return true; // No expiration claim, consider expired
     }
-    return false;
+    // Check if token is expired (exp is in seconds, Date.now() is in milliseconds)
+    return decoded.exp * 1000 < Date.now();
+  } catch (error) {
+    // If decoding fails, consider token expired/invalid
+    return true;
   }
 }
 

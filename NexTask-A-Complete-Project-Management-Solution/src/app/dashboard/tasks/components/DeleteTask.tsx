@@ -29,5 +29,4 @@ const DeleteDialog: React.FC<DeleteDialogProps> = ({ open, onClose, onDelete }) 
     </Dialog>
   );
 };
-
 export default DeleteDialog;

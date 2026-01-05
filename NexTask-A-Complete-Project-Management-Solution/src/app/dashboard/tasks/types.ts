@@ -1,13 +1,39 @@
 import { ColumnAlignment, Project } from '../projects/types';
 
+export interface TaskAttachment {
+  id?: string;
+  fileName: string;
+  fileUrl: string;
+  fileType: string;
+  fileSize?: number;
+  uploadedAt?: string;
+  uploadedBy?: string;
+  attachmentType: 'file' | 'url' | 'google_drive' | 'onedrive' | 'box' | 'dropbox';
+}
+
+export interface Subtask {
+  id?: string;
+  title: string;
+  description?: string;
+  status: 'Todo' | 'In Progress' | 'Done';
+  dueDate?: string;
+  attachments?: TaskAttachment[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export type Task = {
-  id: number;
+  id: number | string;
   title: string;
   description: string;
   status: string;
   priority: string;
   projectId: string;
   dueDate: string;
+  sectionId?: string;
+  attachments?: TaskAttachment[];
+  subtasks?: Subtask[];
+  assignee?: string[]; // Array of user IDs
 };
 
 export interface ResponsiveTableColumn {
@@ -26,15 +52,17 @@ export interface DeleteDialogProps {
 export interface TaskDialogProps {
   open: boolean;
   onClose: () => void;
-  onSave: (task: Task) => void;
+  onSave: (task: Task, keepOpen?: boolean) => void;
   task: Task | null;
   projects: Project[];
+  saving?: boolean;
 }
 
 export interface TaskBoardProps {
   tasks: Task[];
   onEditTask: (task: Task | null) => any;
-  onDeleteTask: (id: number) => any;
+  onDeleteTask: (id: number | string) => any;
+  onStatusChange?: (task: Task) => any;
 }
 
 export interface SortableItemProps {
@@ -42,6 +70,7 @@ export interface SortableItemProps {
   item?: Task | null;
   onEditTask?: (task: Task) => any;
   onDeleteTask?: (taskId: any) => any;
+  onStatusChange?: (task: Task) => any;
 }
 
 // Define the shape of a single task

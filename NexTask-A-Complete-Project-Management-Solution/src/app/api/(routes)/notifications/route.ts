@@ -2,24 +2,38 @@ import { NextRequest, NextResponse } from 'next/server';
 import clientPromise from '../../lib/mongodb';
 import { DATABASE_NAME } from '../../config';
 import { ObjectId } from 'mongodb';
-import { verifyToken } from '../../helpers';
+import { verifyToken, getOrgIdFromToken } from '../../helpers';
 
 // ✅ GET: Fetch notifications for a user
 export async function GET(request: NextRequest) {
   const { decoded, error, status } = await verifyToken(request);
   if (error) return NextResponse.json({ error }, { status });
 
+  // Get org_id from token
+  const org_id = getOrgIdFromToken(decoded);
+  if (!org_id) {
+    return NextResponse.json(
+      { error: 'Organization ID is required' },
+      { status: 403 }
+    );
+  }
+
   const userId = (decoded as any).id;
 
-  const limit = request.nextUrl.searchParams.get('limit');
+  const limitParam = request.nextUrl.searchParams.get('limit');
+  const limit = limitParam ? parseInt(limitParam, 10) : undefined;
   try {
     const client = await clientPromise;
     const db = client.db(DATABASE_NAME);
-    const notifications = await db
+    const query = db
       .collection('notifications')
-      .find({ userId: new ObjectId(userId) }, { limit: parseInt(limit) })
-      .sort({ createdAt: -1 })
-      .toArray();
+      .find({
+        userId: new ObjectId(userId),
+        org_id: org_id // Filter by org_id
+      })
+      .sort({ createdAt: -1 });
+
+    const notifications = limit ? await query.limit(limit).toArray() : await query.toArray();
 
     return NextResponse.json(notifications, { status: 200 });
   } catch (err) {
@@ -33,7 +47,16 @@ export async function POST(request: Request) {
   const { decoded, error, status } = await verifyToken(request);
   if (error) return NextResponse.json({ error }, { status });
 
-  const userId = (decoded as any).userId;
+  // Get org_id from token
+  const org_id = getOrgIdFromToken(decoded);
+  if (!org_id) {
+    return NextResponse.json(
+      { error: 'Organization ID is required' },
+      { status: 403 }
+    );
+  }
+
+  const userId = (decoded as any).userId || (decoded as any).id;
 
   try {
     const body = await request.json();
@@ -48,6 +71,7 @@ export async function POST(request: Request) {
       message,
       type,
       read: false,
+      org_id: org_id, // Add org_id
       createdAt: new Date(),
     };
 
@@ -70,6 +94,15 @@ export async function PUT(request: Request) {
   const { decoded, error, status } = await verifyToken(request);
   if (error) return NextResponse.json({ error }, { status });
 
+  // Get org_id from token
+  const org_id = getOrgIdFromToken(decoded);
+  if (!org_id) {
+    return NextResponse.json(
+      { error: 'Organization ID is required' },
+      { status: 403 }
+    );
+  }
+
   const userId = (decoded as any).id;
 
   try {
@@ -85,7 +118,11 @@ export async function PUT(request: Request) {
 
     const result = await db
       .collection('notifications')
-      .updateOne({ _id: new ObjectId(id), userId: new ObjectId(userId) }, { $set: { read: true } });
+      .updateOne({
+        _id: new ObjectId(id),
+        userId: new ObjectId(userId),
+        org_id: org_id // Verify org_id match
+      }, { $set: { read: true } });
 
     return NextResponse.json(
       {
@@ -105,7 +142,16 @@ export async function DELETE(request: Request) {
   const { decoded, error, status } = await verifyToken(request);
   if (error) return NextResponse.json({ error }, { status });
 
-  const userId = (decoded as any).userId;
+  // Get org_id from token
+  const org_id = getOrgIdFromToken(decoded);
+  if (!org_id) {
+    return NextResponse.json(
+      { error: 'Organization ID is required' },
+      { status: 403 }
+    );
+  }
+
+  const userId = (decoded as any).userId || (decoded as any).id;
 
   try {
     const { searchParams } = new URL(request.url);
@@ -119,7 +165,11 @@ export async function DELETE(request: Request) {
     const db = client.db(DATABASE_NAME);
     const result = await db
       .collection('notifications')
-      .deleteOne({ _id: new ObjectId(id), userId });
+      .deleteOne({
+        _id: new ObjectId(id),
+        userId: new ObjectId(userId),
+        org_id: org_id // Verify org_id match
+      });
 
     if (result.deletedCount === 0) {
       return NextResponse.json({ error: 'Notification not found' }, { status: 404 });

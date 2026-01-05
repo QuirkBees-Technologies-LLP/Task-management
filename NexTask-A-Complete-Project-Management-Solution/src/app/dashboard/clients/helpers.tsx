@@ -5,18 +5,16 @@ const clientsColumns: ResponsiveTableColumn[] = [
     title: 'Client Name',
     key: 'clientName',
   },
-  { title: 'Contact Person', key: 'contactPerson' },
+  { title: 'Project Name', key: 'projectName' },
   { title: 'Email', key: 'email' },
-  {
-    title: 'Project Count',
-    key: 'projectsCount',
-    align: 'center',
-  },
+  { title: 'Phone', key: 'phone' },
+  { title: 'Company', key: 'company' },
+  { title: 'City', key: 'city' },
 ];
 
 const clientListKeys: ClientListKeys = {
   primaryKeys: ['clientName'],
-  secondaryKeys: ['email', 'projectsCount', 'contactPerson'],
+  secondaryKeys: ['email', 'phone', 'company', 'projectName'],
 };
 
 export { clientsColumns, clientListKeys };

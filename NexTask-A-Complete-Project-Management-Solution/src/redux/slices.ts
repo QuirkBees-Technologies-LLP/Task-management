@@ -277,6 +277,17 @@ const loginSlice: any = createSlice({
       state.emailTemplate.saving = false;
       state.emailTemplate.error = action.payload;
     },
+    deleteEmailTemplate(state: AppState, action: PayloadAction<any>) {
+      state.emailTemplate.saving = true;
+      state.emailTemplate.error = null;
+    },
+    deleteEmailTemplateSuccess(state: AppState) {
+      state.emailTemplate.saving = false;
+    },
+    deleteEmailTemplateFailure(state: AppState, action: PayloadAction<string>) {
+      state.emailTemplate.saving = false;
+      state.emailTemplate.error = action.payload;
+    },
     verifyEmail(state: AppState, action: PayloadAction<any>) {
       state.verifyEmail.loading = true;
       state.verifyEmail.error = null;
@@ -451,6 +462,9 @@ export const {
   saveEmailTemplates,
   saveEmailTemplatesSuccess,
   saveEmailTemplatesFailure,
+  deleteEmailTemplate,
+  deleteEmailTemplateSuccess,
+  deleteEmailTemplateFailure,
   changePasswordStart,
   changePasswordSuccess,
   changePasswordFailure,

@@ -10,8 +10,14 @@ import TaskCard from './components/TaskCard';
 import { projectDetail } from '@/utils/data';
 import ResourceCard from './components/ResourceCard';
 import { Grid2 } from '@mui/material';
+import { useSelector } from 'react-redux';
+import { selectCurrentUser, selectSuperuser } from '@/redux/selectors';
 
 export default function ProjectDetails() {
+  const { data: currentUser } = useSelector(selectCurrentUser);
+  const isSuperUser = useSelector(selectSuperuser);
+  const isAdmin = currentUser?.role === 'Admin' || isSuperUser;
+
   const [editOpen, setEditOpen] = useState(false); // For edit modal
   const [deleteOpen, setDeleteOpen] = useState(false); // For delete confirmation dialog
 
@@ -39,8 +45,8 @@ export default function ProjectDetails() {
       {/* Project Details Card */}
       <DetailsCard
         project={projectDetail}
-        handleEdit={handleEdit}
-        setDeleteOpen={openDeleteDialog} // Renamed for clarity
+        handleEdit={isAdmin ? handleEdit : undefined}
+        setDeleteOpen={isAdmin ? openDeleteDialog : undefined}
       />
 
       {/* Task and Resource Cards */}

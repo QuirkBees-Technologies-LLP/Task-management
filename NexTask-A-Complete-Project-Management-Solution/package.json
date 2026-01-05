@@ -1,5 +1,5 @@
 {
-  "name": "NexTask",
+  "name": "nextask",
   "version": "1.0.1",
   "license": "MIT",
   "scripts": {
@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "release": "standard-version",
-    "devTurbo": "next dev --turbo"
+    "devTurbo": "next dev --turbo",
+    "seed:superadmin": "ts-node --transpile-only scripts/seedSuperAdmin.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.1.0",

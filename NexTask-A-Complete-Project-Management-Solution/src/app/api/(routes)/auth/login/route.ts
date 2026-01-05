@@ -30,14 +30,15 @@ export async function POST(request: Request) {
     }
 
     // Check if the email is verified for first time signed in users
-    if (!user.emailVerified && !user.companyId) {
-      return NextResponse.json(
-        {
-          error: 'Email not verified. Please check your email and verify your account',
-        },
-        { status: 403 }
-      );
-    }
+    // COMMENTED OUT: Email verification check removed
+    // if (!user.emailVerified && !user.companyId) {
+    //   return NextResponse.json(
+    //     {
+    //       error: 'Email not verified. Please check your email and verify your account',
+    //     },
+    //     { status: 403 }
+    //   );
+    // }
 
     // Compare the password
     const isPasswordValid = await bcrypt.compare(password, user.password);

@@ -243,14 +243,14 @@ function generateClientDataSource(numberOfClients) {
 
   for (let i = 1; i <= numberOfClients; i++) {
     const clientName = clientNames[i % clientNames.length] + ` ${i}`; // Unique client name
-    const contactPerson = `Representative ${i}`;
+    const projectName = `Project ${i}`;
     const email = `client${i}@example.com`;
     const projectsCount = getRandomInt(1, 10); // Random number of projects between 1 and 10
 
     dataSource.push({
       id: i,
       clientName,
-      contactPerson,
+      projectName,
       email,
       projectsCount,
     });

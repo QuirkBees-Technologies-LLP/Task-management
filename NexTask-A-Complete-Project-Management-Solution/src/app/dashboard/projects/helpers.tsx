@@ -1,5 +1,4 @@
-import { Chip, ChipProps, Link } from '@mui/material';
-import NextLink from 'next/link';
+import { Chip, ChipProps } from '@mui/material';
 import { Project, ProjectListKeys, ProjectStatus, ResponsiveTableColumn } from './types'; // Adjust import path as necessary
 
 const getProjectStatusColor = (status: ProjectStatus): ChipProps['color'] => {
@@ -16,16 +15,8 @@ const getProjectStatusColor = (status: ProjectStatus): ChipProps['color'] => {
 };
 
 const projectColumns: ResponsiveTableColumn[] = [
-  {
-    title: 'ID',
-    key: 'id',
-    render: ({ id }) => (
-      <Link component={NextLink} href={`/dashboard/projects/${id}`}>
-        {id}
-      </Link>
-    ),
-  },
   { title: 'Project Name', key: 'name' },
+  { title: 'Client Name', key: 'clientName' },
   { title: 'Description', key: 'description' },
   {
     title: 'Status',
@@ -38,9 +29,8 @@ const projectColumns: ResponsiveTableColumn[] = [
 ];
 
 const projectListKeys: ProjectListKeys = {
-  primaryLinkKey: 'id',
   primaryKeys: ['name', 'status'],
-  secondaryKeys: ['startDate', 'endDate', 'description'],
+  secondaryKeys: ['clientName', 'startDate', 'endDate', 'description'],
 };
 
 export { getProjectStatusColor, projectColumns, projectListKeys };

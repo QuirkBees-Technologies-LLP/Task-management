@@ -3,12 +3,14 @@ export type ProjectStatus = 'Completed' | 'In Progress' | 'Pending' | string;
 export type ColumnAlignment = 'left' | 'center' | 'right';
 
 export interface Project {
-  id?: number;
+  id?: string | number;
   name?: string;
+  clientName?: string;
   description?: string;
   status?: ProjectStatus;
   startDate?: string;
   endDate?: string;
+  dueDate?: string; // Added for task-related project usage
 }
 
 export interface ResponsiveTableColumn {
@@ -35,8 +37,8 @@ export interface ProjectDetail {
 
 export interface DetailsCardProps {
   project: ProjectDetail;
-  handleEdit: () => void;
-  setDeleteOpen: () => void;
+  handleEdit?: () => void;
+  setDeleteOpen?: () => void;
 }
 
 export interface TeamMember {

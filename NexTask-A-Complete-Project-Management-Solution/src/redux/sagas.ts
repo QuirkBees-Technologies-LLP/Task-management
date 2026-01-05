@@ -36,6 +36,7 @@ import {
   loadDashboardSuccess,
   loadEmailTemplates,
   loadEmailTemplatesSuccess,
+  loadEmailTemplatesFailure,
   loadNotifications,
   loadNotificationsFailure,
   loadNotificationsSuccess,
@@ -49,6 +50,9 @@ import {
   saveEmailTemplates,
   saveEmailTemplatesFailure,
   saveEmailTemplatesSuccess,
+  deleteEmailTemplate,
+  deleteEmailTemplateSuccess,
+  deleteEmailTemplateFailure,
   saveTasks,
   saveTasksFailure,
   saveTasksOrder,
@@ -272,9 +276,14 @@ function* saveUserSaga({ payload }) {
 function* loadEmailTemplatesSaga() {
   try {
     const response = yield call(axios.get, '/api/email-templates');
-    yield put(loadEmailTemplatesSuccess(response.data));
+    if (response.data.success) {
+      yield put(loadEmailTemplatesSuccess(response.data.templates || []));
+    } else {
+      yield put(loadEmailTemplatesSuccess([]));
+    }
   } catch (error: any) {
     handleErrorMessage(error);
+    yield put(loadEmailTemplatesFailure(error.message));
   }
 }
 
@@ -283,17 +292,23 @@ function* saveEmailTemplatesSaga({ payload }) {
     const { formData, editingTemplate, setOpenDialog } = payload;
     if (editingTemplate) {
       // Update existing template
-      yield call(axios.put, '/api/email-templates', {
-        id: editingTemplate._id,
+      const response = yield call(axios.put, '/api/email-templates', {
+        id: editingTemplate._id || editingTemplate.id,
         ...formData,
       });
+      if (!response.data.success) {
+        throw new Error(response.data.error || 'Update failed');
+      }
     } else {
       // Create new template
-      yield call(axios.post, '/api/email-templates', formData);
+      const response = yield call(axios.post, '/api/email-templates', formData);
+      if (!response.data.success) {
+        throw new Error(response.data.error || 'Creation failed');
+      }
     }
-    // Refresh templates and close dialog
-    const response = yield call(axios.get, '/api/email-templates');
-    yield put(loadEmailTemplatesSuccess(response.data));
+
+    // Refresh templates by dispatching load action
+    yield put(loadEmailTemplates());
     yield put(saveEmailTemplatesSuccess());
 
     enqueueSnackbar({
@@ -302,10 +317,40 @@ function* saveEmailTemplatesSaga({ payload }) {
         : 'Email template created successfully!',
       variant: 'success',
     });
-    setOpenDialog(false);
+
+    if (setOpenDialog && typeof setOpenDialog === 'function') {
+      setOpenDialog(false);
+    }
   } catch (error: any) {
     handleErrorMessage(error);
     yield put(saveEmailTemplatesFailure(error.message));
+  }
+}
+
+function* deleteEmailTemplateSaga({ payload }) {
+  try {
+    const { templateId, setDeleteDialogOpen } = payload;
+    const response = yield call(axios.delete, `/api/email-templates?_id=${templateId}`);
+
+    if (!response.data.success) {
+      throw new Error(response.data.error || 'Delete failed');
+    }
+
+    // Refresh templates by dispatching load action
+    yield put(loadEmailTemplates());
+    yield put(deleteEmailTemplateSuccess());
+
+    enqueueSnackbar({
+      message: 'Email template deleted successfully!',
+      variant: 'success',
+    });
+
+    if (setDeleteDialogOpen && typeof setDeleteDialogOpen === 'function') {
+      setDeleteDialogOpen(false);
+    }
+  } catch (error: any) {
+    handleErrorMessage(error);
+    yield put(deleteEmailTemplateFailure(error.message));
   }
 }
 
@@ -546,6 +591,7 @@ export default function* watchFetchData() {
   yield takeLatest(fetchUsers.type, fetchUserSaga);
   yield takeLatest(loadEmailTemplates.type, loadEmailTemplatesSaga);
   yield takeLatest(saveEmailTemplates.type, saveEmailTemplatesSaga);
+  yield takeLatest(deleteEmailTemplate.type, deleteEmailTemplateSaga);
   yield takeLatest(verifyEmail.type, verifyEmailSaga);
   yield takeLatest(fetchTasks.type, getTasks);
   yield takeLatest(saveTasks.type, saveTasksSaga);

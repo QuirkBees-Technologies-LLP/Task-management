@@ -2,13 +2,16 @@ import { Chip } from '@mui/material';
 import { Contract, ResponsiveTableColumn } from './types';
 
 export const getContractStatusColor = (status: string) => {
-  switch (status) {
-    case 'Active':
+  const statusLower = status?.toLowerCase() || '';
+  switch (statusLower) {
+    case 'active':
       return 'success';
-    case 'Pending':
+    case 'pending':
       return 'warning';
-    case 'Completed':
+    case 'completed':
       return 'primary';
+    case 'draft':
+      return 'default';
     default:
       return 'default';
   }

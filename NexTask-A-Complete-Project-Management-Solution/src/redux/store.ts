@@ -3,14 +3,11 @@ import createSagaMiddleware from 'redux-saga';
 import rootSaga from './sagas';
 import appReducer from './slices';
 
-let appStore: any;
-
 // Create the saga middleware
 const sagaMiddleware = createSagaMiddleware();
 
 export const makeStore = () => {
-  if (!appStore) {
-    appStore = configureStore({
+  const store = configureStore({
       reducer: {
         app: appReducer,
       },
@@ -23,10 +20,12 @@ export const makeStore = () => {
 
     // Run the root saga
     sagaMiddleware.run(rootSaga);
-  }
 
-  return appStore;
+  return store;
 };
+
+// Create a single store instance
+export const store = makeStore();
 
 // Infer the type of makeStore
 export type AppStore = ReturnType<typeof makeStore>;

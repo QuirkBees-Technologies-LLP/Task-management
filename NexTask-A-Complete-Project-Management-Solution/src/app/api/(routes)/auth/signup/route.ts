@@ -4,7 +4,9 @@ import jwt from 'jsonwebtoken';
 import clientPromise from '../../../lib/mongodb';
 import { DATABASE_NAME, JWT_SECRET } from '../../../config';
 import { EMAIL_CONFIRMATION_TEXT, emailTemplateVariables } from '@/utils/constants';
-import { sendEmail } from '../../../lib/email';
+import { sendEmail as sendEmailLib } from '../../../lib/email';
+import { sendEmail } from '@/utils/sendEmail';
+import { getEmailTemplate } from '@/utils/emailTemplates';
 import { userRolesServer } from '@/app/api/helpers';
 
 export async function POST(request: Request) {
@@ -67,12 +69,23 @@ export async function POST(request: Request) {
         .replace(emailTemplateVariables.btnLink, confirmationLink);
     }
 
-    // Send the confirmation email
-    await sendEmail({
+    // Send the confirmation email (existing functionality)
+    await sendEmailLib({
       to: email,
       subject: emailTemplate?.name ?? 'Confirm Your Email',
       html: emailHtml,
     });
+
+    // Send welcome email using file-based template
+    try {
+      const welcomeEmailHtml = getEmailTemplate('welcome', {
+        name: `${firstName} ${lastName}`,
+      });
+      await sendEmail(email, 'Welcome to NexTask!', welcomeEmailHtml);
+    } catch (emailError) {
+      console.error('Error sending welcome email:', emailError);
+      // Don't fail the registration if welcome email fails
+    }
 
     return NextResponse.json(
       {

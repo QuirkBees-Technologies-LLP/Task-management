@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Update Notification</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .container {
+            background-color: #ffffff;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #1976d2;
+            margin: 0;
+        }
+
+        .content {
+            margin-bottom: 30px;
+        }
+
+        .project-info {
+            background-color: #f5f5f5;
+            border-left: 4px solid #1976d2;
+            padding: 15px;
+            margin: 20px 0;
+        }
+
+        .project-info h2 {
+            margin-top: 0;
+            color: #1976d2;
+        }
+
+        .info-row {
+            margin: 10px 0;
+        }
+
+        .info-label {
+            font-weight: bold;
+            display: inline-block;
+            width: 120px;
+        }
+
+        .footer {
+            text-align: center;
+            color: #666;
+            font-size: 12px;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Project Update Notification</h1>
+        </div>
+        <div class="content">
+            <p>Hello {{name}},</p>
+            <p>This is to inform you that there has been an update to the project you're working on.</p>
+            <div class="project-info">
+                <h2>{{projectName}}</h2>
+                {{#if milestone}}
+                <div class="info-row">
+                    <span class="info-label">Milestone:</span>
+                    <span>{{milestone}}</span>
+                </div>
+                {{/if}}
+                {{#if status}}
+                <div class="info-row">
+                    <span class="info-label">Status:</span>
+                    <span>{{status}}</span>
+                </div>
+                {{/if}}
+                {{#if updateMessage}}
+                <div class="info-row">
+                    <span class="info-label">Update:</span>
+                    <span>{{updateMessage}}</span>
+                </div>
+                {{/if}}
+            </div>
+            <p>Please log in to your NexTask account to view the complete project details and any additional
+                information.</p>
+            <p>If you have any questions, feel free to contact your project manager.</p>
+            <p>Best regards,<br>The NexTask Team</p>
+        </div>
+        <div class="footer">
+            <p>This is an automated email. Please do not reply to this message.</p>
+            <p>&copy; 2024 NexTask. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+
+</html>

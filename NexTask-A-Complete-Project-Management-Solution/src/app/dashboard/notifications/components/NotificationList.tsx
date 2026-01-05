@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   List,
   ListItem,
@@ -14,9 +14,18 @@ import {
   Menu,
   MenuItem,
   Paper,
+  CircularProgress,
+  Box,
 } from '@mui/material';
-import { ExpandMore, AccessTime, MoreVert, VisibilityOffOutlined } from '@mui/icons-material';
-import { getNotificationColor, getNotificationIcon, notifications } from '../helpers';
+import { ExpandMore, AccessTime, MoreVert, VisibilityOffOutlined, Delete } from '@mui/icons-material';
+import { useDispatch, useSelector } from 'react-redux';
+import { loadNotifications, submitMarkAsRead } from '@/redux/slices';
+import { selectNotifications } from '@/redux/selectors';
+import { getNotificationColor, getNotificationIcon } from '../helpers';
+import axios from 'axios';
+import { safeLocalStorageGet } from '@/utils/helpers';
+import { accessTokenKey } from '@/utils/constants';
+import { enqueueSnackbar } from 'notistack';
 
 // Styled components for Avatar and Notification Icon
 const NotificationAvatar = styled(ListItemAvatar)(({ theme }) => ({
@@ -33,91 +42,241 @@ const NotificationIcon = styled(Paper)(({ theme }) => ({
   color: theme.palette.common.white,
 }));
 
-const Notifications: React.FC = () => {
-  const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
-  const open = Boolean(anchorEl);
+// Helper function to format time ago
+const formatTimeAgo = (dateString: string | Date): string => {
+  const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
+  const now = new Date();
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
 
-  const handleMenuClick = (event: React.MouseEvent<HTMLElement>) => {
+  if (diffInSeconds < 60) {
+    return 'just now';
+  } else if (diffInSeconds < 3600) {
+    const minutes = Math.floor(diffInSeconds / 60);
+    return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
+  } else if (diffInSeconds < 86400) {
+    const hours = Math.floor(diffInSeconds / 3600);
+    return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+  } else if (diffInSeconds < 604800) {
+    const days = Math.floor(diffInSeconds / 86400);
+    return `${days} day${days > 1 ? 's' : ''} ago`;
+  } else if (diffInSeconds < 2592000) {
+    const weeks = Math.floor(diffInSeconds / 604800);
+    return `${weeks} week${weeks > 1 ? 's' : ''} ago`;
+  } else {
+    const months = Math.floor(diffInSeconds / 2592000);
+    return `${months} month${months > 1 ? 's' : ''} ago`;
+  }
+};
+
+// Map notification type from database to display type
+const mapNotificationType = (message: string, type?: string): string => {
+  // Use the type from database if available
+  if (type && type !== 'info') return type;
+  
+  // Infer type from message content
+  const lowerMessage = message.toLowerCase();
+  if (lowerMessage.includes('mentioned')) return 'mention';
+  if (lowerMessage.includes('assigned')) return 'new_task';
+  if (lowerMessage.includes('deadline')) return 'deadline';
+  if (lowerMessage.includes('commented')) return 'comment';
+  if (lowerMessage.includes('status changed') || lowerMessage.includes('status changed to')) return 'status_change';
+  if (lowerMessage.includes('invited')) return 'invitation';
+  
+  return 'info'; // default
+};
+
+const Notifications: React.FC = () => {
+  const dispatch = useDispatch();
+  const { data: notifications, loading } = useSelector(selectNotifications);
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [selectedNotificationId, setSelectedNotificationId] = useState<string | null>(null);
+  const [showAll, setShowAll] = useState(false);
+
+  useEffect(() => {
+    // Only load notifications if we don't have any cached data
+    // This prevents refetching on every route change
+    if (!notifications || notifications.length === 0) {
+    dispatch(loadNotifications({ limit: showAll ? 100 : 20 }));
+    }
+  }, [dispatch, showAll]); // Removed notifications from deps to prevent refetch
+
+  const handleMenuClick = (event: React.MouseEvent<HTMLElement>, notificationId: string) => {
     setAnchorEl(event.currentTarget);
+    setSelectedNotificationId(notificationId);
   };
 
   const handleMenuClose = () => {
     setAnchorEl(null);
+    setSelectedNotificationId(null);
   };
+
+  const handleMarkAsRead = async (notificationId: string) => {
+    try {
+      const token = safeLocalStorageGet(accessTokenKey);
+      if (!token) return;
+
+      await axios.put(
+        '/api/notifications',
+        { id: notificationId },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      dispatch(submitMarkAsRead({ id: notificationId }));
+      dispatch(loadNotifications({ limit: showAll ? 100 : 20 })); // Refresh list
+      handleMenuClose();
+    } catch (error: any) {
+      console.error('Error marking notification as read:', error);
+      enqueueSnackbar({
+        message: error.response?.data?.error || 'Failed to mark notification as read',
+        variant: 'error',
+      });
+    }
+  };
+
+  const handleDelete = async (notificationId: string) => {
+    try {
+      const token = safeLocalStorageGet(accessTokenKey);
+      if (!token) return;
+
+      await axios.delete(`/api/notifications?_id=${notificationId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      enqueueSnackbar({ message: 'Notification deleted', variant: 'success' });
+      dispatch(loadNotifications({ limit: showAll ? 100 : 20 })); // Refresh list
+      handleMenuClose();
+    } catch (error: any) {
+      console.error('Error deleting notification:', error);
+      enqueueSnackbar({
+        message: error.response?.data?.error || 'Failed to delete notification',
+        variant: 'error',
+      });
+    }
+  };
+
+  const displayedNotifications = showAll ? notifications : (notifications || []).slice(0, 5);
+
+  if (loading && (!notifications || notifications.length === 0)) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (!notifications || notifications.length === 0) {
+    return (
+      <Box sx={{ p: 3, textAlign: 'center' }}>
+        <Typography variant="body2" color="text.secondary">
+          No notifications yet
+        </Typography>
+      </Box>
+    );
+  }
 
   return (
     <>
       <List sx={{ p: 0 }}>
-        {notifications.map((notification) => (
-          <React.Fragment key={notification.id}>
-            <ListItem
-              sx={{
-                ':hover': {
-                  bgcolor: (theme) => theme.palette.background.default,
-                  cursor: 'pointer',
-                },
-              }}
-            >
-              {/* Notification Icon */}
-              <NotificationAvatar>
-                <NotificationIcon sx={{ bgcolor: getNotificationColor(notification.type) }}>
-                  {getNotificationIcon(notification.type)}
-                </NotificationIcon>
-              </NotificationAvatar>
+        {displayedNotifications.map((notification: any) => {
+          const notificationId = notification._id?.toString() || notification.id?.toString();
+          const notificationType = mapNotificationType(notification.message || '', notification.type);
+          const isRead = notification.read || false;
+          
+          return (
+            <React.Fragment key={notificationId}>
+              <ListItem
+                sx={{
+                  bgcolor: isRead ? 'transparent' : (theme) => theme.palette.action.hover,
+                  ':hover': {
+                    bgcolor: (theme) => theme.palette.background.default,
+                    cursor: 'pointer',
+                  },
+                }}
+                onClick={() => {
+                  if (!isRead) {
+                    handleMarkAsRead(notificationId);
+                  }
+                }}
+              >
+                {/* Notification Icon */}
+                <NotificationAvatar>
+                  <NotificationIcon sx={{ bgcolor: getNotificationColor(notificationType) }}>
+                    {getNotificationIcon(notificationType)}
+                  </NotificationIcon>
+                </NotificationAvatar>
 
-              {/* Notification Message */}
-              <ListItemText
-                primary={
-                  <Typography variant="subtitle2" color="text.primary">
-                    {notification.message}
-                  </Typography>
-                }
-                secondary={
-                  <Stack component={'span'} direction="row" alignItems="center" spacing={1}>
-                    <AccessTime sx={{ fontSize: 18 }} />
-                    <Typography variant="caption" color="text.secondary" component="span">
-                      {notification.time}
+                {/* Notification Message */}
+                <ListItemText
+                  primary={
+                    <Typography 
+                      variant="subtitle2" 
+                      color="text.primary"
+                      sx={{ fontWeight: isRead ? 400 : 600 }}
+                    >
+                      {notification.message}
                     </Typography>
-                  </Stack>
-                }
-              />
+                  }
+                  secondary={
+                    <Stack component={'span'} direction="row" alignItems="center" spacing={1}>
+                      <AccessTime sx={{ fontSize: 18 }} />
+                      <Typography variant="caption" color="text.secondary" component="span">
+                        {notification.createdAt 
+                          ? formatTimeAgo(notification.createdAt)
+                          : 'Recently'}
+                      </Typography>
+                    </Stack>
+                  }
+                />
 
-              {/* Menu Options */}
-              <ListItemIcon>
-                <IconButton onClick={handleMenuClick}>
-                  <MoreVert />
-                </IconButton>
-                <Menu
-                  anchorEl={anchorEl}
-                  open={open}
-                  onClose={handleMenuClose}
-                  anchorOrigin={{
-                    vertical: 'bottom',
-                    horizontal: 'left',
-                  }}
-                  transformOrigin={{
-                    vertical: 'top',
-                    horizontal: 'center',
-                  }}
-                >
-                  <MenuItem onClick={handleMenuClose}>
-                    <ListItemIcon>
-                      <VisibilityOffOutlined fontSize="small" />
-                    </ListItemIcon>
-                    <ListItemText>Hide</ListItemText>
-                  </MenuItem>
-                </Menu>
-              </ListItemIcon>
-            </ListItem>
-            <Divider />
-          </React.Fragment>
-        ))}
+                {/* Menu Options */}
+                <ListItemIcon>
+                  <IconButton onClick={(e) => handleMenuClick(e, notificationId)}>
+                    <MoreVert />
+                  </IconButton>
+                  <Menu
+                    anchorEl={anchorEl}
+                    open={open && selectedNotificationId === notificationId}
+                    onClose={handleMenuClose}
+                    anchorOrigin={{
+                      vertical: 'bottom',
+                      horizontal: 'left',
+                    }}
+                    transformOrigin={{
+                      vertical: 'top',
+                      horizontal: 'center',
+                    }}
+                  >
+                    {!isRead && (
+                      <MenuItem onClick={() => handleMarkAsRead(notificationId)}>
+                        <ListItemIcon>
+                          <VisibilityOffOutlined fontSize="small" />
+                        </ListItemIcon>
+                        <ListItemText>Mark as read</ListItemText>
+                      </MenuItem>
+                    )}
+                    <MenuItem onClick={() => handleDelete(notificationId)}>
+                      <ListItemIcon>
+                        <Delete fontSize="small" />
+                      </ListItemIcon>
+                      <ListItemText>Delete</ListItemText>
+                    </MenuItem>
+                  </Menu>
+                </ListItemIcon>
+              </ListItem>
+              <Divider />
+            </React.Fragment>
+          );
+        })}
       </List>
 
       {/* Show More Button */}
-      <Stack alignItems="center" sx={{ py: 1 }}>
-        <Button startIcon={<ExpandMore />}>Show more</Button>
-      </Stack>
+      {notifications.length > 5 && !showAll && (
+        <Stack alignItems="center" sx={{ py: 1 }}>
+          <Button startIcon={<ExpandMore />} onClick={() => setShowAll(true)}>
+            Show more
+          </Button>
+        </Stack>
+      )}
     </>
   );
 };
