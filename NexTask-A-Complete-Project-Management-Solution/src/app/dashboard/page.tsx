@@ -1,12 +1,13 @@
 'use client';
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   CheckCircleOutline,
   GroupOutlined,
   HourglassEmpty,
   WorkOutline,
+  Assignment,
 } from '@mui/icons-material';
-import { Box, Button, CardContent, Grid2, Icon, Paper, Typography, useTheme } from '@mui/material';
+import { Box, Button, CardContent, Grid2, Icon, Paper, Typography, useTheme, CircularProgress, List, ListItem, ListItemText, ListItemIcon, Chip, Avatar, Divider } from '@mui/material';
 import Link from 'next/link';
 import CustomerBarChart from '@/components/CustomersChart';
 import ReportsChart from '@/components/ReportsChart';
@@ -15,43 +16,131 @@ import { blue, pink, teal, yellow } from '@mui/material/colors';
 import CardHeader from '@/components/CardHeader';
 import ResponsiveTable from '@/components/Table';
 import { projectColumns, projectListKeys } from './projects/helpers';
-import { tasks } from '@/utils/data';
-import { useData } from '@/utils/hooks';
-
-const items = [
-  {
-    title: 'Total Projects',
-    value: '102',
-    description: 'Increased by 12%',
-    color: blue[700],
-    icon: <WorkOutline fontSize="large" />,
-  },
-  {
-    title: 'Active Users',
-    value: '3k+',
-    description: 'Gained 142 new users',
-    color: pink[700],
-    icon: <GroupOutlined fontSize="large" />,
-  },
-  {
-    title: 'Completed Tasks',
-    value: '7,890',
-    description: 'Up by 18%',
-    color: yellow[700],
-    icon: <CheckCircleOutline fontSize="large" />,
-  },
-  {
-    title: 'Pending Approvals',
-    value: '58',
-    description: 'Reduced by 5%',
-    color: teal[700],
-    icon: <HourglassEmpty fontSize="large" />,
-  },
-];
+import axios from 'axios';
+import { safeLocalStorageGet } from '@/utils/helpers';
+import { accessTokenKey } from '@/utils/constants';
 
 export default function Dashboard() {
   const theme = useTheme();
-  const { data: projects, loading } = useData({ key: 'projects' });
+  const [projects, setProjects] = useState([]);
+  const [projectsLoading, setProjectsLoading] = useState(true);
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    totalProjects: 0,
+    completedTasks: 0,
+    pendingTasks: 0,
+  });
+  const [activity, setActivity] = useState<any[]>([]);
+  const [statsLoading, setStatsLoading] = useState(true);
+  const [activityLoading, setActivityLoading] = useState(true);
+
+  useEffect(() => {
+    fetchStats();
+    fetchActivity();
+    fetchProjects();
+  }, []);
+
+  const fetchProjects = async () => {
+    setProjectsLoading(true);
+    try {
+      const token = safeLocalStorageGet(accessTokenKey);
+      if (!token) return;
+
+      const response = await axios.get('/api/projects?limit=5', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (response.data.success) {
+        setProjects(response.data.projects || []);
+      }
+    } catch (error) {
+      console.error('Error fetching projects:', error);
+    } finally {
+      setProjectsLoading(false);
+    }
+  };
+
+  const fetchStats = async () => {
+    try {
+      const token = safeLocalStorageGet(accessTokenKey);
+      if (!token) return;
+
+      const response = await axios.get('/api/stats', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.data.success) {
+        setStats(response.data.stats);
+      }
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+    } finally {
+      setStatsLoading(false);
+    }
+  };
+
+  const fetchActivity = async () => {
+    try {
+      const token = safeLocalStorageGet(accessTokenKey);
+      if (!token) return;
+
+      const response = await axios.get('/api/activity', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.data.success) {
+        setActivity(response.data.activity || []);
+      }
+    } catch (error) {
+      console.error('Error fetching activity:', error);
+    } finally {
+      setActivityLoading(false);
+    }
+  };
+
+  const items = [
+    {
+      title: 'Total Users',
+      value: statsLoading ? '...' : stats.totalUsers.toString(),
+      description: '',
+      color: blue[700],
+      icon: <GroupOutlined fontSize="large" />,
+    },
+    {
+      title: 'Total Projects',
+      value: statsLoading ? '...' : stats.totalProjects.toString(),
+      description: '',
+      color: teal[700],
+      icon: <WorkOutline fontSize="large" />,
+    },
+    {
+      title: 'Completed Tasks',
+      value: statsLoading ? '...' : stats.completedTasks.toString(),
+      description: '',
+      color: yellow[700],
+      icon: <CheckCircleOutline fontSize="large" />,
+    },
+    {
+      title: 'Pending Tasks',
+      value: statsLoading ? '...' : stats.pendingTasks.toString(),
+      description: '',
+      color: pink[700],
+      icon: <HourglassEmpty fontSize="large" />,
+    },
+  ];
+
+  const formatDate = (dateString: string) => {
+    if (!dateString) return '';
+    try {
+      return new Date(dateString).toLocaleDateString();
+    } catch {
+      return dateString;
+    }
+  };
 
   return (
     <>
@@ -110,11 +199,11 @@ export default function Dashboard() {
               }
             />
             <CardContent>
-              <ReportsChart data={tasks} />
+              <ReportsChart data={[]} />
             </CardContent>
           </Paper>
         </Grid2>
-        <Grid2 size={{ xs: 12 }}>
+        <Grid2 size={{ xs: 12, md: 8 }}>
           <Paper sx={{ minHeight: 160 }}>
             <CardHeader
               title="Popular Projects"
@@ -129,8 +218,66 @@ export default function Dashboard() {
                 data={projects}
                 columns={projectColumns}
                 listKeys={projectListKeys}
-                loading={loading}
+                loading={projectsLoading}
               />
+            </CardContent>
+          </Paper>
+        </Grid2>
+        <Grid2 size={{ xs: 12, md: 4 }}>
+          <Paper sx={{ minHeight: 400 }}>
+            <CardHeader title="Recent Activity" />
+            <CardContent>
+              {activityLoading ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                  <CircularProgress />
+                </Box>
+              ) : activity.length === 0 ? (
+                <Typography variant="body2" color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>
+                  No recent activity
+                </Typography>
+              ) : (
+                <List>
+                  {activity.slice(0, 5).map((item, index) => (
+                    <React.Fragment key={index}>
+                      <ListItem>
+                        <ListItemIcon>
+                          {item.type === 'task' ? (
+                            <Avatar sx={{ bgcolor: theme.palette.primary.main, width: 32, height: 32 }}>
+                              <Assignment fontSize="small" />
+                            </Avatar>
+                          ) : (
+                            <Avatar sx={{ bgcolor: theme.palette.secondary.main, width: 32, height: 32 }}>
+                              <WorkOutline fontSize="small" />
+                            </Avatar>
+                          )}
+                        </ListItemIcon>
+                        <ListItemText
+                          primary={
+                            <Typography variant="body2" fontWeight={500}>
+                              {item.type === 'task' ? item.title : item.name}
+                            </Typography>
+                          }
+                          secondary={
+                            <Box sx={{ mt: 0.5 }}>
+                              <Typography variant="caption" color="text.secondary">
+                                {item.type === 'task' ? 'Task' : 'Project'} • {formatDate(item.updatedAt || item.createdAt)}
+                              </Typography>
+                              {item.type === 'task' && item.status && (
+                                <Chip
+                                  label={item.status}
+                                  size="small"
+                                  sx={{ ml: 1, height: 20, fontSize: '0.7rem' }}
+                                />
+                              )}
+                            </Box>
+                          }
+                        />
+                      </ListItem>
+                      {index < activity.length - 1 && <Divider />}
+                    </React.Fragment>
+                  ))}
+                </List>
+              )}
             </CardContent>
           </Paper>
         </Grid2>

@@ -11,6 +11,7 @@ import { Notification } from './types';
 export const getNotificationIcon = (type: string) => {
   switch (type) {
     case 'new_task':
+    case 'task':
       return <AssignmentInd />;
     case 'deadline':
       return <Event />;
@@ -20,6 +21,9 @@ export const getNotificationIcon = (type: string) => {
       return <Update />;
     case 'invitation':
       return <GroupAdd />;
+    case 'info':
+    case 'mention':
+      return <Notifications />;
     default:
       return <Notifications />;
   }
@@ -28,6 +32,7 @@ export const getNotificationIcon = (type: string) => {
 export const getNotificationColor = (type: string) => {
   switch (type) {
     case 'new_task':
+    case 'task':
       return '#4caf50';
     case 'deadline':
       return '#f44336';
@@ -37,6 +42,9 @@ export const getNotificationColor = (type: string) => {
       return '#ff9800';
     case 'invitation':
       return '#9c27b0';
+    case 'info':
+    case 'mention':
+      return '#2196f3'; // Blue for mentions/info
     default:
       return '#757575';
   }

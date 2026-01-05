@@ -2,7 +2,9 @@ import { NextResponse } from 'next/server';
 import clientPromise from '../../../lib/mongodb';
 import { DATABASE_NAME } from '../../../config';
 import { emailTemplateVariables } from '@/utils/constants';
-import { sendEmail } from '@/app/api/lib/email';
+import { sendEmail as sendEmailLib } from '@/app/api/lib/email';
+import { sendEmail } from '@/utils/sendEmail';
+import { getEmailTemplate } from '@/utils/emailTemplates';
 import jwt from 'jsonwebtoken';
 import { tokenExpiryLong } from '@/app/api/config';
 
@@ -23,16 +25,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // Here, you would typically generate a password reset token and send an email.
-    const templatesCollection = db.collection('emailTemplates');
-    const emailTemplate = await templatesCollection.findOne({
-      emailType: 'password_reset',
-    });
-
-    if (!emailTemplate) {
-      return NextResponse.json({ error: 'Email confirmation template not found' }, { status: 404 });
-    }
-
+    // Generate password reset token
     const token = jwt.sign(
       {
         email: email,
@@ -45,19 +38,16 @@ export async function POST(request: Request) {
     );
 
     const baseUrl = `${request.headers.get('origin')}`;
-    const inviteLink = `${baseUrl}/change-password?token=${encodeURIComponent(token)}`;
+    const resetLink = `${baseUrl}/change-password?token=${encodeURIComponent(token)}`;
 
-    // Replace placeholders in the email template
-    const emailHtml = emailTemplate.htmlString
-      .replace(emailTemplateVariables.btnLink, inviteLink)
-      .replace(emailTemplateVariables.name, `${user.firstName} ${user.lastName}`);
-
-    // Send the confirmation email
-    await sendEmail({
-      to: email,
-      subject: emailTemplate.name ?? 'Password Reset',
-      html: emailHtml,
+    // Use file-based email template
+    const emailHtml = getEmailTemplate('password-reset', {
+      name: `${user.firstName} ${user.lastName}`,
+      resetLink,
     });
+
+    // Send the password reset email
+    await sendEmail(email, 'Password Reset Request', emailHtml);
 
     return NextResponse.json({ message: 'Email sent successfully' }, { status: 200 });
   } catch (error) {

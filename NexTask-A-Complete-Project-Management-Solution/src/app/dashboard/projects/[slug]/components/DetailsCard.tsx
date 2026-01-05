@@ -23,18 +23,24 @@ export default function DetailsCard({
       <CardHeader
         title="Details"
         action={
-          <Stack direction="row">
-            <Tooltip title="Edit Project">
-              <IconButton size="small" color="primary" onClick={handleEdit}>
-                <EditOutlined />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Delete Project">
-              <IconButton size="small" color="error" onClick={setDeleteOpen}>
-                <DeleteOutline />
-              </IconButton>
-            </Tooltip>
-          </Stack>
+          (handleEdit || setDeleteOpen) ? (
+            <Stack direction="row">
+              {handleEdit && (
+                <Tooltip title="Edit Project">
+                  <IconButton size="small" color="primary" onClick={handleEdit}>
+                    <EditOutlined />
+                  </IconButton>
+                </Tooltip>
+              )}
+              {setDeleteOpen && (
+                <Tooltip title="Delete Project">
+                  <IconButton size="small" color="error" onClick={setDeleteOpen}>
+                    <DeleteOutline />
+                  </IconButton>
+                </Tooltip>
+              )}
+            </Stack>
+          ) : null
         }
       />
       <CardContent>

@@ -11,7 +11,20 @@ export async function GET(request) {
   const { id } = decoded;
 
   try {
-    const client = await clientPromise;
+    let client;
+    try {
+      client = await clientPromise;
+    } catch (connectionError: any) {
+      console.error('MongoDB connection error in dashboard route:', {
+        message: connectionError?.message,
+        name: connectionError?.name,
+      });
+      return NextResponse.json(
+        { error: 'Database connection failed' },
+        { status: 500 }
+      );
+    }
+
     const db = client.db(DATABASE_NAME);
 
     const userCollection = db.collection('users');
@@ -51,8 +64,14 @@ export async function GET(request) {
     };
 
     return NextResponse.json(data, { status: 200 });
-  } catch (error) {
-    console.error('Error fetching endpoints:', error);
-    return NextResponse.json({ error: 'Failed to fetch endpoints' }, { status: 500 });
+  } catch (error: any) {
+    console.error('Error fetching endpoints:', {
+      message: error?.message || 'Unknown error',
+      name: error?.name || 'Error',
+    });
+    return NextResponse.json(
+      { error: 'Failed to fetch endpoints' },
+      { status: 500 }
+    );
   }
 }

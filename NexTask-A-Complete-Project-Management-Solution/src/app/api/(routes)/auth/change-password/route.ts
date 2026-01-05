@@ -16,7 +16,7 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
 
-    const { newPassword } = body;
+    const { oldPassword, newPassword } = body;
 
     const client = await clientPromise;
     const db = client.db(DATABASE_NAME);
@@ -30,8 +30,18 @@ export async function POST(request: Request) {
     }
 
     // Validate the request body
+    if (!oldPassword) {
+      return NextResponse.json({ error: 'Old password is required' }, { status: 400 });
+    }
+
     if (!newPassword) {
-      return NextResponse.json({ error: 'Password is required' }, { status: 400 });
+      return NextResponse.json({ error: 'New password is required' }, { status: 400 });
+    }
+
+    // Validate old password
+    const isOldPasswordValid = await bcrypt.compare(oldPassword, user.password);
+    if (!isOldPasswordValid) {
+      return NextResponse.json({ error: 'Old password is incorrect' }, { status: 401 });
     }
 
     // Hash the new password

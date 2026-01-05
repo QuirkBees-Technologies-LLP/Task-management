@@ -1,296 +1,519 @@
 'use client';
+
 import React, { useState, useEffect } from 'react';
 import {
-  Typography,
-  List,
-  ListItem,
-  ListItemText,
-  IconButton,
-  TextField,
+  Box,
   Button,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  IconButton,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
+  TextField,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Select,
+  Typography,
+  CircularProgress,
+  Stack,
   Chip,
   Avatar,
   Pagination,
-  Stack,
-  Paper,
-  useTheme,
-  useMediaQuery,
-  ListItemIcon,
-  Menu,
-  MenuItem,
+  InputAdornment,
 } from '@mui/material';
 import {
-  Add as AddIcon,
-  Search as SearchIcon,
+  AddOutlined,
   EditOutlined,
   DeleteOutline,
-  MoreVert,
+  Search as SearchIcon,
 } from '@mui/icons-material';
-import { enqueueSnackbar } from 'notistack';
-import { getRandomColor, mockData } from '@/utils/constants';
 import PageHeader from '@/components/PageHeader';
-import ResourceModal from './components/ResourceModal';
-import { TeamMember } from './types';
-import { roleColors } from './helpers';
+import axios from 'axios';
+import { safeLocalStorageGet } from '@/utils/helpers';
+import { accessTokenKey } from '@/utils/constants';
+import { enqueueSnackbar } from 'notistack';
+import { useRouter } from 'next/navigation';
 
-export default function TeamManagement() {
-  const theme = useTheme();
-  const isSmallScreen = useMediaQuery(theme.breakpoints.down('md'));
-  const [teamMembers, setTeamMembers] = useState<TeamMember[]>(mockData.teams);
-  const [resourceDialogOpen, setResourceDialogOpen] = useState(false);
-  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-  const [currentMember, setCurrentMember] = useState<TeamMember | null>(null);
-  const [menuAnchorEl, setMenuAnchorEl] = React.useState(null);
-  const isMenuOpen = Boolean(menuAnchorEl);
-  const [searchTerm, setSearchTerm] = useState('');
+interface Staff {
+  _id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: string;
+  department?: string;
+  position?: string;
+  departmentId?: string;
+  positionId?: string;
+  phone?: string;
+}
+
+interface Department {
+  _id: string;
+  name: string;
+  positions: Array<{ _id: string; name: string }>;
+}
+
+const StaffManagementPage: React.FC = () => {
+  const router = useRouter();
+  const [staff, setStaff] = useState<Staff[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null);
+  const [saving, setSaving] = useState(false);
   const [page, setPage] = useState(1);
-
-  const itemsPerPage = 5;
-  const [filteredMembers, setFilteredMembers] = useState<TeamMember[]>([]);
+  const [limit] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+  const [search, setSearch] = useState('');
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [availablePositions, setAvailablePositions] = useState<Array<{ _id: string; name: string }>>([]);
+  const [formData, setFormData] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    role: 'Regular',
+    departmentId: '',
+    positionId: '',
+    phone: '',
+  });
 
   useEffect(() => {
-    const filtered = teamMembers.filter(
-      (member) =>
-        member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        member.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        member.role.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-    setFilteredMembers(filtered);
-    setPage(1);
-  }, [teamMembers, searchTerm]);
+    fetchStaff();
+    fetchDepartments();
+  }, [page, search]);
 
-  const handleOpenDialog = (member: TeamMember | null = null) => {
-    setCurrentMember(
-      member || {
-        id: Date.now(),
-        name: '',
-        email: '',
-        role: '',
-        department: '',
-        joinDate: '',
-        skills: [],
-      }
-    );
-    setResourceDialogOpen(true);
-  };
-
-  const handleCloseDialog = () => {
-    setResourceDialogOpen(false);
-    setCurrentMember(null);
-  };
-
-  const handleOpenMoreMenu = (event) => {
-    setMenuAnchorEl(event.currentTarget);
-  };
-
-  const handleCloseMenu = () => {
-    setMenuAnchorEl(null);
-  };
-
-  const handleSaveMember = () => {
-    if (currentMember) {
-      if (currentMember.id) {
-        setTeamMembers(teamMembers.map((m) => (m.id === currentMember.id ? currentMember : m)));
-        enqueueSnackbar({
-          message: 'Team member updated successfully',
-          variant: 'success',
-        });
+  useEffect(() => {
+    // Update available positions when department changes
+    if (formData.departmentId) {
+      const selectedDept = departments.find((d) => d._id === formData.departmentId);
+      if (selectedDept) {
+        setAvailablePositions(selectedDept.positions || []);
+        // Validate current positionId - if it doesn't exist in new department, reset it
+        if (formData.positionId) {
+          const positionExists = selectedDept.positions?.some((pos) => pos._id === formData.positionId);
+          if (!positionExists) {
+            setFormData((prev) => ({ ...prev, positionId: '' }));
+          }
+        }
       } else {
-        setTeamMembers([...teamMembers, { ...currentMember, id: Date.now() }]);
-        enqueueSnackbar({
-          message: 'Team member added successfully',
-          variant: 'success',
-        });
+        setAvailablePositions([]);
       }
-      handleCloseDialog();
+    } else {
+      setAvailablePositions([]);
     }
-  };
+  }, [formData.departmentId, departments]);
 
-  const handleDeleteMember = (id: number) => {
-    setCurrentMember(teamMembers.find((m) => m.id === id) || null);
-    setDeleteConfirmOpen(true);
-  };
+  const fetchDepartments = async () => {
+    try {
+      const token = safeLocalStorageGet(accessTokenKey);
+      if (!token) return;
 
-  const confirmDelete = () => {
-    if (currentMember) {
-      setTeamMembers(teamMembers.filter((member) => member.id !== currentMember.id));
-      enqueueSnackbar({
-        message: 'Team member removed successfully',
-        variant: 'success',
+      const response = await axios.get('/api/departments?limit=1000', {
+        headers: { Authorization: `Bearer ${token}` },
       });
-      setDeleteConfirmOpen(false);
-      setCurrentMember(null);
+
+      if (response.data.success) {
+        setDepartments(response.data.departments || []);
+      }
+    } catch (error) {
+      console.error('Error fetching departments:', error);
     }
   };
 
-  const handleChangePage = (event: React.ChangeEvent<unknown>, value: number) => {
-    setPage(value);
+  const fetchStaff = async () => {
+    setLoading(true);
+    try {
+      const token = safeLocalStorageGet(accessTokenKey);
+      if (!token) {
+        router.push('/login');
+        return;
+      }
+
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString(),
+        ...(search && { search }),
+      });
+
+      const response = await axios.get(`/api/staff?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (response.data.success) {
+        setStaff(response.data.staff || []);
+        setTotalPages(response.data.pagination?.totalPages || 1);
+      }
+    } catch (error: any) {
+      console.error('Error fetching staff:', error);
+      enqueueSnackbar({
+        message: error.response?.data?.error || 'Failed to fetch staff',
+        variant: 'error',
+      });
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const handleOpenCreate = () => {
+    setSelectedStaff(null);
+    setFormData({
+      firstName: '',
+      lastName: '',
+      email: '',
+      role: 'Regular',
+      departmentId: '',
+      positionId: '',
+      phone: '',
+    });
+    setAvailablePositions([]);
+    setDialogOpen(true);
+  };
+
+  const handleOpenEdit = (item: Staff) => {
+    setSelectedStaff(item);
+    setFormData({
+      firstName: item.firstName || '',
+      lastName: item.lastName || '',
+      email: item.email || '',
+      role: item.role || 'Regular',
+      departmentId: item.departmentId || '',
+      positionId: item.positionId || '',
+      phone: item.phone || '',
+    });
+    // Set available positions for the selected department
+    if (item.departmentId) {
+      const selectedDept = departments.find((d) => d._id === item.departmentId);
+      if (selectedDept) {
+        setAvailablePositions(selectedDept.positions || []);
+      }
+    }
+    setDialogOpen(true);
+  };
+
+  const handleSave = async () => {
+    if (!formData.firstName || !formData.lastName || !formData.email) {
+      enqueueSnackbar({
+        message: 'First name, last name, and email are required',
+        variant: 'error',
+      });
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const token = safeLocalStorageGet(accessTokenKey);
+      if (!token) {
+        router.push('/login');
+        return;
+      }
+
+      if (selectedStaff) {
+        await axios.patch(
+          '/api/staff',
+          { staffId: selectedStaff._id, ...formData },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        enqueueSnackbar({ message: 'Staff updated successfully', variant: 'success' });
+      } else {
+        await axios.post('/api/staff', formData, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        enqueueSnackbar({ message: 'Staff created successfully', variant: 'success' });
+      }
+
+      setDialogOpen(false);
+      fetchStaff();
+    } catch (error: any) {
+      enqueueSnackbar({
+        message: error.response?.data?.error || 'Failed to save staff',
+        variant: 'error',
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!selectedStaff) return;
+
+    setSaving(true);
+    try {
+      const token = safeLocalStorageGet(accessTokenKey);
+      if (!token) {
+        router.push('/login');
+        return;
+      }
+
+      await axios.delete(`/api/staff?_id=${selectedStaff._id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      enqueueSnackbar({ message: 'Staff deleted successfully', variant: 'success' });
+      setDeleteDialogOpen(false);
+      setSelectedStaff(null);
+      fetchStaff();
+    } catch (error: any) {
+      enqueueSnackbar({
+        message: error.response?.data?.error || 'Failed to delete staff',
+        variant: 'error',
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading && staff.length === 0) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 400 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   return (
     <>
       <PageHeader
-        title="Team Management"
+        title="Staff Management"
         action={
-          isSmallScreen ? (
-            <Button variant="contained" onClick={() => handleOpenDialog()}>
-              <AddIcon />
-            </Button>
-          ) : (
-            <Button variant="contained" startIcon={<AddIcon />} onClick={() => handleOpenDialog()}>
-              Add Member
-            </Button>
-          )
+          <Button variant="contained" startIcon={<AddOutlined />} onClick={handleOpenCreate}>
+            Add Staff
+          </Button>
         }
       />
 
-      <Paper sx={{ p: 2 }}>
-        <Stack alignItems={'end'} mb={2}>
+      <Box sx={{ mt: 3 }}>
+        <Paper sx={{ p: 2, mb: 3 }}>
           <TextField
-            variant={'outlined'}
-            slotProps={{
-              input: {
-                startAdornment: <SearchIcon sx={{ color: 'action.active', mr: 1 }} />,
-              },
+            placeholder="Search staff..."
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
             }}
-            fullWidth={isSmallScreen}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Type to search..."
+            size="small"
+            fullWidth
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon />
+                </InputAdornment>
+              ),
+            }}
           />
-        </Stack>
+        </Paper>
 
-        <List>
-          {filteredMembers.slice((page - 1) * itemsPerPage, page * itemsPerPage).map((member) => (
-            <ListItem
-              key={member.id}
-              sx={{ bgcolor: 'background.paper', mb: 1 }}
-              secondaryAction={
-                <>
-                  {isSmallScreen ? (
-                    <>
-                      <IconButton onClick={handleOpenMoreMenu} size="small">
-                        <MoreVert fontSize="small" />
-                      </IconButton>
-                      <Menu
-                        anchorEl={menuAnchorEl}
-                        open={isMenuOpen}
-                        onClose={handleCloseMenu}
-                        anchorOrigin={{
-                          vertical: 'bottom',
-                          horizontal: 'left',
-                        }}
-                        transformOrigin={{
-                          vertical: 'top',
-                          horizontal: 'center',
-                        }}
-                      >
-                        <MenuItem onClick={() => handleOpenDialog(member)}>
-                          <ListItemIcon>
+        <Paper>
+          <TableContainer>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>Staff</TableCell>
+                  <TableCell>Email</TableCell>
+                  <TableCell>Role</TableCell>
+                  <TableCell>Department</TableCell>
+                  <TableCell>Position</TableCell>
+                  <TableCell align="right">Actions</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {staff.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} align="center">
+                      <Typography variant="body2" color="text.secondary" sx={{ py: 4 }}>
+                        No staff found
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  staff.map((item) => (
+                    <TableRow key={item._id} hover>
+                      <TableCell>
+                        <Stack direction="row" spacing={2} alignItems="center">
+                          <Avatar sx={{ width: 40, height: 40, bgcolor: 'primary.main' }}>
+                            {item.firstName?.charAt(0).toUpperCase()}
+                          </Avatar>
+                          <Typography variant="body2">
+                            {item.firstName} {item.lastName}
+                          </Typography>
+                        </Stack>
+                      </TableCell>
+                      <TableCell>{item.email}</TableCell>
+                      <TableCell>
+                        <Chip
+                          label={item.role}
+                          color={item.role === 'Admin' ? 'primary' : 'default'}
+                          size="small"
+                        />
+                      </TableCell>
+                      <TableCell>{item.department || '-'}</TableCell>
+                      <TableCell>{item.position || '-'}</TableCell>
+                      <TableCell align="right">
+                        <Stack direction="row" spacing={1} justifyContent="flex-end">
+                          <IconButton size="small" onClick={() => handleOpenEdit(item)} color="primary">
                             <EditOutlined fontSize="small" />
-                          </ListItemIcon>
-                          <ListItemText>Edit</ListItemText>
-                        </MenuItem>
-                        <MenuItem onClick={() => handleDeleteMember(member.id)}>
-                          <ListItemIcon>
+                          </IconButton>
+                          <IconButton
+                            size="small"
+                            onClick={() => {
+                              setSelectedStaff(item);
+                              setDeleteDialogOpen(true);
+                            }}
+                            color="error"
+                          >
                             <DeleteOutline fontSize="small" />
-                          </ListItemIcon>
-                          <ListItemText>Delete</ListItemText>
-                        </MenuItem>
-                      </Menu>
-                    </>
-                  ) : (
-                    <Stack direction={'row'}>
-                      <IconButton onClick={() => handleOpenDialog(member)}>
-                        <EditOutlined color="primary" />
-                      </IconButton>
-                      <IconButton onClick={() => handleDeleteMember(member.id)}>
-                        <DeleteOutline color="warning" />
-                      </IconButton>
-                    </Stack>
-                  )}
-                </>
-              }
-              component={Paper}
-            >
-              <Avatar sx={{ bgcolor: roleColors[member.role] || 'grey', mr: 2 }}>
-                {member.name[0]}
-              </Avatar>
-              <ListItemText
-                primary={member.name}
-                secondary={
-                  <React.Fragment>
-                    <Typography component="span" variant="body2" color="text.primary">
-                      {member.email}
-                    </Typography>
-                    {` — ${member.role}, ${member.department}`}
-                    <br />
-                    <Stack direction={'row'} alignItems={'center'} spacing={0.2} flexWrap={'wrap'}>
-                      {member.skills.slice(0, 2).map((skill) => (
-                        <Chip
-                          key={skill}
-                          label={skill}
-                          sx={{
-                            backgroundColor: getRandomColor(),
-                            color: '#fff',
-                            minWidth: isSmallScreen ? 70 : 100,
-                          }}
-                        />
-                      ))}
-                      {member.skills.length - member.skills.slice(0, 2).length > 0 && (
-                        <Chip
-                          label={`+${member.skills.length - member.skills.slice(0, 2).length}`}
-                          style={{ minWidth: 40 }}
-                        />
-                      )}
-                    </Stack>
-                  </React.Fragment>
-                }
-                secondaryTypographyProps={{
-                  component: 'div',
-                }}
-              />
-            </ListItem>
-          ))}
-        </List>
+                          </IconButton>
+                        </Stack>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Paper>
 
-        <Stack alignItems={'end'}>
-          <Pagination
-            count={Math.ceil(filteredMembers.length / itemsPerPage)}
-            page={page}
-            onChange={handleChangePage}
-            color="primary"
-          />
-        </Stack>
-      </Paper>
+        {totalPages > 1 && (
+          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
+            <Pagination
+              count={totalPages}
+              page={page}
+              onChange={(_, value) => setPage(value)}
+              color="primary"
+            />
+          </Box>
+        )}
+      </Box>
 
-      {/* Add/Edit Resource */}
-      <ResourceModal
-        open={resourceDialogOpen}
-        setOpen={setResourceDialogOpen}
-        currentMember={currentMember}
-        setCurrentMember={setCurrentMember}
-        handleSaveMember={handleSaveMember}
-      />
-
-      {/* Delete Confirmation */}
-      <Dialog open={deleteConfirmOpen} onClose={() => setDeleteConfirmOpen(false)}>
-        <DialogTitle>Confirm Deletion</DialogTitle>
+      {/* Create/Edit Dialog */}
+      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>{selectedStaff ? 'Edit Staff' : 'Add Staff'}</DialogTitle>
         <DialogContent>
-          <Typography>
-            Are you sure you want to remove {currentMember?.name} from the team?
-          </Typography>
+          <Stack spacing={3} sx={{ pt: 2 }}>
+            <TextField
+              label="First Name"
+              value={formData.firstName}
+              onChange={(e) => setFormData((prev) => ({ ...prev, firstName: e.target.value }))}
+              required
+              fullWidth
+            />
+            <TextField
+              label="Last Name"
+              value={formData.lastName}
+              onChange={(e) => setFormData((prev) => ({ ...prev, lastName: e.target.value }))}
+              required
+              fullWidth
+            />
+            <TextField
+              label="Email"
+              type="email"
+              value={formData.email}
+              onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
+              required
+              fullWidth
+            />
+            <FormControl fullWidth>
+              <InputLabel>Role</InputLabel>
+              <Select
+                value={formData.role}
+                onChange={(e) => setFormData((prev) => ({ ...prev, role: e.target.value }))}
+                label="Role"
+              >
+                <MenuItem value="Regular">Regular</MenuItem>
+                <MenuItem value="Admin">Admin</MenuItem>
+              </Select>
+            </FormControl>
+            <TextField
+              label="Phone"
+              value={formData.phone}
+              onChange={(e) => setFormData((prev) => ({ ...prev, phone: e.target.value }))}
+              fullWidth
+            />
+            <FormControl fullWidth>
+              <InputLabel>Department</InputLabel>
+              <Select
+                value={formData.departmentId}
+                onChange={(e) => setFormData((prev) => ({ ...prev, departmentId: e.target.value, positionId: '' }))}
+                label="Department"
+              >
+                <MenuItem value="">
+                  <em>None</em>
+                </MenuItem>
+                {departments.map((dept) => (
+                  <MenuItem key={dept._id} value={dept._id}>
+                    {dept.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <FormControl fullWidth disabled={!formData.departmentId}>
+              <InputLabel>Position</InputLabel>
+              <Select
+                value={formData.positionId}
+                onChange={(e) => setFormData((prev) => ({ ...prev, positionId: e.target.value }))}
+                label="Position"
+              >
+                <MenuItem value="">
+                  <em>None</em>
+                </MenuItem>
+                {availablePositions.map((pos) => (
+                  <MenuItem key={pos._id} value={pos._id}>
+                    {pos.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDeleteConfirmOpen(false)}>Cancel</Button>
-          <Button onClick={confirmDelete} color="secondary" variant="contained">
+          <Button onClick={() => setDialogOpen(false)} disabled={saving}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSave}
+            variant="contained"
+            disabled={saving || !formData.firstName || !formData.lastName || !formData.email}
+            startIcon={saving && <CircularProgress size={15} color="inherit" />}
+          >
+            {selectedStaff ? 'Update' : 'Create'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Dialog */}
+      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
+        <DialogTitle>Delete Staff</DialogTitle>
+        <DialogContent>
+          {selectedStaff && (
+            <Typography>
+              Are you sure you want to delete <strong>{selectedStaff.firstName} {selectedStaff.lastName}</strong>? This action cannot be undone.
+            </Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialogOpen(false)} disabled={saving}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleDelete}
+            variant="contained"
+            color="error"
+            disabled={saving}
+            startIcon={saving && <CircularProgress size={15} color="inherit" />}
+          >
             Delete
           </Button>
         </DialogActions>
       </Dialog>
     </>
   );
-}
+};
+
+export default StaffManagementPage;

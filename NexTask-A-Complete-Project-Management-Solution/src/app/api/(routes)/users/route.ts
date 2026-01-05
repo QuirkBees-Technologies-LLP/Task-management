@@ -3,7 +3,7 @@ import { ObjectId } from 'mongodb';
 import clientPromise from '../../lib/mongodb';
 import { DATABASE_NAME, JWT_SECRET, senderEmail, tokenExpiryLong } from '../../config';
 import bcrypt from 'bcrypt';
-import { extractPublicId, userRolesServer, verifyToken } from '../../helpers';
+import { userRolesServer, verifyToken, verifySystemAdmin, extractPublicId } from '../../helpers';
 import { sendEmail } from '../../lib/email';
 import { emailTemplateVariables } from '@/utils/constants';
 import jwt from 'jsonwebtoken';
@@ -54,9 +54,50 @@ export async function GET(request: Request) {
       return NextResponse.json(currentUser, { status: 200 });
     }
 
-    // Fetch all users if currentUser is not true
-    const users = await usersCollection.find().toArray();
+    // Check if user is system admin (can see all users)
+    const isSystemAdmin = (decoded as any).isSystemAdmin === true;
 
+    // Get org_id from token (for org admins) or from query param (for super admin)
+    const orgIdParam = searchParams.get('org_id');
+    let org_id: ObjectId | null = null;
+
+    if (isSystemAdmin && orgIdParam) {
+      // Super admin can filter by org_id
+      if (ObjectId.isValid(orgIdParam)) {
+        org_id = new ObjectId(orgIdParam);
+      }
+    } else if (!isSystemAdmin) {
+      // Org admin can only see users in their org
+      if ((decoded as any).org_id) {
+        org_id = new ObjectId((decoded as any).org_id);
+      } else if (myUser?.org_id) {
+        org_id = myUser.org_id instanceof ObjectId
+          ? myUser.org_id
+          : new ObjectId(myUser.org_id);
+      } else {
+        return NextResponse.json(
+          { error: 'User does not belong to an organization' },
+          { status: 403 }
+        );
+      }
+    }
+
+    // Build query - filter by org_id if not system admin or if org_id param provided
+    const query: any = {};
+    if (org_id) {
+      query.org_id = org_id;
+    } else if (!isSystemAdmin) {
+      // If not system admin and no org_id, return error
+      return NextResponse.json(
+        { error: 'Organization ID is required' },
+        { status: 400 }
+      );
+    }
+
+    // Fetch users with org_id filter
+    const users = await usersCollection.find(query).toArray();
+
+    // Filter out current user
     const filteredUsers = users.filter((user) => user.email !== myUser?.email);
 
     return NextResponse.json(filteredUsers, { status: 200 });
@@ -67,22 +108,92 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const { decoded, error, status } = await verifyToken(request, userRolesServer.admin);
-  if (error) return NextResponse.json({ error }, { status });
+  // Check if this is a system admin request
+  const systemAdminCheck = await verifySystemAdmin(request);
+  const isSystemAdmin = !systemAdminCheck.error;
+
+  // If not system admin, verify as regular admin
+  if (!isSystemAdmin) {
+    const { decoded, error, status } = await verifyToken(request, userRolesServer.admin);
+    if (error) return NextResponse.json({ error }, { status });
+  }
 
   try {
     const body = await request.json();
 
-    const { email, firstName, lastName, superuser } = body;
+    const { email, firstName, lastName, superuser, org_id: requestedOrgId } = body;
 
     const client = await clientPromise;
     const db = client.db(DATABASE_NAME);
     const usersCollection = db.collection('users');
     const emailTemplatesCollection = db.collection('emailTemplates');
+    const organizationsCollection = db.collection('organizations');
 
-    const myUser = await usersCollection.findOne({
-      _id: new ObjectId(decoded.id),
-    });
+    // Determine org_id
+    let org_id: ObjectId | null = null;
+
+    if (isSystemAdmin) {
+      // System admin can create users in any org (must provide org_id)
+      if (requestedOrgId) {
+        if (!ObjectId.isValid(requestedOrgId)) {
+          return NextResponse.json(
+            { error: 'Invalid organization ID format' },
+            { status: 400 }
+          );
+        }
+        org_id = new ObjectId(requestedOrgId);
+
+        // Validate organization exists and is active
+        const org = await organizationsCollection.findOne({
+          _id: org_id,
+          deletedAt: null,
+          status: 'active',
+        });
+
+        if (!org) {
+          return NextResponse.json(
+            { error: 'Organization not found or inactive' },
+            { status: 404 }
+          );
+        }
+      } else {
+        return NextResponse.json(
+          { error: 'Organization ID is required when creating users as system admin' },
+          { status: 400 }
+        );
+      }
+    } else {
+      // Org admin can only create users in their own org
+      const { decoded } = await verifyToken(request, userRolesServer.admin);
+      const myUser = await usersCollection.findOne({
+        _id: new ObjectId((decoded as any).id),
+      });
+
+      if (!myUser?.org_id) {
+        return NextResponse.json(
+          { error: 'User does not belong to an organization' },
+          { status: 403 }
+        );
+      }
+
+      org_id = myUser.org_id instanceof ObjectId
+        ? myUser.org_id
+        : new ObjectId(myUser.org_id);
+
+      // Validate organization is active
+      const org = await organizationsCollection.findOne({
+        _id: org_id,
+        deletedAt: null,
+        status: 'active',
+      });
+
+      if (!org) {
+        return NextResponse.json(
+          { error: 'Organization is inactive' },
+          { status: 403 }
+        );
+      }
+    }
 
     // Validate each user object
     if (!email || !firstName || !lastName) {
@@ -96,7 +207,7 @@ export async function POST(request: Request) {
       }
     }
 
-    // Check if the user already exists
+    // Check if the user already exists in ANY organization
     const existingUser = await usersCollection.findOne({ email });
     if (existingUser) {
       return NextResponse.json({ error: 'User with this email already exists' }, { status: 400 });
@@ -113,10 +224,12 @@ export async function POST(request: Request) {
       lastName,
       password: hashedPassword,
       createdAt: new Date(),
+      updatedAt: new Date(),
       isTemporaryPassword: true, // Flag to indicate the password is temporary
       role: superuser ? userRolesServer.admin : userRolesServer.regular, // Default role for invited users
-      companyId: myUser?.companyId,
+      org_id: org_id, // Set org_id instead of companyId
       superuser: superuser ?? false, // Set superuser based on the request
+      emailVerified: false,
     });
 
     // Send an email to the user with the temporary password
@@ -215,9 +328,117 @@ export async function PUT(request: Request) {
   }
 }
 
+export async function PATCH(request: Request) {
+  // Check if this is a system admin request
+  const systemAdminCheck = await verifySystemAdmin(request);
+  const isSystemAdmin = !systemAdminCheck.error;
+
+  // If not system admin, verify as regular admin
+  let decoded: any;
+  if (!isSystemAdmin) {
+    const tokenResult = await verifyToken(request, userRolesServer.admin);
+    if (tokenResult.error) return NextResponse.json({ error: tokenResult.error }, { status: tokenResult.status });
+    decoded = tokenResult.decoded;
+  } else {
+    decoded = systemAdminCheck.decoded;
+  }
+
+  try {
+    const body = await request.json();
+    const { userId, role } = body;
+
+    if (!userId || !role) {
+      return NextResponse.json(
+        { error: 'User ID and role are required' },
+        { status: 400 }
+      );
+    }
+
+    // Validate role
+    if (!Object.values(userRolesServer).includes(role)) {
+      return NextResponse.json(
+        { error: 'Invalid role. Must be Admin or Regular' },
+        { status: 400 }
+      );
+    }
+
+    const client = await clientPromise;
+    const db = client.db(DATABASE_NAME);
+    const usersCollection = db.collection('users');
+
+    // Get the user to update
+    const userToUpdate = await usersCollection.findOne({ _id: new ObjectId(userId) });
+    if (!userToUpdate) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    // Prevent users from changing their own role
+    if (decoded.id === userId || decoded.user_id === userId) {
+      return NextResponse.json(
+        { error: 'You cannot change your own role' },
+        { status: 400 }
+      );
+    }
+
+    // If not system admin, ensure user belongs to same org
+    if (!isSystemAdmin) {
+      const myUser = await usersCollection.findOne({
+        _id: new ObjectId(decoded.id),
+      });
+
+      if (!myUser?.org_id) {
+        return NextResponse.json(
+          { error: 'User does not belong to an organization' },
+          { status: 403 }
+        );
+      }
+
+      const myOrgId = myUser.org_id instanceof ObjectId
+        ? myUser.org_id
+        : new ObjectId(myUser.org_id);
+      const targetOrgId = userToUpdate.org_id instanceof ObjectId
+        ? userToUpdate.org_id
+        : new ObjectId(userToUpdate.org_id);
+
+      if (!myOrgId.equals(targetOrgId)) {
+        return NextResponse.json(
+          { error: 'You can only modify users in your own organization' },
+          { status: 403 }
+        );
+      }
+    }
+
+    // Update the user's role
+    const result = await usersCollection.updateOne(
+      { _id: new ObjectId(userId) },
+      { $set: { role, updatedAt: new Date() } }
+    );
+
+    if (result.matchedCount === 0) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    return NextResponse.json({ message: 'User role updated successfully' }, { status: 200 });
+  } catch (error) {
+    console.error('Error updating user role:', error);
+    return NextResponse.json({ error: 'Failed to update user role' }, { status: 500 });
+  }
+}
+
 export async function DELETE(request: Request) {
-  const { error, status } = await verifyToken(request);
-  if (error) return NextResponse.json({ error }, { status });
+  // Check if this is a system admin request
+  const systemAdminCheck = await verifySystemAdmin(request);
+  const isSystemAdmin = !systemAdminCheck.error;
+
+  // If not system admin, verify as regular admin
+  let decoded: any;
+  if (!isSystemAdmin) {
+    const tokenResult = await verifyToken(request, userRolesServer.admin);
+    if (tokenResult.error) return NextResponse.json({ error: tokenResult.error }, { status: tokenResult.status });
+    decoded = tokenResult.decoded;
+  } else {
+    decoded = systemAdminCheck.decoded;
+  }
 
   try {
     const { searchParams } = new URL(request.url);
@@ -230,6 +451,48 @@ export async function DELETE(request: Request) {
     const client = await clientPromise;
     const db = client.db(DATABASE_NAME);
     const usersCollection = db.collection('users');
+
+    // Get the user to delete
+    const userToDelete = await usersCollection.findOne({ _id: new ObjectId(id) });
+    if (!userToDelete) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    // Prevent users from deleting themselves
+    if (decoded.id === id || decoded.user_id === id) {
+      return NextResponse.json(
+        { error: 'You cannot delete your own account' },
+        { status: 400 }
+      );
+    }
+
+    // If not system admin, ensure user belongs to same org
+    if (!isSystemAdmin) {
+      const myUser = await usersCollection.findOne({
+        _id: new ObjectId(decoded.id),
+      });
+
+      if (!myUser?.org_id) {
+        return NextResponse.json(
+          { error: 'User does not belong to an organization' },
+          { status: 403 }
+        );
+      }
+
+      const myOrgId = myUser.org_id instanceof ObjectId
+        ? myUser.org_id
+        : new ObjectId(myUser.org_id);
+      const targetOrgId = userToDelete.org_id instanceof ObjectId
+        ? userToDelete.org_id
+        : new ObjectId(userToDelete.org_id);
+
+      if (!myOrgId.equals(targetOrgId)) {
+        return NextResponse.json(
+          { error: 'You can only delete users in your own organization' },
+          { status: 403 }
+        );
+      }
+    }
 
     // Delete the user
     const result = await usersCollection.deleteOne({ _id: new ObjectId(id) });

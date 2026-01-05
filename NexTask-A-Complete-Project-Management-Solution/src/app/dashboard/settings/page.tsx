@@ -1,13 +1,19 @@
-import React from 'react';
-import ProfileSettings from './components/Profile';
+'use client';
 
-export const metadata = {
-  title: 'Settings - NexTask',
-  description: 'Manage your profile settings',
-};
+import React from 'react';
+import { Box } from '@mui/material';
+import ProfileSettings from './components/Profile';
+import CompanySettings from './components/CompanySettings';
+import BankingDetails from './components/BankingDetails';
 
 const Settings: React.FC = () => {
-  return <ProfileSettings />;
+  return (
+    <Box>
+      <ProfileSettings />
+      <CompanySettings />
+      <BankingDetails />
+    </Box>
+  );
 };
 
 export default Settings;

@@ -1,104 +1,275 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import {
   Box,
   Card,
-  CardActions,
   CardContent,
   Chip,
   IconButton,
   Stack,
   Typography,
+  useTheme,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  ListItemText,
 } from '@mui/material';
-import CardHeader from '@/components/CardHeader';
-import { DeleteOutline, EditOutlined, InfoOutlined } from '@mui/icons-material';
+import { InfoOutlined, MoreVert, DeleteOutline, CheckCircle, CheckCircleOutline } from '@mui/icons-material';
 import { SortableItemProps } from '../types';
+import { getPriorityColor as getPriorityColorUtil, getPriorityDisplayName } from '../utils/priorityColors';
+import { getStatusColor, getStatusDisplayName } from '../utils/statusColors';
 
 export const SortableItem: React.FC<SortableItemProps> = ({
   id,
   item: task,
-  onEditTask = () => {},
-  onDeleteTask = () => {},
+  onEditTask = () => { },
+  onDeleteTask = () => { },
 }) => {
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
+  const theme = useTheme();
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging: dndIsDragging } = useSortable({ id });
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const open = Boolean(anchorEl);
+
+  const handleMenuClick = (event: React.MouseEvent<HTMLElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleDelete = () => {
+    handleMenuClose();
+    onDeleteTask(task!.id);
+  };
+
+  // Handle Escape key to close menu
+  useEffect(() => {
+    if (!open) return;
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        handleMenuClose();
+      }
+    };
+
+    document.addEventListener('keydown', handleEscape);
+
+    // Cleanup
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [open]);
+
+  // Cleanup menu state on unmount
+  useEffect(() => {
+    return () => {
+      setAnchorEl(null);
+    };
+  }, []);
+
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    marginBottom: '8px',
-    padding: '8px',
-    cursor: 'grab',
+    marginBottom: '4px',
+    opacity: dndIsDragging ? 0.5 : 1,
+    cursor: dndIsDragging ? 'grabbing' : 'grab',
+  };
+
+  const getPriorityColor = getPriorityColorUtil;
+
+  const handleCardClick = (e: React.MouseEvent) => {
+    // Don't open edit if clicking on the menu button or its menu
+    // Also don't open if this was a drag operation
+    if (
+      (e.target as HTMLElement).closest('button') ||
+      (e.target as HTMLElement).closest('[role="menuitem"]') ||
+      (e.target as HTMLElement).closest('[role="menu"]') ||
+      dndIsDragging || // If card is being dragged, don't open edit
+      transform || // If card has transform (being dragged), don't open edit
+      open // If menu is open, don't open edit
+    ) {
+      return;
+    }
+    if (task) {
+      onEditTask(task);
+    }
   };
 
   return (
-    <Box ref={setNodeRef} style={style} {...attributes} {...listeners}>
-      <Card
-        key={id}
-        sx={{
-          mb: 1,
-          bgcolor: (theme) => theme.palette.background.default,
-          minHeight: 200,
-        }}
-      >
-        {task ? (
-          <>
-            <CardHeader
-              title={task.title}
-              action={
-                <Stack direction={'row'}>
-                  <IconButton onClick={() => onEditTask(task)} color="primary">
-                    <EditOutlined />
-                  </IconButton>
-                  <IconButton onClick={() => onDeleteTask(task.id)} color="error">
-                    <DeleteOutline />
-                  </IconButton>
-                </Stack>
-              }
-            />
-            <CardContent>
-              <Typography variant="subtitle1"></Typography>
-              <Typography variant="body2" color="text.secondary">
-                {task.description}
-              </Typography>
-            </CardContent>
-            <CardActions>
-              <Stack direction={'row'} justifyContent={'space-between'} sx={{ width: '100%' }}>
-                <Chip
-                  label={task.priority}
-                  color={
-                    task.priority === 'High'
-                      ? 'error'
-                      : task.priority === 'Medium'
-                        ? 'warning'
-                        : 'success'
-                  }
-                  size="small"
-                />
-                <Typography variant="caption">
-                  Due: <b>{task.dueDate}</b>
+    <Card
+      ref={setNodeRef}
+      key={id}
+      onClick={handleCardClick}
+      style={style}
+      {...attributes}
+      {...listeners}
+      sx={{
+        mb: 0,
+        bgcolor: theme.palette.background.paper,
+        border: `1px solid ${theme.palette.divider}`,
+        borderRadius: '8px',
+        boxShadow: dndIsDragging ? theme.shadows[8] : theme.shadows[1],
+        minHeight: 'auto',
+        cursor: dndIsDragging ? 'grabbing' : 'grab',
+        userSelect: 'none', // Prevent text selection during drag
+        touchAction: 'none', // Prevent touch scrolling on mobile
+        color: 'inherit',
+        overflow: 'hidden', // Keep content inside card
+        '&:hover': {
+          boxShadow: dndIsDragging ? theme.shadows[8] : theme.shadows[4],
+          borderColor: theme.palette.primary.main,
+        },
+      }}
+    >
+      {task ? (
+        <>
+          <CardContent sx={{ p: 1, pb: 0.75, '&:last-child': { pb: 0.75 }, overflow: 'visible' }}>
+            <Stack direction="row" spacing={0.5} alignItems="flex-start" sx={{ mb: 0.5 }}>
+              {/* Checkmark icon - green filled when completed, gray outlined when not */}
+              {(() => {
+                const taskStatus = (task.status || '').toLowerCase();
+                const isCompleted = taskStatus.includes('done') || taskStatus.includes('completed');
+                return isCompleted ? (
+                  <CheckCircle
+                    sx={{
+                      color: '#10b981',
+                      fontSize: '20px',
+                      mt: 0.25,
+                      flexShrink: 0,
+                    }}
+                  />
+                ) : (
+                  <CheckCircleOutline
+                    sx={{
+                      color: theme.palette.text.disabled,
+                      fontSize: '20px',
+                      mt: 0.25,
+                      flexShrink: 0,
+                    }}
+                  />
+                );
+              })()}
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Typography
+                  variant="body2"
+                  fontWeight={500}
+                  sx={{
+                    mb: 0,
+                    color: theme.palette.text.primary,
+                    lineHeight: 1.2,
+                    fontSize: '13px',
+                  }}
+                >
+                  {task.title}
                 </Typography>
-              </Stack>
-            </CardActions>
-          </>
-        ) : (
-          <Stack
-            sx={{
-              mb: 1,
-              minHeight: 200,
-            }}
-            justifyContent={'center'}
-            alignItems={'center'}
-          >
-            <CardContent>
-              <Stack alignItems={'center'}>
-                <InfoOutlined color="action" fontSize="large" sx={{ mb: 1 }} />
-                <Typography>No items to display</Typography>
-              </Stack>
-            </CardContent>
+              </Box>
+              <IconButton
+                size="small"
+                sx={{ p: 0.25, mt: -0.5, minWidth: '24px', width: '24px', height: '24px' }}
+                onClick={handleMenuClick}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+                onPointerDown={(e) => {
+                  e.stopPropagation(); // Prevent drag when clicking menu
+                }}
+              >
+                <MoreVert fontSize="small" sx={{ color: theme.palette.text.secondary, fontSize: '16px' }} />
+              </IconButton>
+              <Menu
+                anchorEl={anchorEl}
+                open={open}
+                onClose={handleMenuClose}
+                onClick={(e) => {
+                  e.stopPropagation();
+                }}
+                onMouseDown={(e) => {
+                  e.stopPropagation();
+                }}
+                transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+                anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+              >
+                <MenuItem
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDelete();
+                  }}
+                >
+                  <ListItemIcon>
+                    <DeleteOutline fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText>Delete</ListItemText>
+                </MenuItem>
+              </Menu>
+            </Stack>
+
+            <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mt: 0.5, flexWrap: 'wrap', gap: 0.5 }}>
+              <Chip
+                label={getStatusDisplayName(task.status || 'Todo', task.projectId)}
+                size="small"
+                sx={{
+                  height: '18px',
+                  fontSize: '10px',
+                  fontWeight: 500,
+                  bgcolor: getStatusColor(task.status || 'Todo', task.projectId).bg,
+                  color: getStatusColor(task.status || 'Todo', task.projectId).text,
+                  border: 'none',
+                  '& .MuiChip-label': {
+                    px: 0.75,
+                    py: 0,
+                  },
+                }}
+              />
+              <Chip
+                label={getPriorityDisplayName(task.priority || 'Medium', task.projectId)}
+                size="small"
+                sx={{
+                  height: '18px',
+                  fontSize: '10px',
+                  fontWeight: 500,
+                  bgcolor: getPriorityColor(task.priority || 'Medium').bg,
+                  color: getPriorityColor(task.priority || 'Medium').text,
+                  border: 'none',
+                  '& .MuiChip-label': {
+                    px: 0.75,
+                    py: 0,
+                  },
+                }}
+              />
+            </Stack>
+          </CardContent>
+        </>
+      ) : (
+        <Box
+          sx={{
+            minHeight: 'auto',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            p: 3,
+            bgcolor: 'transparent',
+          }}
+        >
+          <Stack alignItems="center" spacing={1}>
+            <InfoOutlined sx={{ color: theme.palette.text.disabled, fontSize: 24 }} />
+            <Typography
+              variant="caption"
+              sx={{
+                color: theme.palette.text.secondary,
+                fontSize: '12px'
+              }}
+            >
+              No items to display
+            </Typography>
           </Stack>
-        )}
-      </Card>
-    </Box>
+        </Box>
+      )}
+    </Card>
   );
 };

@@ -72,10 +72,13 @@ const ResponsiveTable: React.FC<ResponsiveTableProps> = ({
   const [rowsPerPage, setRowsPerPage] = useState<number>(5);
   const [page, setPage] = useState<number>(0);
   const [listPage, setListPage] = useState<number>(1);
-  const [dataSource, setDataSource] = useState<any[]>(data);
+  // Ensure data is always an array
+  const safeData = Array.isArray(data) ? data : [];
+  const [dataSource, setDataSource] = useState<any[]>(safeData);
 
   useEffect(() => {
-    setDataSource(data.slice(page * rowsPerPage, (page + 1) * rowsPerPage));
+    const safeData = Array.isArray(data) ? data : [];
+    setDataSource(safeData.slice(page * rowsPerPage, (page + 1) * rowsPerPage));
   }, [page, rowsPerPage, data]);
 
   // Handle pagination for table view
@@ -84,7 +87,8 @@ const ResponsiveTable: React.FC<ResponsiveTableProps> = ({
     newPage: number
   ) => {
     setPage(newPage);
-    setDataSource(data.slice(newPage * rowsPerPage, (newPage + 1) * rowsPerPage));
+    const safeData = Array.isArray(data) ? data : [];
+    setDataSource(safeData.slice(newPage * rowsPerPage, (newPage + 1) * rowsPerPage));
   };
 
   // Handle pagination for list view
@@ -94,7 +98,8 @@ const ResponsiveTable: React.FC<ResponsiveTableProps> = ({
   ) => {
     setListPage(newPage);
     const dataIndex = newPage - 1;
-    setDataSource(data.slice(dataIndex * rowsPerPage, (dataIndex + 1) * rowsPerPage));
+    const safeData = Array.isArray(data) ? data : [];
+    setDataSource(safeData.slice(dataIndex * rowsPerPage, (dataIndex + 1) * rowsPerPage));
   };
 
   // Handle changing the number of rows per page
@@ -102,7 +107,8 @@ const ResponsiveTable: React.FC<ResponsiveTableProps> = ({
     const newRowsPerPage = parseInt(event.target.value, 10);
     setRowsPerPage(newRowsPerPage);
     setPage(0);
-    setDataSource(data.slice(0, newRowsPerPage));
+    const safeData = Array.isArray(data) ? data : [];
+    setDataSource(safeData.slice(0, newRowsPerPage));
   };
 
   return (
@@ -124,7 +130,7 @@ const ResponsiveTable: React.FC<ResponsiveTableProps> = ({
       )}
       {isSmallScreen ? (
         <Pagination
-          count={Math.ceil(data.length / rowsPerPage)}
+          count={Math.ceil(safeData.length / rowsPerPage)}
           page={listPage}
           onChange={handleChangeListPage}
           size="small"
@@ -134,7 +140,7 @@ const ResponsiveTable: React.FC<ResponsiveTableProps> = ({
         <TablePagination
           rowsPerPageOptions={[5, 10]}
           component="div"
-          count={data.length}
+          count={safeData.length}
           rowsPerPage={rowsPerPage}
           page={page}
           onPageChange={handleChangePage}
@@ -148,6 +154,25 @@ const ResponsiveTable: React.FC<ResponsiveTableProps> = ({
 const Table: React.FC<TableProps> = ({ loading, data, columns, renderActions }) => {
   const [order, setOrder] = useState<'asc' | 'desc'>('asc');
   const [orderBy, setOrderBy] = useState<string>(columns[0]?.key || '');
+  const safeData = Array.isArray(data) ? data : [];
+
+  // Check if task is due today (for task rows)
+  const isDueToday = (dueDate?: string): boolean => {
+    if (!dueDate) return false;
+
+    try {
+      const today = new Date();
+      const due = new Date(dueDate);
+
+      return (
+        today.getFullYear() === due.getFullYear() &&
+        today.getMonth() === due.getMonth() &&
+        today.getDate() === due.getDate()
+      );
+    } catch {
+      return false;
+    }
+  };
 
   const getComparator = (order: 'asc' | 'desc', orderBy: string) => {
     return order === 'desc'
@@ -207,22 +232,41 @@ const Table: React.FC<TableProps> = ({ loading, data, columns, renderActions }) 
             </TableHead>
             <TableBody>
               <>
-                {data.length ? (
-                  data
+                {safeData.length ? (
+                  safeData
                     .slice()
                     .sort(getComparator(order, orderBy))
-                    .map((item) => (
-                      <TableRow key={item.id} suppressHydrationWarning>
-                        {columns.map(({ key, align, render }) => (
-                          <TableCell key={key} align={align} suppressHydrationWarning>
-                            {render ? render(item) : item[key]}
-                          </TableCell>
-                        ))}
-                        {renderActions && (
-                          <TableCell align="center">{renderActions(item)}</TableCell>
-                        )}
-                      </TableRow>
-                    ))
+                    .map((item, index) => {
+                      const uniqueKey = item.id || item._id || `row-${index}`;
+                      // Check if this is a task due today (not completed)
+                      const taskDueToday = item.dueDate &&
+                        isDueToday(item.dueDate) &&
+                        item.status !== 'Done' &&
+                        item.status !== 'Completed';
+
+                      return (
+                        <TableRow
+                          key={uniqueKey}
+                          suppressHydrationWarning
+                          sx={{
+                            bgcolor: taskDueToday ? '#fca5a5' : 'inherit', // soft red background for tasks due today
+                            color: taskDueToday ? '#1f2937' : 'inherit', // dark text for good contrast
+                            '&:hover': {
+                              bgcolor: taskDueToday ? '#f87171' : 'action.hover', // slightly darker red on hover
+                            },
+                          }}
+                        >
+                          {columns.map(({ key, align, render }) => (
+                            <TableCell key={`${uniqueKey}-${key}`} align={align} suppressHydrationWarning>
+                              {render ? render(item) : item[key]}
+                            </TableCell>
+                          ))}
+                          {renderActions && (
+                            <TableCell align="center">{renderActions(item)}</TableCell>
+                          )}
+                        </TableRow>
+                      );
+                    })
                 ) : (
                   <TableRow>
                     <TableCell
@@ -260,6 +304,25 @@ const Table: React.FC<TableProps> = ({ loading, data, columns, renderActions }) 
 const List: React.FC<ListProps> = ({ loading, data, listKeys, renderActions }) => {
   const pathname = usePathname();
   const { primaryKeys, primaryLinkKey, secondaryKeys } = listKeys;
+  const safeData = Array.isArray(data) ? data : [];
+
+  // Check if task is due today (for task list items)
+  const isDueToday = (dueDate?: string): boolean => {
+    if (!dueDate) return false;
+
+    try {
+      const today = new Date();
+      const due = new Date(dueDate);
+
+      return (
+        today.getFullYear() === due.getFullYear() &&
+        today.getMonth() === due.getMonth() &&
+        today.getDate() === due.getDate()
+      );
+    } catch {
+      return false;
+    }
+  };
 
   return (
     <MuiList>
@@ -275,46 +338,67 @@ const List: React.FC<ListProps> = ({ loading, data, listKeys, renderActions }) =
           ))
         ) : (
           <>
-            {data.length ? (
-              data.map((item) => (
-                <ListItem key={item.id} divider sx={{ pl: 0, pr: 0 }}>
-                  <ListItemText
-                    primaryTypographyProps={{ gutterBottom: true }}
-                    primary={
-                      <Stack direction="row" justifyContent="space-between" alignItems="center">
-                        <Stack direction="row" spacing={1}>
-                          {primaryLinkKey && (
-                            <Link
-                              component={NextLink}
-                              href={`/${pathname}/${item[primaryLinkKey]}`}
-                              color="info"
-                            >
-                              {item[primaryLinkKey]}
-                            </Link>
-                          )}
-                          {primaryKeys.map(
-                            (key) => item[key] && <Typography key={key}>{item[key]}</Typography>
+            {safeData.length ? (
+              safeData.map((item, index) => {
+                const uniqueKey = item.id || item._id || `list-item-${index}`;
+                // Check if this is a task due today (not completed)
+                const taskDueToday = item.dueDate &&
+                  isDueToday(item.dueDate) &&
+                  item.status !== 'Done' &&
+                  item.status !== 'Completed';
+
+                return (
+                  <ListItem
+                    key={uniqueKey}
+                    divider
+                    sx={{
+                      pl: 0,
+                      pr: 0,
+                      bgcolor: taskDueToday ? '#fca5a5' : 'inherit', // soft red background for tasks due today
+                      color: taskDueToday ? '#1f2937' : 'inherit', // dark text for good contrast
+                      '&:hover': {
+                        bgcolor: taskDueToday ? '#f87171' : 'action.hover', // slightly darker red on hover
+                      },
+                    }}
+                  >
+                    <ListItemText
+                      primaryTypographyProps={{ gutterBottom: true }}
+                      primary={
+                        <Stack direction="row" justifyContent="space-between" alignItems="center">
+                          <Stack direction="row" spacing={1}>
+                            {primaryLinkKey && (
+                              <Link
+                                component={NextLink}
+                                href={`/${pathname}/${item[primaryLinkKey]}`}
+                                color="info"
+                              >
+                                {item[primaryLinkKey]}
+                              </Link>
+                            )}
+                            {primaryKeys.map(
+                              (key, keyIndex) => item[key] && <Typography key={`${uniqueKey}-primary-${key}-${keyIndex}`}>{item[key]}</Typography>
+                            )}
+                          </Stack>
+                          <Stack direction="row" alignItems="center">
+                            {renderActions && renderActions(item)}
+                          </Stack>
+                        </Stack>
+                      }
+                      secondary={
+                        <Stack direction="column" spacing={0} sx={{ mb: 0.8 }}>
+                          {secondaryKeys.map((key, keyIndex) =>
+                            item[key] ? (
+                              <Typography key={`${uniqueKey}-secondary-${key}-${keyIndex}`} variant="caption">
+                                {item[key]}
+                              </Typography>
+                            ) : null
                           )}
                         </Stack>
-                        <Stack direction="row" alignItems="center">
-                          {renderActions && renderActions(item)}
-                        </Stack>
-                      </Stack>
-                    }
-                    secondary={
-                      <Stack direction="column" spacing={0} sx={{ mb: 0.8 }}>
-                        {secondaryKeys.map((key) =>
-                          item[key] ? (
-                            <Typography key={key} variant="caption">
-                              {item[key]}
-                            </Typography>
-                          ) : null
-                        )}
-                      </Stack>
-                    }
-                  />
-                </ListItem>
-              ))
+                      }
+                    />
+                  </ListItem>
+                );
+              })
             ) : (
               <Box textAlign={'center'}>
                 <Image

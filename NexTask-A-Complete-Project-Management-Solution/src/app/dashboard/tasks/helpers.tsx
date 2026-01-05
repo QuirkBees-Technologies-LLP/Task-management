@@ -17,11 +17,19 @@ const taskStatusColor = (status: string): 'success' | 'warning' | 'default' => {
   }
 };
 
+// Function to format date properly
+const formatDate = (dateString?: string): string => {
+  if (!dateString) return 'N/A';
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return dateString; // Return original if invalid date
+    return date.toLocaleDateString('en-GB');
+  } catch (error) {
+    return dateString; // Return original string if parsing fails
+  }
+};
+
 const taskColumns: ResponsiveTableColumn[] = [
-  {
-    title: 'ID',
-    key: 'id',
-  },
   { title: 'Task Name', key: 'title' },
   {
     title: 'Description',
@@ -34,7 +42,11 @@ const taskColumns: ResponsiveTableColumn[] = [
     align: 'center',
     render: ({ status }: Task) => <Chip label={status} color={taskStatusColor(status!)} />,
   },
-  { title: 'Due Date', key: 'dueDate' },
+  {
+    title: 'Due Date',
+    key: 'dueDate',
+    render: ({ dueDate }: Task) => <>{formatDate(dueDate)}</>,
+  },
   { title: 'Priority', key: 'priority' },
 ];
 

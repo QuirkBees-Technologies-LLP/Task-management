@@ -8,7 +8,9 @@ import {
   Dialog,
   DialogActions,
   DialogContent,
+  DialogContentText,
   DialogTitle,
+  IconButton,
   MenuItem,
   Paper,
   Select,
@@ -22,10 +24,13 @@ import {
 import { useDispatch, useSelector } from 'react-redux';
 import { selectEmailTemplates } from '@/redux/selectors';
 import PageHeader from '@/components/PageHeader';
-import { loadEmailTemplates, saveEmailTemplates } from '@/redux/slices';
+import { loadEmailTemplates, saveEmailTemplates, deleteEmailTemplate } from '@/redux/slices';
 import ResponsiveTable from '@/components/Table';
-import { Add, InfoOutlined } from '@mui/icons-material';
+import { Add, InfoOutlined, DeleteOutline, Visibility, Edit } from '@mui/icons-material';
 import { emailTemplateVariables } from '@/utils/constants';
+import axios from 'axios';
+import { safeLocalStorageGet } from '@/utils/helpers';
+import { accessTokenKey } from '@/utils/constants';
 
 const initialData = {
   name: '',
@@ -50,7 +55,9 @@ export default function EmailTemplatesPage() {
   const { data: templates, loading, saving } = useSelector(selectEmailTemplates);
   const [openDialog, setOpenDialog] = useState(false);
   const [viewDialog, setViewDialog] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState(null);
+  const [deletingTemplate, setDeletingTemplate] = useState(null);
   const [viewingTemplate, setViewingTemplate] = useState(initialData);
   const [formData, setFormData] = useState(initialData);
 
@@ -83,32 +90,82 @@ export default function EmailTemplatesPage() {
   };
 
   useEffect(() => {
-    if (!openDialog) {
+    if (!openDialog && !saving) {
       setFormData(initialData);
       setEditingTemplate(null);
     }
-  }, [openDialog]);
+  }, [openDialog, saving]);
 
   // Open dialog for creating or editing a template
-  const handleOpenDialog = (template = null) => {
-    setEditingTemplate(template);
-    setFormData(
-      template
-        ? {
-            name: template.name,
-            description: template.description,
-            htmlString: template.htmlString,
-            emailType: template.emailType,
+  const handleOpenDialog = async (template = null) => {
+    if (template) {
+      // Fetch full template data if htmlString is missing (from list view)
+      if (!template.htmlString && template._id) {
+        try {
+          const token = safeLocalStorageGet(accessTokenKey);
+          if (token) {
+            const response = await axios.get(`/api/email-templates/${template._id}`, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            if (response.data.success) {
+              template = response.data.template;
+            }
           }
-        : initialData
-    );
+        } catch (error) {
+          console.error('Error fetching template details:', error);
+        }
+      }
+      setEditingTemplate(template);
+      setFormData({
+        name: template.name,
+        description: template.description,
+        htmlString: template.htmlString || '',
+        emailType: template.emailType,
+      });
+    } else {
+      setEditingTemplate(null);
+      setFormData(initialData);
+    }
     setOpenDialog(true);
   };
 
   // Open dialog for viewing a template
-  const handleViewTemplate = (template) => {
+  const handleViewTemplate = async (template) => {
+    // Fetch full template data if htmlString is missing (from list view)
+    if (!template.htmlString && template._id) {
+      try {
+        const token = safeLocalStorageGet(accessTokenKey);
+        if (token) {
+          const response = await axios.get(`/api/email-templates/${template._id}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (response.data.success) {
+            template = response.data.template;
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching template details:', error);
+      }
+    }
     setViewingTemplate(template);
     setViewDialog(true);
+  };
+
+  // Handle delete template
+  const handleDeleteTemplate = (template) => {
+    setDeletingTemplate(template);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (deletingTemplate) {
+      dispatch(
+        deleteEmailTemplate({
+          templateId: deletingTemplate._id || deletingTemplate.id,
+          setDeleteDialogOpen,
+        })
+      );
+    }
   };
 
   // Define columns for the ResponsiveTable
@@ -134,21 +191,41 @@ export default function EmailTemplatesPage() {
       />
       <Paper sx={{ p: isSmallScreen ? 2 : 0 }}>
         <ResponsiveTable
-          data={templates}
+          data={Array.isArray(templates) ? templates.map((t: any) => ({
+            ...t,
+            id: t._id || t.id,
+          })) : []}
           columns={columns}
           renderActions={(template) => (
-            <>
-              <Button color="primary" onClick={() => handleViewTemplate(template)} sx={{ mr: 1 }}>
-                View
-              </Button>
-              <Button
-                variant="outlined"
-                color="secondary"
-                onClick={() => handleOpenDialog(template)}
-              >
-                Edit
-              </Button>
-            </>
+            <Stack direction="row" spacing={1}>
+              <Tooltip title="View">
+                <IconButton
+                  size="small"
+                  color="primary"
+                  onClick={() => handleViewTemplate(template)}
+                >
+                  <Visibility fontSize="small" />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Edit">
+                <IconButton
+                  size="small"
+                  color="secondary"
+                  onClick={() => handleOpenDialog(template)}
+                >
+                  <Edit fontSize="small" />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Delete">
+                <IconButton
+                  size="small"
+                  color="error"
+                  onClick={() => handleDeleteTemplate(template)}
+                >
+                  <DeleteOutline fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            </Stack>
           )}
           listKeys={{
             primaryKeys: ['name'],
@@ -201,7 +278,9 @@ export default function EmailTemplatesPage() {
             getOptionLabel={(option) => option.label}
             value={emailTypeOptions.find((option) => option.value === formData.emailType)}
             onChange={(event, newValue) => {
-              setFormData((prev) => ({ ...prev, emailType: newValue.value }));
+              if (newValue) {
+                setFormData((prev) => ({ ...prev, emailType: newValue.value }));
+              }
             }}
             renderInput={(params) => (
               <TextField {...params} label="Email Type" margin="normal" required />
@@ -276,6 +355,24 @@ export default function EmailTemplatesPage() {
         <DialogActions>
           <Button onClick={() => setViewDialog(false)} color="primary">
             Close
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete confirmation dialog */}
+      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
+        <DialogTitle>Delete Email Template</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to delete the template <strong>{deletingTemplate?.name}</strong>? This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialogOpen(false)} disabled={saving}>
+            Cancel
+          </Button>
+          <Button onClick={confirmDelete} color="error" variant="contained" disabled={saving}>
+            Delete
           </Button>
         </DialogActions>
       </Dialog>

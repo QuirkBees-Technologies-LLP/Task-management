@@ -102,20 +102,69 @@ export async function GET(request: Request) {
   if (error) return NextResponse.json({ error }, { status });
 
   try {
+    const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get('page') || '1', 10);
+    const limit = parseInt(searchParams.get('limit') || '10', 10);
+    const search = searchParams.get('search') || '';
+    const sortBy = searchParams.get('sortBy') || 'createdAt';
+    const sortOrder = searchParams.get('sortOrder') || 'desc';
+
     const client = await clientPromise;
     const db = client.db(DATABASE_NAME);
     const tasksCollection = db.collection('tasks');
 
-    const tasks = await tasksCollection.find({}).sort({ order: 1 }).toArray();
+    // Build query for search
+    const query: any = {};
+    if (search) {
+      query.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } },
+      ];
+    }
 
+    // Build sort object
+    const sort: any = {};
+    if (sortBy === 'dueDate') {
+      sort.dueDate = sortOrder === 'asc' ? 1 : -1;
+    } else if (sortBy === 'status') {
+      sort.status = sortOrder === 'asc' ? 1 : -1;
+    } else {
+      sort.createdAt = sortOrder === 'asc' ? 1 : -1;
+    }
+
+    // Get total count for pagination
+    const total = await tasksCollection.countDocuments(query);
+
+    // Get paginated tasks
+    const skip = (page - 1) * limit;
+    let tasks = await tasksCollection
+      .find(query)
+      .sort(sort)
+      .skip(skip)
+      .limit(limit)
+      .toArray();
+
+    // Populate status from userTasks if needed
     for (const task of tasks) {
-      const status = await db.collection('userTasks').findOne({ taskId: task._id });
-      if (status) {
-        tasks[tasks.indexOf(task)].status = status.status;
+      const userTaskStatus = await db.collection('userTasks').findOne({ taskId: task._id });
+      if (userTaskStatus && !task.status) {
+        tasks[tasks.indexOf(task)].status = userTaskStatus.status;
       }
     }
 
-    return NextResponse.json(tasks, { status: 200 });
+    return NextResponse.json(
+      {
+        success: true,
+        tasks,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit),
+        },
+      },
+      { status: 200 }
+    );
   } catch (error) {
     console.error('Error fetching tasks:', error);
     return NextResponse.json({ error: 'Failed to fetch tasks' }, { status: 500 });
