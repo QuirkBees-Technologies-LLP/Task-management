@@ -233,7 +233,7 @@ const Organisation = () => {
   return (
     <div>
       {/* Header */}
-      <Row justify="space-between" align="middle" style={{ marginBottom: 20 }}>
+      <Row justify="space-between" align="middle" style={{ marginBottom: 20 , gap: '10px'}}>
         <Col>
           <Title level={3} style={{ margin: 0 }}>
             Organization Management
@@ -255,10 +255,11 @@ const Organisation = () => {
         <Col span={24}>
           <Input
             placeholder="Search organization name"
+            type={search}
             prefix={<SearchOutlined />}
             allowClear
             onChange={(e) => debouncedSearch(e.target.value)}
-            style={{ width: "40%" }}
+            className="search_data"
           />
         </Col>
       </Row>

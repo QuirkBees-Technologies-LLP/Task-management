@@ -49,6 +49,7 @@ const PlansFormModal = ({
       footer={null}
       destroyOnHidden
       maskClosable={false}
+      className="org-modal"
     >
       <Form
         form={form}
@@ -153,16 +154,18 @@ const PlansFormModal = ({
         >
           <Switch />
         </Form.Item>
-
-        <Button
-          type="primary"
-          htmlType="submit"
-          loading={loading}
-          disabled={loading}
-          block
-        >
-          {initialValues ? "Update Plan" : "Create Plan"}
-        </Button>
+        <div style={{ textAlign: "right" }}>
+          <Button
+            type="primary"
+            htmlType="submit"
+            loading={loading}
+            disabled={loading}
+            block
+            style={{ width: "fit-content" }}
+          >
+            {initialValues ? "Update Plan" : "Create Plan"}
+          </Button>
+        </div>
       </Form>
     </Modal>
   );

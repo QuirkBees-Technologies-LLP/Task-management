@@ -48,7 +48,9 @@ const OrganizationFormModal = ({
       onCancel={handleCancel}
       footer={null}
       destroyOnHidden
+      className="org-modal"
     >
+
       <Form layout="vertical" form={form} onFinish={handleFinish}>
         <Form.Item
           label="Company Name"
@@ -100,15 +102,17 @@ const OrganizationFormModal = ({
           </Form.Item>
         )}
 
-        <Button type="primary" htmlType="submit" block loading={loading}>
-          {loading
-            ? isEditing
-              ? "Update Organization"
-              : "Create Organization"
-            : isEditing
-            ? "Update Company"
-            : "Add Company"}
-        </Button>
+        <div style={{ textAlign: "right" }}>
+          <Button type="primary" htmlType="submit" block loading={loading} style={{ width: "fit-content" }}>
+            {loading
+              ? isEditing
+                ? "Update Organization"
+                : "Create Organization"
+              : isEditing
+                ? "Update Company"
+                : "Add Company"}
+          </Button>
+        </div>
       </Form>
     </Modal>
   );
