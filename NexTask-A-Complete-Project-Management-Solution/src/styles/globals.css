@@ -1,0 +1,81 @@
+/* -------------------------------------FONT-FAMILY----------------------------------- */
+/* Poppins */
+@import '@fontsource/poppins/100.css';
+@import '@fontsource/poppins/200.css';
+@import '@fontsource/poppins/300.css';
+@import '@fontsource/poppins/400.css';
+@import '@fontsource/poppins/500.css';
+@import '@fontsource/poppins/600.css';
+@import '@fontsource/poppins/700.css';
+@import '@fontsource/poppins/800.css';
+@import '@fontsource/poppins/900.css';
+
+/* Roboto */
+@import '@fontsource/roboto/100.css';
+@import '@fontsource/roboto/300.css';
+@import '@fontsource/roboto/400.css';
+@import '@fontsource/roboto/500.css';
+@import '@fontsource/roboto/700.css';
+@import '@fontsource/roboto/900.css';
+
+/* Montserrat */
+@import '@fontsource-variable/montserrat';
+
+/* Lato */
+@import '@fontsource/lato/100.css';
+@import '@fontsource/lato/300.css';
+@import '@fontsource/lato/400.css';
+@import '@fontsource/lato/700.css';
+@import '@fontsource/lato/900.css';
+/* ------------------------------------------------------------------------------------ */
+
+/* Plugins */
+/* scrollbar */
+@import '../components/Scrollbar/styles.css';
+
+body {
+  margin: 0;
+}
+
+/* Minimal scrollbar styling */
+
+html {
+  height: 100%;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+body,
+#root,
+#root__layout {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 100%;
+  flex-direction: column;
+}
+img {
+  max-width: 100%;
+  vertical-align: middle;
+}
+ul {
+  margin: 0;
+  padding: 0;
+  list-style-type: none;
+}
+input[type='number'] {
+  -moz-appearance: textfield;
+  appearance: none;
+}
+input[type='number']::-webkit-outer-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}
+input[type='number']::-webkit-inner-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}
+
+/* styles/globals.css */
+#nprogress .bar {
+  height: 2px; /* Adjust the height of the bar */
+  z-index: 999999 !important;
+}

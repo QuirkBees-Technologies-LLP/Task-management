@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NexTask Documentation</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        h1 {
+            color: #2563eb;
+            border-bottom: 2px solid #2563eb;
+            padding-bottom: 10px;
+        }
+
+        h2 {
+            color: #1e40af;
+            margin-top: 30px;
+        }
+
+        pre {
+            background: #f3f4f6;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+
+        code {
+            background: #e5e7eb;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+
+        ul,
+        ol {
+            margin: 10px 0;
+        }
+
+        li {
+            margin: 5px 0;
+        }
+
+        a {
+            color: #2563eb;
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>NexTask Documentation</h1>
+
+    <h2>Introduction</h2>
+    <p>NexTask is a comprehensive project management demo application featuring JWT authentication, API integration, and
+        email templates. Built with modern React technologies, it provides a complete foundation for building scalable
+        project management solutions.</p>
+
+    <h2>Technologies Used</h2>
+    <ul>
+        <li><strong>React.js</strong> - JavaScript library for building user interfaces</li>
+        <li><strong>Next.js</strong> - React framework for server-side rendering</li>
+        <li><strong>Material UI</strong> - UI library for modern designs</li>
+        <li><strong>Tailwind CSS</strong> - Utility-first CSS framework</li>
+        <li><strong>JWT Authentication</strong> - Secure token-based authentication</li>
+        <li><strong>RESTful APIs</strong> - Backend integration for data management</li>
+        <li><strong>Email Templates</strong> - Built-in notification system</li>
+        <li><strong>ApexCharts</strong> - Interactive data visualization</li>
+    </ul>
+
+    <h2>Getting Started</h2>
+    <ol>
+        <li><strong>Install Dependencies:</strong>
+            <pre>npm install</pre>
+        </li>
+        <li><strong>Environment Setup:</strong>
+            <pre>cp .env.example .env.local</pre>
+        </li>
+        <li><strong>Start Development Server:</strong>
+            <pre>npm run dev</pre>
+        </li>
+    </ol>
+
+    <h2>Environment Variables</h2>
+    <p>Create a <code>.env.local</code> file with:</p>
+    <pre>MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/database
+DATABASE_NAME=nextask_db
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_API_SECRET=your_api_secret
+JWT_SECRET=your_super_secret_jwt_key
+NEXT_PUBLIC_BASE_URL=http://localhost:3000
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your_email@gmail.com
+SMTP_PASS=your_app_password
+SENDER_EMAIL=noreply@yourapp.com</pre>
+
+    <h2>Setup Guides</h2>
+
+    <h3>MongoDB Atlas</h3>
+    <ol>
+        <li>Create account at <a href="https://www.mongodb.com/atlas">MongoDB Atlas</a></li>
+        <li>Create free cluster and get connection string</li>
+        <li>Replace password in connection string</li>
+    </ol>
+
+    <h3>Cloudinary</h3>
+    <ol>
+        <li>Sign up at <a href="https://cloudinary.com">Cloudinary</a></li>
+        <li>Copy Cloud Name, API Key, and API Secret from dashboard</li>
+    </ol>
+
+    <h3>Gmail SMTP</h3>
+    <ol>
+        <li>Enable 2-factor authentication on Gmail</li>
+        <li>Generate App Password in Google Account settings</li>
+        <li>Use App Password as SMTP_PASS</li>
+    </ol>
+
+    <h2>Features</h2>
+    <ul>
+        <li><strong>JWT Authentication</strong> - Secure user management</li>
+        <li><strong>API Integration</strong> - Backend connectivity</li>
+        <li><strong>Email Templates</strong> - Automated notifications</li>
+        <li><strong>Responsive Design</strong> - Mobile-first approach</li>
+        <li><strong>Interactive Charts</strong> - Data visualization</li>
+        <li><strong>Export Functions</strong> - PDF and CSV downloads</li>
+        <li><strong>Real-time Updates</strong> - Live notifications</li>
+        <li><strong>Role Management</strong> - User permissions</li>
+    </ul>
+
+    <h2>Email Templates</h2>
+    <ul>
+        <li><strong>Welcome Emails</strong> - User registration confirmation</li>
+        <li><strong>Password Reset</strong> - Secure recovery process</li>
+        <li><strong>Project Notifications</strong> - Status updates and milestones</li>
+        <li><strong>Task Assignments</strong> - Automatic notifications</li>
+    </ul>
+
+    <h2>Customization</h2>
+    <ul>
+        <li><strong>Theme:</strong> Edit <code>src/theme</code></li>
+        <li><strong>Styles:</strong> Update <code>src/styles/globals.css</code></li>
+        <li><strong>Components:</strong> Modify in <code>src/components/</code></li>
+        <li><strong>Charts:</strong> Use <a href="https://apexcharts.com/docs/react-charts/">ApexCharts docs</a></li>
+    </ul>
+
+    <h2>Live Demo</h2>
+    <p>Experience NexTask: <a href="https://next-task-seven-hazel.vercel.app"
+            target="_blank">https://next-task-seven-hazel.vercel.app</a></p>
+
+    <h2>Support</h2>
+    <p>For questions about JWT authentication, API integration, or email templates, feel free to contact us.</p>
+</body>
+
+</html>
