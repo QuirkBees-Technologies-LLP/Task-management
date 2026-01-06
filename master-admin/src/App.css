@@ -100,9 +100,9 @@ body {
   color: #fff !important;
 }
 
-input {
+/* input {
   padding: 10px !important;
-}
+} */
 
 .ant-select-auto-complete {
   height: unset !important;
