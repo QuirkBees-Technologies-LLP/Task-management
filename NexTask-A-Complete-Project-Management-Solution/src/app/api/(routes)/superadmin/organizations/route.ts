@@ -228,13 +228,39 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1', 10);
     const limit = parseInt(searchParams.get('limit') || '10', 10);
+    const search = searchParams.get('search') || '';
 
     const client = await clientPromise;
     const db = client.db(DATABASE_NAME);
     const organizationsCollection = db.collection('organizations');
+    const usersCollection = db.collection('users');
 
     // Build query for non-deleted organizations
     const query: any = { deletedAt: null };
+
+    // Add search functionality
+    if (search) {
+      // Search in organization name and slug
+      const orgSearchConditions: any[] = [
+        { name: { $regex: search, $options: 'i' } },
+        { slug: { $regex: search, $options: 'i' } },
+      ];
+
+      // Also search by owner email - first find matching users
+      const matchingOwners = await usersCollection
+        .find({
+          email: { $regex: search, $options: 'i' },
+        })
+        .project({ _id: 1 })
+        .toArray();
+
+      if (matchingOwners.length > 0) {
+        const ownerIds = matchingOwners.map((owner) => owner._id);
+        orgSearchConditions.push({ ownerId: { $in: ownerIds } });
+      }
+
+      query.$or = orgSearchConditions;
+    }
 
     // Get total count for pagination
     const total = await organizationsCollection.countDocuments(query);
@@ -261,7 +287,6 @@ export async function GET(request: Request) {
       .toArray();
 
     // Populate owner information
-    const usersCollection = db.collection('users');
     const formattedOrganizations = await Promise.all(
       organizations.map(async (org) => {
         let ownerEmail = null;

@@ -21,6 +21,7 @@ export async function GET(request: Request) {
     const page = parseInt(searchParams.get('page') || '1', 10);
     const limit = parseInt(searchParams.get('limit') || '10', 10);
     const statusFilter = searchParams.get('status');
+    const search = searchParams.get('search') || '';
     const skip = (page - 1) * limit;
 
     const client = await clientPromise;
@@ -31,6 +32,14 @@ export async function GET(request: Request) {
     const query: any = { deletedAt: null };
     if (statusFilter && (statusFilter === 'active' || statusFilter === 'inactive')) {
       query.status = statusFilter;
+    }
+
+    // Add search functionality
+    if (search) {
+      query.$or = [
+        { plan_name: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } },
+      ];
     }
 
     // Fetch plans with pagination
