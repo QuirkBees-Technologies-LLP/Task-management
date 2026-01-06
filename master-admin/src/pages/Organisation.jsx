@@ -44,7 +44,11 @@ const Organisation = () => {
     async (page = 1, pageSize = PAGE_SIZE) => {
       try {
         setLoading(true);
-        const res = await organizationAPI.list({ page, limit: pageSize, search });
+        const res = await organizationAPI.list({
+          page,
+          limit: pageSize,
+          search,
+        });
 
         setData(res.data?.organizations ?? []);
         setPaginationState((prev) => ({
@@ -67,14 +71,13 @@ const Organisation = () => {
   }, [fetchOrganizations]);
   /* -------------------- Search -------------------- */
   const debouncedSearch = useMemo(
-  () =>
-    debounce((value) => {
-      setSearch(value);
-      fetchOrganizations(1, paginationState.pageSize);
-    }, 500),
-  [fetchOrganizations, paginationState.pageSize]
-);
-
+    () =>
+      debounce((value) => {
+        setSearch(value);
+        fetchOrganizations(1, paginationState.pageSize);
+      }, 500),
+    [fetchOrganizations, paginationState.pageSize]
+  );
 
   useEffect(() => {
     return () => debouncedSearch.cancel();
@@ -88,6 +91,7 @@ const Organisation = () => {
         const payload = {
           name: values.name,
           slug: values.slug,
+          planId: values.planId,
           owner: {
             firstName: values.firstName,
             lastName: values.lastName,
@@ -233,7 +237,11 @@ const Organisation = () => {
   return (
     <div>
       {/* Header */}
-      <Row justify="space-between" align="middle" style={{ marginBottom: 20 , gap: '10px'}}>
+      <Row
+        justify="space-between"
+        align="middle"
+        style={{ marginBottom: 20, gap: "10px" }}
+      >
         <Col>
           <Title level={3} style={{ margin: 0 }}>
             Organization Management
