@@ -12,13 +12,12 @@ import {
   Typography,
   Input,
 } from "antd";
-import { SearchOutlined } from "@ant-design/icons";
-import { debounce } from "lodash";
 
 import { PlusOutlined } from "@ant-design/icons";
 import { Pencil, Trash } from "lucide-react";
 import { organizationAPI } from "../services/api";
 import OrganizationFormModal from "../components/OrganizationFormModal";
+import DebouncedSearch from "../components/debouncedSearch";
 
 const { Title } = Typography;
 const PAGE_SIZE = 10;
@@ -31,8 +30,7 @@ const Organisation = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [editInitialValues, setEditInitialValues] = useState(null);
   const [toggleLoading, setToggleLoading] = useState(false);
-  const [search, setSearch] = useState("");
-
+  const [searchTerm, setSearchTerm] = useState("");
   const [paginationState, setPaginationState] = useState({
     current: 1,
     pageSize: PAGE_SIZE,
@@ -41,15 +39,14 @@ const Organisation = () => {
 
   /* -------------------- Fetch -------------------- */
   const fetchOrganizations = useCallback(
-    async (page = 1, pageSize = PAGE_SIZE) => {
+    async (page = 1, pageSize = PAGE_SIZE, searchTerm = "") => {
       try {
         setLoading(true);
         const res = await organizationAPI.list({
           page,
           limit: pageSize,
-          search,
+          search: searchTerm,
         });
-
         setData(res.data?.organizations ?? []);
         setPaginationState((prev) => ({
           ...prev,
@@ -63,26 +60,29 @@ const Organisation = () => {
         setLoading(false);
       }
     },
-    [search]
+    []
   );
 
   useEffect(() => {
     fetchOrganizations();
   }, [fetchOrganizations]);
-  /* -------------------- Search -------------------- */
-  const debouncedSearch = useMemo(
-    () =>
-      debounce((value) => {
-        setSearch(value);
-        fetchOrganizations(1, paginationState.pageSize);
-      }, 500),
-    [fetchOrganizations, paginationState.pageSize]
+
+  // ✅ Search handler
+  const handleSearch = useCallback(
+    (value) => {
+      setSearchTerm(value); // store for pagination
+      fetchOrganizations(1, paginationState.pageSize, value); // always fetch from first page
+    },
+    [fetchOrganizations]
   );
 
-  useEffect(() => {
-    return () => debouncedSearch.cancel();
-  }, [debouncedSearch]);
-
+  // ✅ Table pagination handler
+  const handleTableChange = useCallback(
+    (pagination) => {
+      fetchOrganizations(pagination.current, pagination.pageSize, searchTerm); // use current search
+    },
+    [fetchOrganizations, searchTerm]
+  );
   /* -------------------- Submit -------------------- */
   const handleSubmit = useCallback(
     async (values, form) => {
@@ -111,6 +111,7 @@ const Organisation = () => {
         form.resetFields();
         setOpen(false);
         setEditInitialValues(null);
+
         fetchOrganizations(paginationState.current, paginationState.pageSize);
       } catch (error) {
         message.error(error.response?.data?.message || "Operation failed");
@@ -261,12 +262,9 @@ const Organisation = () => {
       {/* Search Bar */}
       <Row style={{ marginBottom: 16 }}>
         <Col span={24}>
-          <Input
-            placeholder="Search organization name"
-            type={search}
-            prefix={<SearchOutlined />}
-            allowClear
-            onChange={(e) => debouncedSearch(e.target.value)}
+          <DebouncedSearch
+            placeholder="Search by organization name"
+            onSearch={handleSearch} // ✅ Pass the handler
             className="search_data"
           />
         </Col>
@@ -287,7 +285,7 @@ const Organisation = () => {
             showTotal: (total, range) => `${range[0]}–${range[1]} of ${total}`,
             pageSizeOptions: ["5", "10", "20", "50"],
           }}
-          onChange={(p) => fetchOrganizations(p.current, p.pageSize)}
+          onChange={handleTableChange}
           bordered
           scroll={{ x: 800 }}
           rowClassName={() => "hover-row"} // for hover effect

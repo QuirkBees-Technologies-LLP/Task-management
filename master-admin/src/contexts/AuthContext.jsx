@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import  { createContext, use, useContext, useEffect, useState } from "react";
 import {
   setToken,
   getToken,
@@ -7,7 +7,7 @@ import {
   clearAuth,
 } from "../utils/authStorage";
 import { authAPI } from "../services/api";
-
+import { useNavigate } from "react-router-dom";
 const AuthContext = createContext(null);
 
 export const useAuth = () => {
@@ -22,6 +22,7 @@ export const AuthProvider = ({ children }) => {
   const [user, setUserState] = useState(null);
   const [token, setTokenState] = useState(null);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   // Restore auth on refresh
   useEffect(() => {
@@ -59,6 +60,7 @@ export const AuthProvider = ({ children }) => {
     clearAuth();
     setUserState(null);
     setTokenState(null);
+    navigate("/login", { replace: true });
   };
 
   return (

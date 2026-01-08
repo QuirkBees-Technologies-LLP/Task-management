@@ -14,9 +14,9 @@ import {
 } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import { Pencil, Trash } from "lucide-react";
-
 import { plansAPI } from "../services/api";
 import PlansFormModal from "../components/PlansFormModal";
+import DebouncedSearch from "../components/debouncedSearch";
 
 const PAGE_SIZE = 10;
 
@@ -29,6 +29,7 @@ const Plans = () => {
   const [data, setData] = useState([]);
   const [isEditing, setIsEditing] = useState(false);
   const [editInitialValues, setEditInitialValues] = useState(null);
+  const [search, setSearch] = useState("");
 
   const [paginationState, setPaginationState] = useState({
     current: 1,
@@ -36,28 +37,39 @@ const Plans = () => {
     total: 0,
   });
 
-  const fetchPlans = useCallback(async (page = 1, pageSize = PAGE_SIZE) => {
-    try {
-      setLoading(true);
-      const res = await plansAPI.list({ page, limit: pageSize });
+  const fetchPlans = useCallback(
+    async (page = 1, pageSize = PAGE_SIZE, searchTerm = search) => {
+      try {
+        setLoading(true);
+        const res = await plansAPI.list({
+          page,
+          limit: pageSize,
+          search: searchTerm,
+        });
 
-      setData(res?.data?.plans ?? []);
-      setPaginationState({
-        current: res?.data?.pagination?.page ?? page,
-        pageSize: res?.data?.pagination?.limit ?? pageSize,
-        total: res?.data?.pagination?.total ?? 0,
-      });
-    } catch {
-      message.error("Failed to load plans");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+        setData(res?.data?.plans ?? []);
+        setPaginationState({
+          current: res?.data?.pagination?.page ?? page,
+          pageSize: res?.data?.pagination?.limit ?? pageSize,
+          total: res?.data?.pagination?.total ?? 0,
+        });
+      } catch {
+        message.error("Failed to load plans");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [search]
+  );
 
   useEffect(() => {
-    fetchPlans();
-  }, [fetchPlans]);
-
+    fetchPlans(1, PAGE_SIZE, search);
+  }, [search]);
+  /* -------------------- Search -------------------- */
+  const handleSearch = useCallback((value) => {
+    setSearch(value || "");
+  }, []);
+  /* -------------------- Submit -------------------- */
   const handleSubmit = useCallback(
     async (values, form) => {
       try {
@@ -119,7 +131,9 @@ const Plans = () => {
       setTogglingId(record._id);
       await plansAPI.update(record._id, { status: newStatus });
       message.success(
-        `Plan ${newStatus === "active" ? "activated" : "deactivated"} successfully`
+        `Plan ${
+          newStatus === "active" ? "activated" : "deactivated"
+        } successfully`
       );
       fetchPlans(paginationState.current, paginationState.pageSize);
     } catch {
@@ -212,9 +226,21 @@ const Plans = () => {
           <h2 style={{ margin: 0 }}>Plan Management</h2>
         </Col>
         <Col>
-          <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={openCreateModal}
+          >
             Add Plan
           </Button>
+        </Col>
+      </Row>
+      <Row style={{ marginBottom: 16 }}>
+        <Col span={24}>
+          <DebouncedSearch
+            placeholder="Search by Plan name"
+            onSearch={handleSearch} // ✅ Pass the handler
+          />
         </Col>
       </Row>
 
@@ -235,10 +261,9 @@ const Plans = () => {
             total: paginationState.total,
             showSizeChanger: true,
             pageSizeOptions: ["10", "20", "50", "100"],
-            showTotal: (total, range) =>
-              `${range[0]}–${range[1]} of ${total}`,
+            showTotal: (total, range) => `${range[0]}–${range[1]} of ${total}`,
           }}
-          onChange={(p) => fetchPlans(p.current, p.pageSize)}
+          onChange={(p) => fetchPlans(p.current, p.pageSize, search)}
           rowClassName={(record) =>
             record.mark_as_popular ? "popular-row" : ""
           }

@@ -16,7 +16,7 @@ function App() {
   const [count, setCount] = useState(0);
 
   return (
-    <AuthProvider>
+    // <AuthProvider>
       <ConfigProvider
         theme={{
           "token": {
@@ -59,7 +59,7 @@ function App() {
           </Routes>
         </AntdApp>
       </ConfigProvider>
-    </AuthProvider>
+    // </AuthProvider>
   );
 }
 

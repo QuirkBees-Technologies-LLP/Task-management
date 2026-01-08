@@ -1,18 +1,19 @@
 import { Input } from "antd";
 import { debounce } from "lodash";
-import { useEffect, useMemo, useState, useCallback } from "react";
-import { organizationAPI } from "../services/api";
+import { useEffect, useMemo, useCallback } from "react";
 
-const OrganizationSearch = () => {
-  const [search, setSearch] = useState("");
-
-  // Debounced setter
+const DebouncedSearch = ({
+  onSearch,
+  delay = 500,
+  placeholder = "Search organizations",
+}) => {
+  // Debounced search handler
   const debouncedSearch = useMemo(
     () =>
       debounce((value) => {
-        setSearch(value);
-      }, 500),
-    []
+        onSearch?.(value);
+      }, delay),
+    [onSearch, delay]
   );
 
   // Cleanup debounce
@@ -22,24 +23,18 @@ const OrganizationSearch = () => {
     };
   }, [debouncedSearch]);
 
-  // API call
-  const fetchData = useCallback(() => {
-    organizationAPI.getAll({ search });
-  }, [search]);
-
-  // Trigger API when search changes
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  const handleChange = useCallback((e) => {
+    debouncedSearch(e.target.value);
+  }, [debouncedSearch]);
 
   return (
     <Input.Search
-      placeholder="Search organizations"
+      placeholder={placeholder}
       allowClear
-      onChange={(e) => debouncedSearch(e.target.value)}
-      style={{ width: 300 }}
+      onChange={handleChange}
+      style={{ width: 300 }} 
     />
   );
 };
 
-export default OrganizationSearch;
+export default DebouncedSearch;
