@@ -1,8 +1,10 @@
 import axios from 'axios';
 import { getToken } from '../utils/authStorage';
+import { message } from 'antd';
+import { createBrowserHistory } from 'history';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-
+const history = createBrowserHistory();
 /* ----------------------------------------------------
    Axios Instance
 ---------------------------------------------------- */
@@ -41,6 +43,10 @@ api.interceptors.response.use(
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       // window.location.href = '/login';
+        message.error('Session expired. Redirecting to login...');
+
+        // Navigate to login without full page reload
+      history.push('/login');
     }
     return Promise.reject(error);
   }
