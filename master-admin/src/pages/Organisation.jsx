@@ -253,7 +253,6 @@ const Organisation = () => {
             type="primary"
             icon={<PlusOutlined />}
             onClick={openCreateModal}
-            size="large"
           >
             Add Organization
           </Button>
