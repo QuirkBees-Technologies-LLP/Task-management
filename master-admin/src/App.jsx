@@ -13,7 +13,6 @@ import Plans from './pages/Plans';
 
 
 function App() {
-  const [count, setCount] = useState(0);
 
   return (
     // <AuthProvider>

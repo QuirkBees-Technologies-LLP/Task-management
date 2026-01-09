@@ -10,7 +10,6 @@ import {
   Popconfirm,
   Switch,
   Typography,
-  Input,
 } from "antd";
 
 import { PlusOutlined } from "@ant-design/icons";
@@ -18,6 +17,8 @@ import { Pencil, Trash } from "lucide-react";
 import { organizationAPI } from "../services/api";
 import OrganizationFormModal from "../components/OrganizationFormModal";
 import DebouncedSearch from "../components/debouncedSearch";
+import PlanSelect from "../components/PlanSelect";
+import { plansAPI } from "../services/api";
 
 const { Title } = Typography;
 const PAGE_SIZE = 10;
@@ -31,6 +32,9 @@ const Organisation = () => {
   const [editInitialValues, setEditInitialValues] = useState(null);
   const [toggleLoading, setToggleLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedPlanId, setSelectedPlanId] = useState(null);
+  const [selectedPlanName, setSelectedPlanName] = useState(null);
+  const [plansMap, setPlansMap] = useState({});
   const [paginationState, setPaginationState] = useState({
     current: 1,
     pageSize: PAGE_SIZE,
@@ -39,13 +43,14 @@ const Organisation = () => {
 
   /* -------------------- Fetch -------------------- */
   const fetchOrganizations = useCallback(
-    async (page = 1, pageSize = PAGE_SIZE, searchTerm = "") => {
+    async (page = 1, pageSize = PAGE_SIZE, searchTerm = "", plan = "") => {
       try {
         setLoading(true);
         const res = await organizationAPI.list({
           page,
           limit: pageSize,
           search: searchTerm,
+          plan,
         });
         setData(res.data?.organizations ?? []);
         setPaginationState((prev) => ({
@@ -71,17 +76,56 @@ const Organisation = () => {
   const handleSearch = useCallback(
     (value) => {
       setSearchTerm(value); // store for pagination
-      fetchOrganizations(1, paginationState.pageSize, value); // always fetch from first page
+      fetchOrganizations(1, paginationState.pageSize, value, selectedPlanName); // always fetch from first page
     },
-    [fetchOrganizations]
+    [fetchOrganizations, paginationState.pageSize, selectedPlanName]
   );
+
+  // ✅ Plan filter handler
+  const handlePlanFilter = useCallback(
+    (planId) => {
+      const planName = planId ? plansMap[planId] : null;
+
+      setSelectedPlanId(planId); // for Select
+      setSelectedPlanName(planName); // for API
+
+      fetchOrganizations(1, paginationState.pageSize, searchTerm, planName);
+    },
+    [plansMap, fetchOrganizations, paginationState.pageSize, searchTerm]
+  );
+  /* -------------------- Load Plans Map -------------------- */
+
+  useEffect(() => {
+    const loadPlans = async () => {
+      try {
+        const res = await plansAPI.list();
+        const plans = res.data?.plans ?? [];
+
+        const map = {};
+        plans.forEach((p) => {
+          map[p._id] = p.plan_name;
+        });
+
+        setPlansMap(map);
+      } catch (err) {
+        console.error("Failed to load plans for mapping", err);
+      }
+    };
+
+    loadPlans();
+  }, []);
 
   // ✅ Table pagination handler
   const handleTableChange = useCallback(
     (pagination) => {
-      fetchOrganizations(pagination.current, pagination.pageSize, searchTerm); // use current search
+      fetchOrganizations(
+        pagination.current,
+        pagination.pageSize,
+        searchTerm,
+        selectedPlanName
+      ); // use current search
     },
-    [fetchOrganizations, searchTerm]
+    [fetchOrganizations, searchTerm, selectedPlanName]
   );
   /* -------------------- Submit -------------------- */
   const handleSubmit = useCallback(
@@ -91,7 +135,7 @@ const Organisation = () => {
         const payload = {
           name: values.name,
           slug: values.slug,
-          planId: values.planId,
+          plan: values.planId,
           owner: {
             firstName: values.firstName,
             lastName: values.lastName,
@@ -112,14 +156,26 @@ const Organisation = () => {
         setOpen(false);
         setEditInitialValues(null);
 
-        fetchOrganizations(paginationState.current, paginationState.pageSize);
+        fetchOrganizations(
+          paginationState.current,
+          paginationState.pageSize,
+          searchTerm,
+          selectedPlanName
+        );
       } catch (error) {
         message.error(error.response?.data?.message || "Operation failed");
       } finally {
         setSubmitLoading(false);
       }
     },
-    [isEditing, editInitialValues, fetchOrganizations, paginationState]
+    [
+      isEditing,
+      editInitialValues,
+      fetchOrganizations,
+      paginationState,
+      searchTerm,
+     selectedPlanName,
+    ]
   );
 
   /* -------------------- Modals -------------------- */
@@ -138,6 +194,7 @@ const Organisation = () => {
       firstName: record.ownerFirstName,
       lastName: record.ownerLastName,
       email: record.ownerEmail,
+      planId: record.planId,
     });
     setOpen(true);
   };
@@ -260,11 +317,19 @@ const Organisation = () => {
       </Row>
       {/* Search Bar */}
       <Row style={{ marginBottom: 16 }}>
-        <Col span={24}>
+        <Col>
           <DebouncedSearch
             placeholder="Search by organization name"
-            onSearch={handleSearch} // ✅ Pass the handler
+            onSearch={handleSearch}
             className="search_data"
+          />
+        </Col>
+        <Col>
+          <PlanSelect
+            value={selectedPlanId}
+            onChange={handlePlanFilter}
+            placeholder="Filter by plan"
+            allowClear
           />
         </Col>
       </Row>

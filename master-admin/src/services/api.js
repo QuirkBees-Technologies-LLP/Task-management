@@ -1,7 +1,6 @@
 import axios from 'axios';
 import { getToken } from '../utils/authStorage';
 import { message } from 'antd';
-import { Navigate } from 'react-router-dom';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 /* ----------------------------------------------------
@@ -24,7 +23,7 @@ api.interceptors.request.use(
   (config) => {
     const token = getToken();
     if (token) {
-      config.headers.Authorization = `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiNjk1NGNjNWI4NGY3ZDg3Zjk2MzRlZmEyIiwiaXNTeXN0ZW1BZG1pbiI6dHJ1ZSwiaWF0IjoxNzY3Njk0MDgwLCJleHAiOjE3Njc3ODA0ODB9.aJUWdoMgw7KBYNx_8hfK87rwYI3zR787ykfcota6q4Y`;
+      config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
@@ -34,7 +33,6 @@ api.interceptors.request.use(
 /* ----------------------------------------------------
    Response Interceptor
 ---------------------------------------------------- */
-
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -42,11 +40,12 @@ api.interceptors.response.use(
     if (errorMessage === "Invalid or expired token") {
       message.error("Session expired. Please login again.");
       localStorage.clear();
+      window.location.replace('/login'); 
     }
-
     return Promise.reject(error);
   }
 );
+
 
 /* ----------------------------------------------------
    Auth APIs (Super Admin)
@@ -68,8 +67,8 @@ export const organizationAPI = {
   create: (payload) =>
     api.post("/superadmin/organizations", payload),
 
-  list: ({ page = 1, limit = 10, search = "" }) =>
-    api.get("/superadmin/organizations", { params: { page, limit, search } }),
+  list: ({ page = 1, limit = 10, search = "", plan = "" }) =>
+    api.get("/superadmin/organizations", { params: { page, limit, search, plan } }),
 
   updateStatus: (id, payload) =>
     api.patch(`/superadmin/organizations/${id}`, payload),

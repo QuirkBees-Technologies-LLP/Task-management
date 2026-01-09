@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Modal, Form, Input, Button, Select } from "antd";
-import { plansAPI } from "../services/api";
+import PlanSelect from "../components/PlanSelect";
 
 const OrganizationFormModal = ({
   open,
@@ -11,9 +11,7 @@ const OrganizationFormModal = ({
 }) => {
   const [form] = Form.useForm();
   const isEditing = Boolean(initialValues?._id);
-  const [plans, setPlans] = useState([]);
-  const [plansLoading, setPlansLoading] = useState(false);
-
+  
   /* -------------------- Populate Form -------------------- */
   useEffect(() => {
     if (!open) return;
@@ -25,50 +23,17 @@ const OrganizationFormModal = ({
         firstName: initialValues.firstName,
         lastName: initialValues.lastName,
         email: initialValues.email,
-        planId: initialValues.planId,
+        planId: initialValues.planId?.value,
       });
     } else {
       form.resetFields();
     }
   }, [open, isEditing, initialValues, form]);
 
-  /* -------------------- Plan Selection -------------------- */
-  useEffect(() => {
-    if (!open) return;
-
-    const fetchPlans = async () => {
-      try {
-        setPlansLoading(true);
-        const res = await plansAPI.list();
-
-        console.log("Plans API response:", res.data);
-
-        setPlans(Array.isArray(res.data?.plans) ? res.data.plans : []);
-      } catch (err) {
-        console.error("Failed to load plans", err);
-        setPlans([]);
-      } finally {
-        setPlansLoading(false);
-      }
-    };
-
-    fetchPlans();
-  }, [open]);
-
-  const planOptions = useMemo(
-    () =>
-      plans
-        .filter((plan) => plan.status === "active")
-        .map((plan) => ({
-          value: plan._id,
-          label: `${plan.plan_name} - ₹${plan.price}/${plan.billing_period}`,
-        })),
-    [plans]
-  );
-
   /* -------------------- Handlers -------------------- */
   const handleFinish = useCallback(
     (values) => {
+       console.log("FORM VALUES:", values);
       onSubmit(values, form);
     },
     [onSubmit, form]
@@ -141,20 +106,11 @@ const OrganizationFormModal = ({
         <Form.Item
           label="Select Plan"
           name="planId"
+          getValueFromEvent={(value) => value}
           rules={[{ required: true, message: "Please select a plan" }]}
         >
-          <Select
-            showSearch
-            placeholder="Search & select a plan"
-            loading={plansLoading}
-            optionFilterProp="label"
-            filterSort={(a, b) =>
-              a.label.toLowerCase().localeCompare(b.label.toLowerCase())
-            }
-            options={planOptions}
-          />
+          <PlanSelect />
         </Form.Item>
-
         <div style={{ textAlign: "right" }}>
           <Button
             type="primary"

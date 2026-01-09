@@ -1,4 +1,4 @@
-import  { createContext, use, useContext, useEffect, useState } from "react";
+import { createContext, useRef, useContext, useEffect, useState } from "react";
 import {
   setToken,
   getToken,
@@ -7,6 +7,8 @@ import {
   clearAuth,
 } from "../utils/authStorage";
 import { authAPI } from "../services/api";
+import  api  from "../services/api";
+import { message } from "antd";
 import { useNavigate } from "react-router-dom";
 const AuthContext = createContext(null);
 
@@ -23,6 +25,12 @@ export const AuthProvider = ({ children }) => {
   const [token, setTokenState] = useState(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const navigateRef = useRef(navigate);
+
+  // Update ref whenever navigate changes
+  useEffect(() => {
+    navigateRef.current = navigate;
+  }, [navigate]);
 
   // Restore auth on refresh
   useEffect(() => {
@@ -36,6 +44,25 @@ export const AuthProvider = ({ children }) => {
 
     setLoading(false);
   }, []);
+
+   // Axios Response Interceptor for token errors
+  useEffect(() => {
+    const interceptor = api.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        const errorMessage = error?.response?.data?.error || '';
+        if (errorMessage === "Invalid or expired token") {
+          message.error("Session expired. Please login again.");
+          logout(); // Reuse your existing logout (clears storage + navigates)
+        }
+        return Promise.reject(error);
+      }
+    );
+
+    return () => {
+      api.interceptors.response.eject(interceptor);
+    };
+  }, []); // Empty deps: runs once, uses navigateRef
 
   const login = async (credentials) => {
     const response = await authAPI.login(credentials);
