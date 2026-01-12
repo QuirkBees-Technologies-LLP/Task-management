@@ -45,7 +45,7 @@ import { accessTokenKey } from '@/utils/constants';
 import { enqueueSnackbar } from 'notistack';
 
 interface Task {
-  _id: string;
+  _id?: string;
   title: string;
   description: string;
   status: string;
@@ -357,11 +357,12 @@ const ProjectTasksPage: React.FC = () => {
         return;
       }
 
-      // TypeScript guard: we know selectedTask._id exists from the check above
-      const taskId = selectedTask._id;
-      const taskIdString = typeof taskId === 'object' && taskId !== null
+      // TypeScript: After the null check above, we know _id exists and is truthy
+      // Convert to string, handling both ObjectId objects and string values
+      const taskId: string | { toString(): string } = selectedTask._id!;
+      const taskIdString = typeof taskId === 'object' 
         ? taskId.toString()
-        : String(taskId ?? '');
+        : String(taskId);
       const deleteResponse = await axios.delete(`/api/projects/${projectId}/tasks?taskId=${taskIdString}`, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -402,9 +403,10 @@ const ProjectTasksPage: React.FC = () => {
         return;
       }
 
-      // TypeScript guard: we know task._id exists from the check above
-      const taskId = task._id;
-      const taskIdString = typeof taskId === 'object' && taskId !== null
+      // TypeScript: After the null check above, we know _id exists and is truthy
+      // Convert to string, handling both ObjectId objects and string values
+      const taskId: string | { toString(): string } = task._id!;
+      const taskIdString = typeof taskId === 'object' 
         ? taskId.toString()
         : String(taskId);
       const statusResponse = await axios.patch(

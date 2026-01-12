@@ -67,7 +67,7 @@ interface TaskSection {
 }
 
 interface Task {
-  _id: string;
+  _id?: string;
   title: string;
   description: string;
   status?: string; // Add status field to Task interface
@@ -192,10 +192,12 @@ const TaskSectionColumn: React.FC<{
         }
       };
 
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => {
-        document.removeEventListener('mousedown', handleClickOutside);
-      };
+      if (typeof document !== 'undefined') {
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+          document.removeEventListener('mousedown', handleClickOutside);
+        };
+      }
     }, [anchorEl]);
 
     const handleMenuClick = (event: React.MouseEvent<HTMLElement>) => {

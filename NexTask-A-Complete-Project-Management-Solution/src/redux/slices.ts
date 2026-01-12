@@ -3,7 +3,7 @@ import { navigateTo } from '@/utils/helpers';
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { enqueueSnackbar } from 'notistack';
 
-interface AppState {
+export interface AppState {
   auth: {
     currentUser: any;
     loading: boolean;

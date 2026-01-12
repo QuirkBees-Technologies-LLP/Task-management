@@ -1,5 +1,11 @@
 'use client';
+
 import React, { useState, useEffect } from 'react';
+import dynamicImport from 'next/dynamic';
+
+// Prevent static generation since this page uses browser APIs
+export const dynamic = 'force-dynamic';
+
 import {
   Box,
   useTheme,
@@ -10,8 +16,13 @@ import {
   Paper,
 } from '@mui/material';
 
-import TaskBoard from './components/TaskBoard';
-import TaskListView from './components/TaskListView';
+// Dynamically import components that use browser APIs (@dnd-kit) to prevent SSR issues
+const TaskBoard = dynamicImport(() => import('./components/TaskBoard'), {
+  ssr: false,
+});
+const TaskListView = dynamicImport(() => import('./components/TaskListView'), {
+  ssr: false,
+});
 import PageHeader from '@/components/PageHeader';
 import DeleteDialog from './components/DeleteTask';
 import TaskDialog from './components/TaskModal';
