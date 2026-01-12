@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
 import clientPromise from '../../lib/mongodb';
 import { DATABASE_NAME } from '../../config';
-import { verifyToken, userRolesServer, getOrgIdFromToken, verifySystemAdmin } from '../../helpers';
+import { verifyToken, userRolesServer } from '../../helpers';
 
 // GET: Fetch all roles and permissions
 export async function GET(request: Request) {
@@ -10,40 +10,11 @@ export async function GET(request: Request) {
   if (error) return NextResponse.json({ error }, { status });
 
   try {
-    // Check if system admin
-    const systemAdminCheck = await verifySystemAdmin(request);
-    const isSystemAdmin = !systemAdminCheck.error;
-
-    // Get org_id from token (unless system admin)
-    let org_id: ObjectId | null = null;
-    if (!isSystemAdmin) {
-      org_id = getOrgIdFromToken(decoded);
-      if (!org_id) {
-        return NextResponse.json(
-          { error: 'Organization ID is required' },
-          { status: 403 }
-        );
-      }
-    } else {
-      // System admin can optionally filter by org_id query param
-      const { searchParams } = new URL(request.url);
-      const orgIdParam = searchParams.get('org_id');
-      if (orgIdParam && ObjectId.isValid(orgIdParam)) {
-        org_id = new ObjectId(orgIdParam);
-      }
-    }
-
     const client = await clientPromise;
     const db = client.db(DATABASE_NAME);
     const permissionsCollection = db.collection('rolesAndPermissions');
 
-    // Build query with org_id filter if applicable
-    const query: any = {};
-    if (org_id) {
-      query.org_id = org_id;
-    }
-
-    const roles = await permissionsCollection.find(query).toArray();
+    const roles = await permissionsCollection.find({}).toArray();
 
     return NextResponse.json(
       {
@@ -67,15 +38,6 @@ export async function POST(request: Request) {
   if (error) return NextResponse.json({ error }, { status });
 
   try {
-    // Get org_id from token
-    const org_id = getOrgIdFromToken(decoded);
-    if (!org_id) {
-      return NextResponse.json(
-        { error: 'Organization ID is required' },
-        { status: 403 }
-      );
-    }
-
     const body = await request.json();
     const { roleName, permissions, description } = body;
 
@@ -90,10 +52,9 @@ export async function POST(request: Request) {
     const db = client.db(DATABASE_NAME);
     const permissionsCollection = db.collection('rolesAndPermissions');
 
-    // Check if role exists within the same organization
+    // Check if role exists
     const existingRole = await permissionsCollection.findOne({ 
-      roleName,
-      org_id: org_id
+      roleName
     });
     if (existingRole) {
       return NextResponse.json({ error: 'Role already exists' }, { status: 400 });
@@ -103,7 +64,6 @@ export async function POST(request: Request) {
       roleName,
       permissions: permissions || [],
       description: description || '',
-      org_id: org_id, // Add org_id
       createdAt: new Date(),
       updatedAt: new Date(),
       createdBy: decoded.id,
@@ -130,15 +90,6 @@ export async function PATCH(request: Request) {
   if (error) return NextResponse.json({ error }, { status });
 
   try {
-    // Get org_id from token
-    const org_id = getOrgIdFromToken(decoded);
-    if (!org_id) {
-      return NextResponse.json(
-        { error: 'Organization ID is required' },
-        { status: 403 }
-      );
-    }
-
     const body = await request.json();
     const { roleId, roleName, permissions, description } = body;
 
@@ -150,10 +101,9 @@ export async function PATCH(request: Request) {
     const db = client.db(DATABASE_NAME);
     const permissionsCollection = db.collection('rolesAndPermissions');
 
-    // Verify role belongs to user's organization
+    // Verify role exists
     const existingRole = await permissionsCollection.findOne({ 
-      _id: new ObjectId(roleId),
-      org_id: org_id
+      _id: new ObjectId(roleId)
     });
     if (!existingRole) {
       return NextResponse.json({ error: 'Role not found' }, { status: 404 });
@@ -165,7 +115,7 @@ export async function PATCH(request: Request) {
     if (description !== undefined) updateData.description = description;
 
     const result = await permissionsCollection.updateOne(
-      { _id: new ObjectId(roleId), org_id: org_id },
+      { _id: new ObjectId(roleId) },
       { $set: updateData }
     );
 
@@ -186,15 +136,6 @@ export async function DELETE(request: Request) {
   if (error) return NextResponse.json({ error }, { status });
 
   try {
-    // Get org_id from token
-    const org_id = getOrgIdFromToken(decoded);
-    if (!org_id) {
-      return NextResponse.json(
-        { error: 'Organization ID is required' },
-        { status: 403 }
-      );
-    }
-
     const { searchParams } = new URL(request.url);
     const roleId = searchParams.get('_id');
 
@@ -206,18 +147,16 @@ export async function DELETE(request: Request) {
     const db = client.db(DATABASE_NAME);
     const permissionsCollection = db.collection('rolesAndPermissions');
 
-    // Verify role belongs to user's organization
+    // Verify role exists
     const existingRole = await permissionsCollection.findOne({ 
-      _id: new ObjectId(roleId),
-      org_id: org_id
+      _id: new ObjectId(roleId)
     });
     if (!existingRole) {
       return NextResponse.json({ error: 'Role not found' }, { status: 404 });
     }
 
     const result = await permissionsCollection.deleteOne({ 
-      _id: new ObjectId(roleId),
-      org_id: org_id
+      _id: new ObjectId(roleId)
     });
 
     if (result.deletedCount === 0) {

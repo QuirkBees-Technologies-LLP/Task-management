@@ -4,50 +4,26 @@ import clientPromise from '../../../../../lib/mongodb';
 import { DATABASE_NAME } from '../../../../../config';
 import { verifySystemAdmin } from '../../../../../helpers';
 
-/**
- * PATCH: Update organization status (active/inactive)
- * SuperAdmin only endpoint
- * 
- * When status is set to "inactive":
- * - Blocks all org logins
- * 
- * When status is set to "active":
- * - Allows logins again
- */
+// PATCH: Update organization status (Enable/Disable) - SuperAdmin only
 export async function PATCH(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  // 1. Verify JWT
-  // 2. Ensure isSystemAdmin === true
-  const { decoded, error, status } = await verifySystemAdmin(request);
-  if (error) {
-    return NextResponse.json({ error }, { status });
+  const systemAdminCheck = await verifySystemAdmin(request);
+  if (systemAdminCheck.error) {
+    return NextResponse.json({ error: systemAdminCheck.error }, { status: systemAdminCheck.status });
   }
 
   try {
-    const id = params?.id || new URL(request.url).pathname.split('/').pop();
-
-    if (!id) {
-      return NextResponse.json(
-        { error: 'Organization ID is required' },
-        { status: 400 }
-      );
-    }
-
-    // Validate ObjectId format
-    if (!ObjectId.isValid(id)) {
-      return NextResponse.json(
-        { error: 'Invalid organization ID format' },
-        { status: 400 }
-      );
-    }
-
+    const { id } = params;
     const body = await request.json();
     const { status: newStatus } = body;
 
-    // Validate status value
-    if (!newStatus || (newStatus !== 'active' && newStatus !== 'inactive')) {
+    if (!ObjectId.isValid(id)) {
+      return NextResponse.json({ error: 'Invalid organization ID' }, { status: 400 });
+    }
+
+    if (!newStatus || !['active', 'inactive'].includes(newStatus)) {
       return NextResponse.json(
         { error: 'Status must be either "active" or "inactive"' },
         { status: 400 }
@@ -58,22 +34,8 @@ export async function PATCH(
     const db = client.db(DATABASE_NAME);
     const organizationsCollection = db.collection('organizations');
 
-    // Check if organization exists and is not deleted
-    const existingOrg = await organizationsCollection.findOne({
-      _id: new ObjectId(id),
-      deletedAt: null,
-    });
-
-    if (!existingOrg) {
-      return NextResponse.json(
-        { error: 'Organization not found' },
-        { status: 404 }
-      );
-    }
-
-    // Update organization status
     const result = await organizationsCollection.updateOne(
-      { _id: new ObjectId(id) },
+      { _id: new ObjectId(id), deletedAt: null },
       {
         $set: {
           status: newStatus,
@@ -83,17 +45,13 @@ export async function PATCH(
     );
 
     if (result.matchedCount === 0) {
-      return NextResponse.json(
-        { error: 'Organization not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
     }
 
-    // Return success with new status
     return NextResponse.json(
       {
         success: true,
-        status: newStatus,
+        message: `Organization ${newStatus === 'active' ? 'enabled' : 'disabled'} successfully`,
       },
       { status: 200 }
     );

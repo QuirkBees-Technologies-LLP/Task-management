@@ -4,6 +4,7 @@ import clientPromise from '../../../lib/mongodb';
 import { DATABASE_NAME } from '../../../config';
 import { verifyToken, userRolesServer } from '../../../helpers';
 import { validateSlug, normalizeSlug } from '../../../lib/organizations';
+import { resolvePlanNameToId } from '../../../lib/planResolver';
 
 // GET: Fetch single organization by ID (Admin only)
 export async function GET(
@@ -57,6 +58,8 @@ export async function GET(
           ...organization,
           _id: organization._id.toString(),
           ownerId: organization.ownerId ? organization.ownerId.toString() : null,
+          planId: organization.planId ? organization.planId.toString() : null,
+          planName: organization.planName || '',
           owner: ownerInfo,
         },
       },
@@ -157,7 +160,27 @@ export async function PATCH(
       }
       updateData.status = body.status;
     }
-    if (body.planName !== undefined) updateData.planName = body.planName;
+
+    // Resolve planName to planId (if provided) - always update both together
+    if (body.planName !== undefined) {
+      if (body.planName === null || body.planName === '' || (typeof body.planName === 'string' && body.planName.trim() === '')) {
+        // Clear plan if empty/null
+        updateData.planId = null;
+        updateData.planName = '';
+      } else {
+        try {
+          const planResolution = await resolvePlanNameToId(body.planName);
+          updateData.planId = planResolution.planId;
+          updateData.planName = planResolution.resolvedPlanName;
+        } catch (planError: any) {
+          return NextResponse.json(
+            { error: planError.message || 'Failed to resolve plan' },
+            { status: 400 }
+          );
+        }
+      }
+    }
+
     if (body.planStartDate !== undefined) {
       updateData.planStartDate = body.planStartDate ? new Date(body.planStartDate) : null;
     }
@@ -184,6 +207,8 @@ export async function PATCH(
           ...updatedOrg,
           _id: updatedOrg!._id.toString(),
           ownerId: updatedOrg!.ownerId ? updatedOrg!.ownerId.toString() : null,
+          planId: updatedOrg!.planId ? updatedOrg!.planId.toString() : null,
+          planName: updatedOrg!.planName || '',
         },
       },
       { status: 200 }

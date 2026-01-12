@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
-import { verifyToken, getOrgIdFromToken, verifySystemAdmin } from '../../helpers';
+import { verifyToken } from '../../helpers';
 import clientPromise from '../../lib/mongodb';
 import { DATABASE_NAME } from '../../config';
 
@@ -10,15 +10,6 @@ export async function POST(request: Request) {
   if (error) return NextResponse.json({ error }, { status });
 
   try {
-    // Get org_id from token
-    const org_id = getOrgIdFromToken(decoded);
-    if (!org_id) {
-      return NextResponse.json(
-        { error: 'Organization ID is required' },
-        { status: 403 }
-      );
-    }
-
     const body = await request.json();
 
     // Validate the request body
@@ -36,10 +27,9 @@ export async function POST(request: Request) {
     const db = client.db(DATABASE_NAME);
     const templatesCollection = db.collection('emailTemplates');
 
-    // Check if a template with the same emailType already exists within the same organization
+    // Check if a template with the same emailType already exists
     const existingTypeTemplate = await templatesCollection.findOne({
-      emailType,
-      org_id: org_id,
+      emailType
     });
     if (existingTypeTemplate) {
       return NextResponse.json(
@@ -56,7 +46,6 @@ export async function POST(request: Request) {
       description,
       htmlString,
       emailType,
-      org_id: org_id, // Add org_id
       createdAt: new Date(),
       updatedAt: new Date(),
     });
@@ -89,15 +78,6 @@ export async function PUT(request: Request) {
   if (error) return NextResponse.json({ error }, { status });
 
   try {
-    // Get org_id from token
-    const org_id = getOrgIdFromToken(decoded);
-    if (!org_id) {
-      return NextResponse.json(
-        { error: 'Organization ID is required' },
-        { status: 403 }
-      );
-    }
-
     const body = await request.json();
 
     // Validate the request body
@@ -115,20 +95,18 @@ export async function PUT(request: Request) {
     const db = client.db(DATABASE_NAME);
     const templatesCollection = db.collection('emailTemplates');
 
-    // Verify template belongs to user's organization
+    // Verify template exists
     const existingTemplate = await templatesCollection.findOne({
-      _id: new ObjectId(id),
-      org_id: org_id,
+      _id: new ObjectId(id)
     });
     if (!existingTemplate) {
       return NextResponse.json({ error: 'Email template not found' }, { status: 404 });
     }
 
-    // Check if a template with the same emailType already exists (excluding the current template) within the same organization
+    // Check if a template with the same emailType already exists (excluding the current template)
     const existingTypeTemplate = await templatesCollection.findOne({
       emailType,
-      _id: { $ne: new ObjectId(id) },
-      org_id: org_id,
+      _id: { $ne: new ObjectId(id) }
     });
     if (existingTypeTemplate) {
       return NextResponse.json(
@@ -141,7 +119,7 @@ export async function PUT(request: Request) {
 
     // Update the template
     const result = await templatesCollection.updateOne(
-      { _id: new ObjectId(id), org_id: org_id },
+      { _id: new ObjectId(id) },
       {
         $set: {
           name,
@@ -173,40 +151,11 @@ export async function GET(request: Request) {
   if (error) return NextResponse.json({ error }, { status });
 
   try {
-    // Check if system admin
-    const systemAdminCheck = await verifySystemAdmin(request);
-    const isSystemAdmin = !systemAdminCheck.error;
-
-    // Get org_id from token (unless system admin)
-    let org_id: ObjectId | null = null;
-    if (!isSystemAdmin) {
-      org_id = getOrgIdFromToken(decoded);
-      if (!org_id) {
-        return NextResponse.json(
-          { error: 'Organization ID is required' },
-          { status: 403 }
-        );
-      }
-    } else {
-      // System admin can optionally filter by org_id query param
-      const { searchParams } = new URL(request.url);
-      const orgIdParam = searchParams.get('org_id');
-      if (orgIdParam && ObjectId.isValid(orgIdParam)) {
-        org_id = new ObjectId(orgIdParam);
-      }
-    }
-
     const client = await clientPromise;
     const db = client.db(DATABASE_NAME);
     const templatesCollection = db.collection('emailTemplates');
 
-    // Build query with org_id filter if applicable
-    const query: any = {};
-    if (org_id) {
-      query.org_id = org_id;
-    }
-
-    const templates = await templatesCollection.find(query).toArray();
+    const templates = await templatesCollection.find({}).toArray();
 
     // Return minimal fields for list view - exclude htmlString (can be large)
     return NextResponse.json(
@@ -236,15 +185,6 @@ export async function DELETE(request: Request) {
   if (error) return NextResponse.json({ error }, { status });
 
   try {
-    // Get org_id from token
-    const org_id = getOrgIdFromToken(decoded);
-    if (!org_id) {
-      return NextResponse.json(
-        { error: 'Organization ID is required' },
-        { status: 403 }
-      );
-    }
-
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('_id');
 
@@ -256,18 +196,16 @@ export async function DELETE(request: Request) {
     const db = client.db(DATABASE_NAME);
     const templatesCollection = db.collection('emailTemplates');
 
-    // Verify template belongs to user's organization
+    // Verify template exists
     const existingTemplate = await templatesCollection.findOne({
-      _id: new ObjectId(id),
-      org_id: org_id,
+      _id: new ObjectId(id)
     });
     if (!existingTemplate) {
       return NextResponse.json({ error: 'Email template not found' }, { status: 404 });
     }
 
     const result = await templatesCollection.deleteOne({ 
-      _id: new ObjectId(id),
-      org_id: org_id
+      _id: new ObjectId(id)
     });
 
     if (result.deletedCount === 0) {

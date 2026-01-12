@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import clientPromise from '../../lib/mongodb';
 import { DATABASE_NAME } from '../../config';
-import { verifyToken, userRolesServer } from '../../helpers';
+import { verifyToken, userRolesServer, requireOrgIdFromToken, getOrgIdFromToken } from '../../helpers';
+import { addOrgIdToQuery, addOrgIdToDocument } from '../../lib/orgIdHelper';
 
 export async function GET(request: Request) {
   const { decoded, error, status } = await verifyToken(request);
@@ -15,12 +16,18 @@ export async function GET(request: Request) {
     const sortBy = searchParams.get('sortBy') || 'createdAt';
     const sortOrder = searchParams.get('sortOrder') || 'desc';
 
+    // Get org_id from token for organization scoping
+    const org_id = getOrgIdFromToken(decoded);
+    if (!org_id) {
+      return NextResponse.json({ error: 'Organization ID is required' }, { status: 403 });
+    }
+
     const client = await clientPromise;
     const db = client.db(DATABASE_NAME);
     const projectsCollection = db.collection('projects');
 
-    // Build query for search
-    const query: any = {};
+    // Build query for search with org_id filter
+    const query: any = addOrgIdToQuery({}, org_id);
     if (search) {
       query.$or = [
         { name: { $regex: search, $options: 'i' } },
@@ -85,12 +92,17 @@ export async function POST(request: Request) {
       );
     }
 
+    // Get org_id from token - required for organization scoping
+    const org_id = requireOrgIdFromToken(decoded);
+
     const client = await clientPromise;
     const db = client.db(DATABASE_NAME);
     const projectsCollection = db.collection('projects');
 
-    // Check if project with same name already exists
-    const existingProject = await projectsCollection.findOne({ name });
+    // Check if project with same name already exists in the organization
+    const existingProject = await projectsCollection.findOne(
+      addOrgIdToQuery({ name }, org_id)
+    );
     if (existingProject) {
       return NextResponse.json(
         { error: 'Project with this name already exists' },
@@ -98,8 +110,8 @@ export async function POST(request: Request) {
       );
     }
 
-    // Create the project
-    const newProject = {
+    // Create the project with org_id
+    const newProject = addOrgIdToDocument({
       name,
       clientName: clientName || '',
       description,
@@ -107,8 +119,8 @@ export async function POST(request: Request) {
       dueDate: dueDate ? new Date(dueDate) : null,
       createdAt: new Date(),
       updatedAt: new Date(),
-      createdBy: decoded.id,
-    };
+      createdBy: decoded.id || decoded.user_id,
+    }, org_id);
 
     const result = await projectsCollection.insertOne(newProject);
 

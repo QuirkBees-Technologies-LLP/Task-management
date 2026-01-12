@@ -2,20 +2,32 @@ import { NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
 import clientPromise from '../../../lib/mongodb';
 import { DATABASE_NAME } from '../../../config';
-import { verifyToken, userRolesServer } from '../../../helpers';
+import { verifyToken, userRolesServer, getOrgIdFromToken, requireOrgIdFromToken } from '../../../helpers';
+import { addOrgIdToQuery, addOrgIdToDocument } from '../../../lib/orgIdHelper';
 
-// GET: Fetch company settings (allowed for all logged-in users)
+// GET: Fetch company settings (filtered by organization)
 export async function GET(request: Request) {
   const { decoded, error, status } = await verifyToken(request);
   if (error) return NextResponse.json({ error }, { status });
 
   try {
+    // Get org_id from token for organization scoping
+    const org_id = getOrgIdFromToken(decoded);
+    if (!org_id) {
+      return NextResponse.json(
+        { error: 'Organization ID is required' },
+        { status: 403 }
+      );
+    }
+
     const client = await clientPromise;
     const db = client.db(DATABASE_NAME);
     const companySettingsCollection = db.collection('companySettings');
 
-    // There should be only one document
-    const companySettings = await companySettingsCollection.findOne({});
+    // Fetch settings for the user's organization
+    const companySettings = await companySettingsCollection.findOne(
+      addOrgIdToQuery({}, org_id)
+    );
 
     if (!companySettings) {
       // Return empty/default settings if none exist
@@ -57,12 +69,15 @@ export async function GET(request: Request) {
   }
 }
 
-// PUT: Create or update company settings (admin only)
+// PUT: Create or update company settings (admin only, with org_id)
 export async function PUT(request: Request) {
   const { decoded, error, status } = await verifyToken(request, userRolesServer.admin);
   if (error) return NextResponse.json({ error }, { status });
 
   try {
+    // Get org_id from token - required for organization scoping
+    const org_id = requireOrgIdFromToken(decoded);
+
     const body = await request.json();
     const { companyName, logoUrl, address, email, phone, taxNumber, website } = body;
 
@@ -77,8 +92,10 @@ export async function PUT(request: Request) {
     const db = client.db(DATABASE_NAME);
     const companySettingsCollection = db.collection('companySettings');
 
-    // Check if settings already exist
-    const existingSettings = await companySettingsCollection.findOne({});
+    // Check if settings already exist for this organization
+    const existingSettings = await companySettingsCollection.findOne(
+      addOrgIdToQuery({}, org_id)
+    );
 
     const settingsData = {
       companyName: companyName || '',
@@ -93,15 +110,18 @@ export async function PUT(request: Request) {
 
     let result;
     if (existingSettings) {
-      // Update existing document
+      // Update existing document for this organization
       result = await companySettingsCollection.updateOne(
-        { _id: existingSettings._id },
+        addOrgIdToQuery({ _id: existingSettings._id }, org_id),
         { $set: settingsData }
       );
     } else {
-      // Create new document (there should be only one)
-      settingsData['createdAt'] = new Date();
-      result = await companySettingsCollection.insertOne(settingsData);
+      // Create new document with org_id
+      const newSettings = addOrgIdToDocument({
+        ...settingsData,
+        createdAt: new Date(),
+      }, org_id);
+      result = await companySettingsCollection.insertOne(newSettings);
     }
 
     return NextResponse.json(

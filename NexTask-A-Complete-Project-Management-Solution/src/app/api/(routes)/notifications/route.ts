@@ -4,12 +4,14 @@ import { DATABASE_NAME } from '../../config';
 import { ObjectId } from 'mongodb';
 import { verifyToken, getOrgIdFromToken } from '../../helpers';
 
-// ✅ GET: Fetch notifications for a user
+// ✅ GET: Fetch notifications for a user (filtered by organization)
 export async function GET(request: NextRequest) {
   const { decoded, error, status } = await verifyToken(request);
   if (error) return NextResponse.json({ error }, { status });
 
-  // Get org_id from token
+  const userId = (decoded as any).id;
+
+  // Get org_id from token for organization scoping
   const org_id = getOrgIdFromToken(decoded);
   if (!org_id) {
     return NextResponse.json(
@@ -18,18 +20,33 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const userId = (decoded as any).id;
-
   const limitParam = request.nextUrl.searchParams.get('limit');
   const limit = limitParam ? parseInt(limitParam, 10) : undefined;
+  
   try {
     const client = await clientPromise;
     const db = client.db(DATABASE_NAME);
+    const usersCollection = db.collection('users');
+    
+    // Verify user belongs to the organization
+    const user = await usersCollection.findOne({
+      _id: new ObjectId(userId),
+      org_id: org_id instanceof ObjectId ? org_id : new ObjectId(org_id)
+    });
+    
+    if (!user) {
+      return NextResponse.json(
+        { error: 'User not found in organization' },
+        { status: 403 }
+      );
+    }
+
+    const orgObjectId = org_id instanceof ObjectId ? org_id : new ObjectId(org_id);
     const query = db
       .collection('notifications')
       .find({
         userId: new ObjectId(userId),
-        org_id: org_id // Filter by org_id
+        org_id: orgObjectId // Filter by organization
       })
       .sort({ createdAt: -1 });
 
@@ -42,12 +59,14 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// ✅ POST: Create a notification
+// ✅ POST: Create a notification (with org_id)
 export async function POST(request: Request) {
   const { decoded, error, status } = await verifyToken(request);
   if (error) return NextResponse.json({ error }, { status });
 
-  // Get org_id from token
+  const userId = (decoded as any).userId || (decoded as any).id;
+
+  // Get org_id from token for organization scoping
   const org_id = getOrgIdFromToken(decoded);
   if (!org_id) {
     return NextResponse.json(
@@ -55,8 +74,6 @@ export async function POST(request: Request) {
       { status: 403 }
     );
   }
-
-  const userId = (decoded as any).userId || (decoded as any).id;
 
   try {
     const body = await request.json();
@@ -66,12 +83,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Message is required' }, { status: 400 });
     }
 
+    const orgObjectId = org_id instanceof ObjectId ? org_id : new ObjectId(org_id);
+
     const notification = {
-      userId,
+      userId: new ObjectId(userId),
+      org_id: orgObjectId, // Add org_id to notification
       message,
       type,
       read: false,
-      org_id: org_id, // Add org_id
       createdAt: new Date(),
     };
 
@@ -89,12 +108,14 @@ export async function POST(request: Request) {
   }
 }
 
-// ✅ PUT: Mark one or more notifications as read
+// ✅ PUT: Mark one or more notifications as read (with org_id check)
 export async function PUT(request: Request) {
   const { decoded, error, status } = await verifyToken(request);
   if (error) return NextResponse.json({ error }, { status });
 
-  // Get org_id from token
+  const userId = (decoded as any).id;
+
+  // Get org_id from token for organization scoping
   const org_id = getOrgIdFromToken(decoded);
   if (!org_id) {
     return NextResponse.json(
@@ -102,8 +123,6 @@ export async function PUT(request: Request) {
       { status: 403 }
     );
   }
-
-  const userId = (decoded as any).id;
 
   try {
     const body = await request.json();
@@ -116,12 +135,14 @@ export async function PUT(request: Request) {
     const client = await clientPromise;
     const db = client.db(DATABASE_NAME);
 
+    const orgObjectId = org_id instanceof ObjectId ? org_id : new ObjectId(org_id);
+
     const result = await db
       .collection('notifications')
       .updateOne({
         _id: new ObjectId(id),
         userId: new ObjectId(userId),
-        org_id: org_id // Verify org_id match
+        org_id: orgObjectId // Ensure notification belongs to user's organization
       }, { $set: { read: true } });
 
     return NextResponse.json(
@@ -137,12 +158,14 @@ export async function PUT(request: Request) {
   }
 }
 
-// ✅ DELETE: Delete a notification by ID (via query param)
+// ✅ DELETE: Delete a notification by ID (via query param, with org_id check)
 export async function DELETE(request: Request) {
   const { decoded, error, status } = await verifyToken(request);
   if (error) return NextResponse.json({ error }, { status });
 
-  // Get org_id from token
+  const userId = (decoded as any).userId || (decoded as any).id;
+
+  // Get org_id from token for organization scoping
   const org_id = getOrgIdFromToken(decoded);
   if (!org_id) {
     return NextResponse.json(
@@ -150,8 +173,6 @@ export async function DELETE(request: Request) {
       { status: 403 }
     );
   }
-
-  const userId = (decoded as any).userId || (decoded as any).id;
 
   try {
     const { searchParams } = new URL(request.url);
@@ -163,12 +184,15 @@ export async function DELETE(request: Request) {
 
     const client = await clientPromise;
     const db = client.db(DATABASE_NAME);
+    
+    const orgObjectId = org_id instanceof ObjectId ? org_id : new ObjectId(org_id);
+    
     const result = await db
       .collection('notifications')
       .deleteOne({
         _id: new ObjectId(id),
         userId: new ObjectId(userId),
-        org_id: org_id // Verify org_id match
+        org_id: orgObjectId // Ensure notification belongs to user's organization
       });
 
     if (result.deletedCount === 0) {

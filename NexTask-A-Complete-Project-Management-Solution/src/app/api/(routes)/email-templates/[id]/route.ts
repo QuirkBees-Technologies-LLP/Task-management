@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
-import { verifyToken, getOrgIdFromToken, verifySystemAdmin } from '../../../helpers';
+import { verifyToken } from '../../../helpers';
 import clientPromise from '../../../lib/mongodb';
 import { DATABASE_NAME } from '../../../config';
 
@@ -18,31 +18,12 @@ export async function GET(
       return NextResponse.json({ error: 'Template ID is required' }, { status: 400 });
     }
 
-    // Check if system admin
-    const systemAdminCheck = await verifySystemAdmin(request);
-    const isSystemAdmin = !systemAdminCheck.error;
-
-    // Get org_id from token (unless system admin)
-    let org_id: ObjectId | null = null;
-    if (!isSystemAdmin) {
-      org_id = getOrgIdFromToken(decoded);
-      if (!org_id) {
-        return NextResponse.json(
-          { error: 'Organization ID is required' },
-          { status: 403 }
-        );
-      }
-    }
-
     const client = await clientPromise;
     const db = client.db(DATABASE_NAME);
     const templatesCollection = db.collection('emailTemplates');
 
-    // Build query with org_id filter if not system admin
+    // Build query
     const query: any = { _id: new ObjectId(templateId) };
-    if (org_id) {
-      query.org_id = org_id;
-    }
 
     const template = await templatesCollection.findOne(query);
 

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
 import clientPromise from '../../../lib/mongodb';
 import { DATABASE_NAME } from '../../../config';
-import { verifyToken, getOrgIdFromToken, verifySystemAdmin } from '../../../helpers';
+import { verifyToken } from '../../../helpers';
 
 // GET: Fetch single invoice by ID
 export async function GET(
@@ -24,31 +24,12 @@ export async function GET(
       return NextResponse.json({ error: 'Invalid invoice ID format' }, { status: 400 });
     }
 
-    // Check if system admin
-    const systemAdminCheck = await verifySystemAdmin(request);
-    const isSystemAdmin = !systemAdminCheck.error;
-
-    // Get org_id from token (unless system admin)
-    let org_id: ObjectId | null = null;
-    if (!isSystemAdmin) {
-      org_id = getOrgIdFromToken(decoded);
-      if (!org_id) {
-        return NextResponse.json(
-          { error: 'Organization ID is required' },
-          { status: 403 }
-        );
-      }
-    }
-
     const client = await clientPromise;
     const db = client.db(DATABASE_NAME);
     const invoicesCollection = db.collection('invoices');
 
-    // Build query with org_id filter if not system admin
+    // Build query
     const query: any = { _id: new ObjectId(id) };
-    if (org_id) {
-      query.org_id = org_id;
-    }
 
     const invoice = await invoicesCollection.findOne(query);
 

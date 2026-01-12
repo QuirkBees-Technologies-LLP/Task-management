@@ -231,7 +231,7 @@ export async function POST(
     }
 
     // Validate assignee if provided (array of user IDs)
-    let assigneeIds: ObjectId[] = [];
+    const assigneeIds: ObjectId[] = [];
     
     if (assignee && Array.isArray(assignee) && assignee.length > 0) {
       try {

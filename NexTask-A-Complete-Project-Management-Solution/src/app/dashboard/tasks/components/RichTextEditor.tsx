@@ -392,7 +392,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
             setMentionSearch(textAfterAt);
             const quill = quillRef.current?.getEditor();
             if (quill) {
-              const editorEl = quill.container;
+              const editorEl = quill.root;
               setMentionAnchor({
                 el: editorEl,
                 index: lastAtIndex,
@@ -448,7 +448,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
       );
       
       // Move cursor after the mention
-      quill.setSelection(lastAtIndex + mentionText.length, 'user');
+      quill.setSelection({ index: lastAtIndex + mentionText.length, length: 0 }, 'user');
     }
 
     setMentionAnchor(null);
@@ -598,7 +598,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
             filteredUsers.map((user) => (
               <ListItem
                 key={user._id}
-                button
+                component="button"
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
