@@ -36,10 +36,10 @@ export async function POST(request: Request) {
       );
     }
 
-    // SECURITY: Reject system admins - they must use /api/superadmin/auth/login
+    // SECURITY: Reject system admins - they cannot login through NexTask panel
     if (user.isSystemAdmin === true) {
       return NextResponse.json(
-        { error: 'System admins must use /api/superadmin/auth/login' },
+        { error: 'Access denied' },
         { status: 403 }
       );
     }

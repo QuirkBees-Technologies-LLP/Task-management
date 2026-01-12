@@ -2,21 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import clientPromise from '../../lib/mongodb';
 import { DATABASE_NAME } from '../../config';
 import { ObjectId } from 'mongodb';
-import { verifyToken, getOrgIdFromToken } from '../../helpers';
+import { verifyToken } from '../../helpers';
 
 // ✅ GET: Fetch notifications for a user
 export async function GET(request: NextRequest) {
   const { decoded, error, status } = await verifyToken(request);
   if (error) return NextResponse.json({ error }, { status });
-
-  // Get org_id from token
-  const org_id = getOrgIdFromToken(decoded);
-  if (!org_id) {
-    return NextResponse.json(
-      { error: 'Organization ID is required' },
-      { status: 403 }
-    );
-  }
 
   const userId = (decoded as any).id;
 
@@ -28,8 +19,7 @@ export async function GET(request: NextRequest) {
     const query = db
       .collection('notifications')
       .find({
-        userId: new ObjectId(userId),
-        org_id: org_id // Filter by org_id
+        userId: new ObjectId(userId)
       })
       .sort({ createdAt: -1 });
 
@@ -47,15 +37,6 @@ export async function POST(request: Request) {
   const { decoded, error, status } = await verifyToken(request);
   if (error) return NextResponse.json({ error }, { status });
 
-  // Get org_id from token
-  const org_id = getOrgIdFromToken(decoded);
-  if (!org_id) {
-    return NextResponse.json(
-      { error: 'Organization ID is required' },
-      { status: 403 }
-    );
-  }
-
   const userId = (decoded as any).userId || (decoded as any).id;
 
   try {
@@ -71,7 +52,6 @@ export async function POST(request: Request) {
       message,
       type,
       read: false,
-      org_id: org_id, // Add org_id
       createdAt: new Date(),
     };
 
@@ -94,15 +74,6 @@ export async function PUT(request: Request) {
   const { decoded, error, status } = await verifyToken(request);
   if (error) return NextResponse.json({ error }, { status });
 
-  // Get org_id from token
-  const org_id = getOrgIdFromToken(decoded);
-  if (!org_id) {
-    return NextResponse.json(
-      { error: 'Organization ID is required' },
-      { status: 403 }
-    );
-  }
-
   const userId = (decoded as any).id;
 
   try {
@@ -120,8 +91,7 @@ export async function PUT(request: Request) {
       .collection('notifications')
       .updateOne({
         _id: new ObjectId(id),
-        userId: new ObjectId(userId),
-        org_id: org_id // Verify org_id match
+        userId: new ObjectId(userId)
       }, { $set: { read: true } });
 
     return NextResponse.json(
@@ -142,15 +112,6 @@ export async function DELETE(request: Request) {
   const { decoded, error, status } = await verifyToken(request);
   if (error) return NextResponse.json({ error }, { status });
 
-  // Get org_id from token
-  const org_id = getOrgIdFromToken(decoded);
-  if (!org_id) {
-    return NextResponse.json(
-      { error: 'Organization ID is required' },
-      { status: 403 }
-    );
-  }
-
   const userId = (decoded as any).userId || (decoded as any).id;
 
   try {
@@ -167,8 +128,7 @@ export async function DELETE(request: Request) {
       .collection('notifications')
       .deleteOne({
         _id: new ObjectId(id),
-        userId: new ObjectId(userId),
-        org_id: org_id // Verify org_id match
+        userId: new ObjectId(userId)
       });
 
     if (result.deletedCount === 0) {

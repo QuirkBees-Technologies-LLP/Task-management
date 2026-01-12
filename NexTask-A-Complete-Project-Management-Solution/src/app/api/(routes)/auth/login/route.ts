@@ -19,6 +19,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 422 });
     }
 
+    // SECURITY: Reject system admins - they cannot login through NexTask panel
+    if (user.isSystemAdmin === true) {
+      return NextResponse.json(
+        { error: 'Access denied' },
+        { status: 403 }
+      );
+    }
+
     // Check if the email is verified
     if (user.isTemporaryPassword) {
       return NextResponse.json(

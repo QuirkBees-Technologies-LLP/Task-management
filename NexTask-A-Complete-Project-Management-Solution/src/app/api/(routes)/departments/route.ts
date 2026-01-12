@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
 import clientPromise from '../../lib/mongodb';
 import { DATABASE_NAME } from '../../config';
-import { verifyToken, userRolesServer, getOrgIdFromToken, verifySystemAdmin } from '../../helpers';
+import { verifyToken, userRolesServer } from '../../helpers';
 
 // GET: Fetch all departments
 export async function GET(request: Request) {
@@ -10,29 +10,6 @@ export async function GET(request: Request) {
   if (error) return NextResponse.json({ error }, { status });
 
   try {
-    // Check if system admin
-    const systemAdminCheck = await verifySystemAdmin(request);
-    const isSystemAdmin = !systemAdminCheck.error;
-
-    // Get org_id from token (unless system admin)
-    let org_id: ObjectId | null = null;
-    if (!isSystemAdmin) {
-      org_id = getOrgIdFromToken(decoded);
-      if (!org_id) {
-        return NextResponse.json(
-          { error: 'Organization ID is required' },
-          { status: 403 }
-        );
-      }
-    } else {
-      // System admin can optionally filter by org_id query param
-      const { searchParams } = new URL(request.url);
-      const orgIdParam = searchParams.get('org_id');
-      if (orgIdParam && ObjectId.isValid(orgIdParam)) {
-        org_id = new ObjectId(orgIdParam);
-      }
-    }
-
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1', 10);
     const limit = parseInt(searchParams.get('limit') || '10', 10);
@@ -44,10 +21,6 @@ export async function GET(request: Request) {
 
     // Build query
     const query: any = {};
-    // Add org_id filter if not system admin or if org_id is specified
-    if (org_id) {
-      query.org_id = org_id;
-    }
     if (search) {
       query.$or = [
         { name: { $regex: search, $options: 'i' } },
@@ -98,15 +71,6 @@ export async function POST(request: Request) {
   if (error) return NextResponse.json({ error }, { status });
 
   try {
-    // Get org_id from token
-    const org_id = getOrgIdFromToken(decoded);
-    if (!org_id) {
-      return NextResponse.json(
-        { error: 'Organization ID is required' },
-        { status: 403 }
-      );
-    }
-
     const body = await request.json();
     const { name, positions } = body;
 
@@ -138,10 +102,9 @@ export async function POST(request: Request) {
     const db = client.db(DATABASE_NAME);
     const departmentsCollection = db.collection('departments');
 
-    // Check if department with same name already exists within the same organization
+    // Check if department with same name already exists
     const existingDepartment = await departmentsCollection.findOne({
-      name: { $regex: new RegExp(`^${name.trim()}$`, 'i') },
-      org_id: org_id,
+      name: { $regex: new RegExp(`^${name.trim()}$`, 'i') }
     });
     if (existingDepartment) {
       return NextResponse.json(
@@ -158,7 +121,6 @@ export async function POST(request: Request) {
         _id: new ObjectId(), // Generate ObjectId for each position
         name: posName,
       })),
-      org_id: org_id, // Add org_id
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -187,15 +149,6 @@ export async function PATCH(request: Request) {
   if (error) return NextResponse.json({ error }, { status });
 
   try {
-    // Get org_id from token
-    const org_id = getOrgIdFromToken(decoded);
-    if (!org_id) {
-      return NextResponse.json(
-        { error: 'Organization ID is required' },
-        { status: 403 }
-      );
-    }
-
     const body = await request.json();
     const { departmentId, name, positions } = body;
 
@@ -207,10 +160,9 @@ export async function PATCH(request: Request) {
     const db = client.db(DATABASE_NAME);
     const departmentsCollection = db.collection('departments');
 
-    // Get existing department and verify it belongs to user's organization
+    // Get existing department
     const existingDepartment = await departmentsCollection.findOne({
-      _id: new ObjectId(departmentId),
-      org_id: org_id,
+      _id: new ObjectId(departmentId)
     });
     if (!existingDepartment) {
       return NextResponse.json({ error: 'Department not found' }, { status: 404 });
@@ -224,12 +176,11 @@ export async function PATCH(request: Request) {
         return NextResponse.json({ error: 'Department name is required' }, { status: 400 });
       }
 
-      // Check if name is being changed and if new name already exists within the same organization
+      // Check if name is being changed and if new name already exists
       if (name.trim().toLowerCase() !== existingDepartment.name.toLowerCase()) {
         const nameExists = await departmentsCollection.findOne({
           name: { $regex: new RegExp(`^${name.trim()}$`, 'i') },
-          _id: { $ne: new ObjectId(departmentId) },
-          org_id: org_id,
+          _id: { $ne: new ObjectId(departmentId) }
         });
         if (nameExists) {
           return NextResponse.json(
@@ -275,7 +226,7 @@ export async function PATCH(request: Request) {
     }
 
     await departmentsCollection.updateOne(
-      { _id: new ObjectId(departmentId), org_id: org_id },
+      { _id: new ObjectId(departmentId) },
       { $set: updateData }
     );
 
@@ -295,15 +246,6 @@ export async function DELETE(request: Request) {
   if (error) return NextResponse.json({ error }, { status });
 
   try {
-    // Get org_id from token
-    const org_id = getOrgIdFromToken(decoded);
-    if (!org_id) {
-      return NextResponse.json(
-        { error: 'Organization ID is required' },
-        { status: 403 }
-      );
-    }
-
     const { searchParams } = new URL(request.url);
     const departmentId = searchParams.get('_id');
 
@@ -315,10 +257,9 @@ export async function DELETE(request: Request) {
     const db = client.db(DATABASE_NAME);
     const departmentsCollection = db.collection('departments');
 
-    // Get department before deleting and verify it belongs to user's organization
+    // Get department before deleting
     const department = await departmentsCollection.findOne({
-      _id: new ObjectId(departmentId),
-      org_id: org_id,
+      _id: new ObjectId(departmentId)
     });
     if (!department) {
       return NextResponse.json({ error: 'Department not found' }, { status: 404 });
@@ -326,8 +267,7 @@ export async function DELETE(request: Request) {
 
     // Delete department
     await departmentsCollection.deleteOne({
-      _id: new ObjectId(departmentId),
-      org_id: org_id
+      _id: new ObjectId(departmentId)
     });
 
     return NextResponse.json(

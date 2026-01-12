@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
 import clientPromise from '../../lib/mongodb';
 import { DATABASE_NAME } from '../../config';
-import { verifyToken, getOrgIdFromToken, verifySystemAdmin } from '../../helpers';
+import { verifyToken } from '../../helpers';
 
 // GET: Fetch all invoices
 export async function GET(request: Request) {
@@ -10,29 +10,6 @@ export async function GET(request: Request) {
   if (error) return NextResponse.json({ error }, { status });
 
   try {
-    // Check if system admin
-    const systemAdminCheck = await verifySystemAdmin(request);
-    const isSystemAdmin = !systemAdminCheck.error;
-
-    // Get org_id from token (unless system admin)
-    let org_id: ObjectId | null = null;
-    if (!isSystemAdmin) {
-      org_id = getOrgIdFromToken(decoded);
-      if (!org_id) {
-        return NextResponse.json(
-          { error: 'Organization ID is required' },
-          { status: 403 }
-        );
-      }
-    } else {
-      // System admin can optionally filter by org_id query param
-      const { searchParams } = new URL(request.url);
-      const orgIdParam = searchParams.get('org_id');
-      if (orgIdParam && ObjectId.isValid(orgIdParam)) {
-        org_id = new ObjectId(orgIdParam);
-      }
-    }
-
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1', 10);
     const limit = parseInt(searchParams.get('limit') || '10', 10);
@@ -44,10 +21,6 @@ export async function GET(request: Request) {
     const invoicesCollection = db.collection('invoices');
 
     const query: any = {};
-    // Add org_id filter if not system admin or if org_id is specified
-    if (org_id) {
-      query.org_id = org_id;
-    }
     if (search) {
       query.$or = [
         { invoiceNumber: { $regex: search, $options: 'i' } },
@@ -107,15 +80,6 @@ export async function POST(request: Request) {
   if (error) return NextResponse.json({ error }, { status });
 
   try {
-    // Get org_id from token
-    const org_id = getOrgIdFromToken(decoded);
-    if (!org_id) {
-      return NextResponse.json(
-        { error: 'Organization ID is required' },
-        { status: 403 }
-      );
-    }
-
     const body = await request.json();
     const {
       invoiceNumber,
@@ -141,10 +105,9 @@ export async function POST(request: Request) {
     const db = client.db(DATABASE_NAME);
     const invoicesCollection = db.collection('invoices');
 
-    // Check if invoice number exists within the same organization
+    // Check if invoice number exists
     const existingInvoice = await invoicesCollection.findOne({
-      invoiceNumber,
-      org_id: org_id
+      invoiceNumber
     });
     if (existingInvoice) {
       return NextResponse.json({ error: 'Invoice number already exists' }, { status: 400 });
@@ -214,7 +177,6 @@ export async function POST(request: Request) {
       // These fields must NEVER be updated after invoice creation
       companyDetails,
       bankingDetails: bankingInfo,
-      org_id: org_id, // Add org_id
       createdAt: new Date(),
       updatedAt: new Date(),
       createdBy: decoded.id,
@@ -241,15 +203,6 @@ export async function PATCH(request: Request) {
   if (error) return NextResponse.json({ error }, { status });
 
   try {
-    // Get org_id from token
-    const org_id = getOrgIdFromToken(decoded);
-    if (!org_id) {
-      return NextResponse.json(
-        { error: 'Organization ID is required' },
-        { status: 403 }
-      );
-    }
-
     const body = await request.json();
     const {
       invoiceId,
@@ -273,10 +226,9 @@ export async function PATCH(request: Request) {
     const db = client.db(DATABASE_NAME);
     const invoicesCollection = db.collection('invoices');
 
-    // Verify invoice belongs to user's organization
+    // Verify invoice exists
     const existingInvoice = await invoicesCollection.findOne({
-      _id: new ObjectId(invoiceId),
-      org_id: org_id
+      _id: new ObjectId(invoiceId)
     });
     if (!existingInvoice) {
       return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
@@ -302,7 +254,7 @@ export async function PATCH(request: Request) {
     delete updateData.bankingDetails;
 
     const result = await invoicesCollection.updateOne(
-      { _id: new ObjectId(invoiceId), org_id: org_id },
+      { _id: new ObjectId(invoiceId) },
       { $set: updateData }
     );
 
@@ -323,15 +275,6 @@ export async function DELETE(request: Request) {
   if (error) return NextResponse.json({ error }, { status });
 
   try {
-    // Get org_id from token
-    const org_id = getOrgIdFromToken(decoded);
-    if (!org_id) {
-      return NextResponse.json(
-        { error: 'Organization ID is required' },
-        { status: 403 }
-      );
-    }
-
     const { searchParams } = new URL(request.url);
     const invoiceId = searchParams.get('_id');
 
@@ -343,18 +286,16 @@ export async function DELETE(request: Request) {
     const db = client.db(DATABASE_NAME);
     const invoicesCollection = db.collection('invoices');
 
-    // Verify invoice belongs to user's organization
+    // Verify invoice exists
     const existingInvoice = await invoicesCollection.findOne({
-      _id: new ObjectId(invoiceId),
-      org_id: org_id
+      _id: new ObjectId(invoiceId)
     });
     if (!existingInvoice) {
       return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
     }
 
     const result = await invoicesCollection.deleteOne({
-      _id: new ObjectId(invoiceId),
-      org_id: org_id
+      _id: new ObjectId(invoiceId)
     });
 
     if (result.deletedCount === 0) {

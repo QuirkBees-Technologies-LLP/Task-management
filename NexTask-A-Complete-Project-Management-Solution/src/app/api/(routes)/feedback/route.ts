@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { emailTemplateVariables } from '@/utils/constants';
-import { verifyToken, getOrgIdFromToken } from '../../helpers';
+import { verifyToken } from '../../helpers';
 import { DATABASE_NAME, senderEmail } from '../../config';
 import clientPromise from '../../lib/mongodb';
 import { sendEmail } from '../../lib/email';
@@ -22,15 +22,6 @@ const ALLOWED_TYPES = [
 export async function POST(request: Request) {
   const { decoded, error, status } = await verifyToken(request);
   if (error) return NextResponse.json({ error }, { status });
-  
-  // Get org_id from token
-  const org_id = getOrgIdFromToken(decoded);
-  if (!org_id) {
-    return NextResponse.json(
-      { error: 'Organization ID is required' },
-      { status: 403 }
-    );
-  }
 
   const { id: userId } = decoded;
 
@@ -55,14 +46,13 @@ export async function POST(request: Request) {
       }
     }
 
-    // Fetch email template (filtered by org_id)
+    // Fetch email template
     const client = await clientPromise;
     const db = client.db(DATABASE_NAME);
     const templatesCollection = db.collection('emailTemplates');
 
     const template = await templatesCollection.findOne({
-      emailType: 'feedback',
-      org_id: org_id, // Filter by org_id
+      emailType: 'feedback'
     });
 
     if (!template) {
@@ -101,8 +91,7 @@ export async function POST(request: Request) {
     await createNotification({
       userId,
       message: 'Feedback submitted successfully',
-      type: 'info',
-      org_id: org_id, // Add org_id to notification
+      type: 'info'
     });
 
     return NextResponse.json({ message: 'Feedback submitted successfully' });

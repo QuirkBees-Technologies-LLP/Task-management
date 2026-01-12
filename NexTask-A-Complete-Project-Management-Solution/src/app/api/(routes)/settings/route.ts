@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
 import clientPromise from '../../lib/mongodb';
 import { DATABASE_NAME } from '../../config';
-import { verifyToken, userRolesServer, getOrgIdFromToken, verifySystemAdmin } from '../../helpers';
+import { verifyToken, userRolesServer } from '../../helpers';
 
 // GET: Fetch all settings
 export async function GET(request: Request) {
@@ -10,21 +10,12 @@ export async function GET(request: Request) {
   if (error) return NextResponse.json({ error }, { status });
 
   try {
-    // Get org_id from token
-    const org_id = getOrgIdFromToken(decoded);
-    if (!org_id) {
-      return NextResponse.json(
-        { error: 'Organization ID is required' },
-        { status: 403 }
-      );
-    }
-
     const client = await clientPromise;
     const db = client.db(DATABASE_NAME);
     const settingsCollection = db.collection('settings');
 
-    // Filter settings by org_id
-    const settings = await settingsCollection.find({ org_id: org_id }).toArray();
+    // Get all settings
+    const settings = await settingsCollection.find({}).toArray();
 
     // Convert to key-value object
     const settingsObj: any = {};
@@ -55,15 +46,6 @@ export async function POST(request: Request) {
   if (error) return NextResponse.json({ error }, { status });
 
   try {
-    // Get org_id from token
-    const org_id = getOrgIdFromToken(decoded);
-    if (!org_id) {
-      return NextResponse.json(
-        { error: 'Organization ID is required' },
-        { status: 403 }
-      );
-    }
-
     const body = await request.json();
     const { key, value, type, description, category } = body;
 
@@ -78,10 +60,9 @@ export async function POST(request: Request) {
     const db = client.db(DATABASE_NAME);
     const settingsCollection = db.collection('settings');
 
-    // Check if setting exists within the same organization
+    // Check if setting exists
     const existingSetting = await settingsCollection.findOne({
-      key,
-      org_id: org_id
+      key
     });
 
     const settingData = {
@@ -90,7 +71,6 @@ export async function POST(request: Request) {
       type: type || 'string',
       description: description || '',
       category: category || 'general',
-      org_id: org_id, // Add org_id
       updatedAt: new Date(),
       updatedBy: decoded.id,
     };
@@ -99,7 +79,7 @@ export async function POST(request: Request) {
     if (existingSetting) {
       // Update existing
       result = await settingsCollection.updateOne(
-        { key, org_id: org_id },
+        { key },
         { $set: settingData }
       );
     } else {
@@ -127,15 +107,6 @@ export async function PATCH(request: Request) {
   if (error) return NextResponse.json({ error }, { status });
 
   try {
-    // Get org_id from token
-    const org_id = getOrgIdFromToken(decoded);
-    if (!org_id) {
-      return NextResponse.json(
-        { error: 'Organization ID is required' },
-        { status: 403 }
-      );
-    }
-
     const body = await request.json();
     const { settings } = body; // Array of { key, value } objects
 
@@ -154,11 +125,10 @@ export async function PATCH(request: Request) {
       if (!setting.key || setting.value === undefined) return null;
 
       return settingsCollection.updateOne(
-        { key: setting.key, org_id: org_id },
+        { key: setting.key },
         {
           $set: {
             value: setting.value,
-            org_id: org_id,
             updatedAt: new Date(),
             updatedBy: decoded.id,
           },
@@ -182,15 +152,6 @@ export async function DELETE(request: Request) {
   if (error) return NextResponse.json({ error }, { status });
 
   try {
-    // Get org_id from token
-    const org_id = getOrgIdFromToken(decoded);
-    if (!org_id) {
-      return NextResponse.json(
-        { error: 'Organization ID is required' },
-        { status: 403 }
-      );
-    }
-
     const { searchParams } = new URL(request.url);
     const key = searchParams.get('key');
 
@@ -203,8 +164,7 @@ export async function DELETE(request: Request) {
     const settingsCollection = db.collection('settings');
 
     const result = await settingsCollection.deleteOne({
-      key,
-      org_id: org_id
+      key
     });
 
     if (result.deletedCount === 0) {

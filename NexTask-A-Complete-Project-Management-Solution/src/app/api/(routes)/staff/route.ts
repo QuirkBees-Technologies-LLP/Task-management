@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
 import clientPromise from '../../lib/mongodb';
 import { DATABASE_NAME } from '../../config';
-import { verifyToken, userRolesServer, getOrgIdFromToken, verifySystemAdmin } from '../../helpers';
+import { verifyToken, userRolesServer } from '../../helpers';
 
 // GET: Fetch all staff members
 export async function GET(request: Request) {
@@ -10,29 +10,6 @@ export async function GET(request: Request) {
   if (error) return NextResponse.json({ error }, { status });
 
   try {
-    // Check if system admin
-    const systemAdminCheck = await verifySystemAdmin(request);
-    const isSystemAdmin = !systemAdminCheck.error;
-
-    // Get org_id from token (unless system admin)
-    let org_id: ObjectId | null = null;
-    if (!isSystemAdmin) {
-      org_id = getOrgIdFromToken(decoded);
-      if (!org_id) {
-        return NextResponse.json(
-          { error: 'Organization ID is required' },
-          { status: 403 }
-        );
-      }
-    } else {
-      // System admin can optionally filter by org_id query param
-      const { searchParams } = new URL(request.url);
-      const orgIdParam = searchParams.get('org_id');
-      if (orgIdParam && ObjectId.isValid(orgIdParam)) {
-        org_id = new ObjectId(orgIdParam);
-      }
-    }
-
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1', 10);
     const limit = parseInt(searchParams.get('limit') || '10', 10);
@@ -45,10 +22,6 @@ export async function GET(request: Request) {
 
     // Build query
     const query: any = {};
-    // Add org_id filter if not system admin or if org_id is specified
-    if (org_id) {
-      query.org_id = org_id;
-    }
     if (search) {
       query.$or = [
         { firstName: { $regex: search, $options: 'i' } },
@@ -70,13 +43,9 @@ export async function GET(request: Request) {
       .sort({ createdAt: -1 })
       .toArray();
 
-    // Fetch departments to populate department and position names (filtered by org_id if applicable)
+    // Fetch departments to populate department and position names
     const departmentsCollection = db.collection('departments');
-    const deptQuery: any = {};
-    if (org_id) {
-      deptQuery.org_id = org_id;
-    }
-    const departments = await departmentsCollection.find(deptQuery).toArray();
+    const departments = await departmentsCollection.find({}).toArray();
     const departmentsMap = new Map();
     departments.forEach((dept) => {
       departmentsMap.set(dept._id.toString(), {
@@ -152,15 +121,6 @@ export async function POST(request: Request) {
   if (error) return NextResponse.json({ error }, { status });
 
   try {
-    // Get org_id from token
-    const org_id = getOrgIdFromToken(decoded);
-    if (!org_id) {
-      return NextResponse.json(
-        { error: 'Organization ID is required' },
-        { status: 403 }
-      );
-    }
-
     const body = await request.json();
     const { firstName, lastName, email, role, departmentId, positionId, phone } = body;
 
@@ -175,10 +135,9 @@ export async function POST(request: Request) {
     const db = client.db(DATABASE_NAME);
     const usersCollection = db.collection('users');
 
-    // Check if user exists within the same organization
+    // Check if user exists
     const existingUser = await usersCollection.findOne({
-      email,
-      org_id: org_id
+      email
     });
     if (existingUser) {
       return NextResponse.json({ error: 'User with this email already exists' }, { status: 400 });
@@ -190,7 +149,6 @@ export async function POST(request: Request) {
       email,
       role: role || 'Regular',
       phone: phone || '',
-      org_id: org_id, // Add org_id
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -224,15 +182,6 @@ export async function PATCH(request: Request) {
   if (error) return NextResponse.json({ error }, { status });
 
   try {
-    // Get org_id from token
-    const org_id = getOrgIdFromToken(decoded);
-    if (!org_id) {
-      return NextResponse.json(
-        { error: 'Organization ID is required' },
-        { status: 403 }
-      );
-    }
-
     const body = await request.json();
     const { staffId, firstName, lastName, email, role, departmentId, positionId, phone } = body;
 
@@ -244,10 +193,9 @@ export async function PATCH(request: Request) {
     const db = client.db(DATABASE_NAME);
     const usersCollection = db.collection('users');
 
-    // Verify staff member belongs to user's organization
+    // Verify staff member exists
     const existingStaff = await usersCollection.findOne({
-      _id: new ObjectId(staffId),
-      org_id: org_id
+      _id: new ObjectId(staffId)
     });
     if (!existingStaff) {
       return NextResponse.json({ error: 'Staff member not found' }, { status: 404 });
@@ -296,7 +244,7 @@ export async function PATCH(request: Request) {
     }
 
     const result = await usersCollection.updateOne(
-      { _id: new ObjectId(staffId), org_id: org_id },
+      { _id: new ObjectId(staffId) },
       updateOperation
     );
 
@@ -317,15 +265,6 @@ export async function DELETE(request: Request) {
   if (error) return NextResponse.json({ error }, { status });
 
   try {
-    // Get org_id from token
-    const org_id = getOrgIdFromToken(decoded);
-    if (!org_id) {
-      return NextResponse.json(
-        { error: 'Organization ID is required' },
-        { status: 403 }
-      );
-    }
-
     const { searchParams } = new URL(request.url);
     const staffId = searchParams.get('_id');
 
@@ -342,18 +281,16 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'You cannot delete your own account' }, { status: 400 });
     }
 
-    // Verify staff member belongs to user's organization
+    // Verify staff member exists
     const existingStaff = await usersCollection.findOne({
-      _id: new ObjectId(staffId),
-      org_id: org_id
+      _id: new ObjectId(staffId)
     });
     if (!existingStaff) {
       return NextResponse.json({ error: 'Staff member not found' }, { status: 404 });
     }
 
     const result = await usersCollection.deleteOne({
-      _id: new ObjectId(staffId),
-      org_id: org_id
+      _id: new ObjectId(staffId)
     });
 
     if (result.deletedCount === 0) {
