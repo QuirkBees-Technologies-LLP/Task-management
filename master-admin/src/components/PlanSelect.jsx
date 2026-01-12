@@ -33,22 +33,21 @@ const PlanSelect = ({
   const options = useMemo(() => {
     const filtered = onlyActive ? plans.filter(p => p.status === "active") : plans;
     return filtered.map(plan => ({
+      label: plan.plan_name,
       value: plan._id,
-      label: `${plan.plan_name} - ₹${plan.price}/${plan.billing_period}`,
     }));
   }, [plans, onlyActive]);
-
+  
   return (
     <Select
       showSearch
       value={value}
+      defaultValue={value}
       onChange={onChange}
       placeholder={placeholder}
       loading={loading}
       disabled={disabled}
       allowClear={allowClear}
-      optionFilterProp="label"
-      filterSort={(a, b) => a.label.toLowerCase().localeCompare(b.label.toLowerCase())}
       options={options}
     />
   );

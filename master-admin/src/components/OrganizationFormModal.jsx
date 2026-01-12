@@ -10,7 +10,7 @@ const OrganizationFormModal = ({
   onSubmit,
 }) => {
   const [form] = Form.useForm();
-  const isEditing = Boolean(initialValues?._id);
+  const isEditing = Boolean(initialValues?._id);  
   
   /* -------------------- Populate Form -------------------- */
   useEffect(() => {
@@ -23,7 +23,7 @@ const OrganizationFormModal = ({
         firstName: initialValues.firstName,
         lastName: initialValues.lastName,
         email: initialValues.email,
-        planId: initialValues.planId?.value,
+        planId: initialValues.planId,
       });
     } else {
       form.resetFields();
@@ -33,7 +33,6 @@ const OrganizationFormModal = ({
   /* -------------------- Handlers -------------------- */
   const handleFinish = useCallback(
     (values) => {
-       console.log("FORM VALUES:", values);
       onSubmit(values, form);
     },
     [onSubmit, form]

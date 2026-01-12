@@ -135,7 +135,7 @@ const Organisation = () => {
         const payload = {
           name: values.name,
           slug: values.slug,
-          plan: values.planId,
+          planId: values.planId,
           owner: {
             firstName: values.firstName,
             lastName: values.lastName,
@@ -191,9 +191,9 @@ const Organisation = () => {
       _id: record._id,
       name: record.name,
       slug: record.slug,
-      firstName: record.ownerFirstName,
-      lastName: record.ownerLastName,
-      email: record.ownerEmail,
+      firstName: record.owner.firstName,
+      lastName: record.owner.lastName,
+      email: record.owner.email,
       planId: record.planId,
     });
     setOpen(true);
@@ -224,8 +224,8 @@ const Organisation = () => {
         key: "ownerName",
         render: (_, record) => (
           <span style={{ color: "#595959" }}>
-            {`${record.ownerFirstName || ""} ${
-              record.ownerLastName || ""
+            {`${record.owner.firstName || ""} ${
+              record.owner.lastName || ""
             }`.trim()}
           </span>
         ),
@@ -234,7 +234,7 @@ const Organisation = () => {
       {
         title: "Owner Email",
         dataIndex: "ownerEmail",
-        render: (text) => <a href={`mailto:${text}`}>{text}</a>,
+        render: (_, record) => <a href={`mailto:${record.owner.email}`}>{record.owner.email}</a>,
       },
       {
         title: "Status",
