@@ -49,6 +49,9 @@ const localizer = dateFnsLocalizer({
 });
 
 interface CalendarEvent extends Event {
+  title?: string;
+  start?: Date;
+  end?: Date;
   eventType?: 'task' | 'calendar';
   taskId?: string;
   projectId?: string;

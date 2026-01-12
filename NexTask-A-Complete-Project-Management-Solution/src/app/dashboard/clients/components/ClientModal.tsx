@@ -100,12 +100,13 @@ export const ClientModal: React.FC<ClientModalProps> = ({
   };
 
   const handleChange = (field: keyof Client, value: string | number) => {
-    setFormValues((prev) => ({ ...prev, [field]: value }));
+    const stringValue = typeof value === 'number' ? String(value) : value;
+    setFormValues((prev) => ({ ...prev, [field]: stringValue }));
     // Also update the corresponding field
     if (field === 'clientName') {
-      setFormValues((prev) => ({ ...prev, name: value }));
+      setFormValues((prev) => ({ ...prev, name: stringValue }));
     } else if (field === 'name') {
-      setFormValues((prev) => ({ ...prev, clientName: value }));
+      setFormValues((prev) => ({ ...prev, clientName: stringValue }));
     }
   };
 

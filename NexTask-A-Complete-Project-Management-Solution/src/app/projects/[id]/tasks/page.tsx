@@ -357,9 +357,11 @@ const ProjectTasksPage: React.FC = () => {
         return;
       }
 
-      const taskIdString = typeof selectedTask._id === 'object' && selectedTask._id !== null
-        ? selectedTask._id.toString()
-        : String(selectedTask._id ?? '');
+      // TypeScript guard: we know selectedTask._id exists from the check above
+      const taskId = selectedTask._id;
+      const taskIdString = typeof taskId === 'object' && taskId !== null
+        ? taskId.toString()
+        : String(taskId ?? '');
       const deleteResponse = await axios.delete(`/api/projects/${projectId}/tasks?taskId=${taskIdString}`, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -400,9 +402,11 @@ const ProjectTasksPage: React.FC = () => {
         return;
       }
 
-      const taskIdString = typeof task._id === 'object'
-        ? task._id.toString()
-        : String(task._id);
+      // TypeScript guard: we know task._id exists from the check above
+      const taskId = task._id;
+      const taskIdString = typeof taskId === 'object' && taskId !== null
+        ? taskId.toString()
+        : String(taskId);
       const statusResponse = await axios.patch(
         `/api/projects/${projectId}/tasks`,
         {
