@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { verifyToken } from '../../../helpers';
+import { verifyToken } from '../../helpers';
 import { TASK_STATUSES } from './constants';
 
 // GET: Fetch all task statuses

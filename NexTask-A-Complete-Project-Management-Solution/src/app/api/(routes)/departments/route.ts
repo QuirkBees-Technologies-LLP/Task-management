@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
 import clientPromise from '../../lib/mongodb';
 import { DATABASE_NAME } from '../../config';
-import { verifyToken, userRolesServer } from '../../helpers';
+import { verifyToken, userRolesServer, requireOrgIdFromToken, getOrgIdFromToken } from '../../helpers';
+import { addOrgIdToQuery, addOrgIdToDocument } from '../../lib/orgIdHelper';
 
 // GET: Fetch all departments
 export async function GET(request: Request) {
@@ -15,12 +16,15 @@ export async function GET(request: Request) {
     const limit = parseInt(searchParams.get('limit') || '10', 10);
     const search = searchParams.get('search') || '';
 
+    // Get org_id from token - required for organization scoping
+    const org_id = requireOrgIdFromToken(decoded);
+
     const client = await clientPromise;
     const db = client.db(DATABASE_NAME);
     const departmentsCollection = db.collection('departments');
 
-    // Build query
-    const query: any = {};
+    // Build query with org_id filter
+    const query: any = addOrgIdToQuery({}, org_id);
     if (search) {
       query.$or = [
         { name: { $regex: search, $options: 'i' } },
@@ -98,14 +102,19 @@ export async function POST(request: Request) {
       );
     }
 
+    // Get org_id from token - required for organization scoping
+    const org_id = requireOrgIdFromToken(decoded);
+
     const client = await clientPromise;
     const db = client.db(DATABASE_NAME);
     const departmentsCollection = db.collection('departments');
 
-    // Check if department with same name already exists
-    const existingDepartment = await departmentsCollection.findOne({
-      name: { $regex: new RegExp(`^${name.trim()}$`, 'i') }
-    });
+    // Check if department with same name already exists in the organization
+    const existingDepartment = await departmentsCollection.findOne(
+      addOrgIdToQuery({
+        name: { $regex: new RegExp(`^${name.trim()}$`, 'i') }
+      }, org_id)
+    );
     if (existingDepartment) {
       return NextResponse.json(
         { error: 'Department with this name already exists' },
@@ -113,9 +122,9 @@ export async function POST(request: Request) {
       );
     }
 
-    // Create the department with positions
+    // Create the department with positions and org_id
     // MongoDB will automatically generate _id for each position in the embedded array
-    const newDepartment = {
+    const newDepartment = addOrgIdToDocument({
       name: name.trim(),
       positions: validPositions.map((posName: string) => ({
         _id: new ObjectId(), // Generate ObjectId for each position
@@ -123,7 +132,7 @@ export async function POST(request: Request) {
       })),
       createdAt: new Date(),
       updatedAt: new Date(),
-    };
+    }, org_id);
 
     const result = await departmentsCollection.insertOne(newDepartment);
 
@@ -156,16 +165,21 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'Department ID is required' }, { status: 400 });
     }
 
+    // Get org_id from token - required for organization scoping
+    const org_id = requireOrgIdFromToken(decoded);
+
     const client = await clientPromise;
     const db = client.db(DATABASE_NAME);
     const departmentsCollection = db.collection('departments');
 
-    // Get existing department
-    const existingDepartment = await departmentsCollection.findOne({
-      _id: new ObjectId(departmentId)
-    });
+    // Get existing department - must be in the same organization
+    const existingDepartment = await departmentsCollection.findOne(
+      addOrgIdToQuery({
+        _id: new ObjectId(departmentId)
+      }, org_id)
+    );
     if (!existingDepartment) {
-      return NextResponse.json({ error: 'Department not found' }, { status: 404 });
+      return NextResponse.json({ error: 'Department not found in your organization' }, { status: 404 });
     }
 
     // Build update data
@@ -176,12 +190,14 @@ export async function PATCH(request: Request) {
         return NextResponse.json({ error: 'Department name is required' }, { status: 400 });
       }
 
-      // Check if name is being changed and if new name already exists
+      // Check if name is being changed and if new name already exists in the organization
       if (name.trim().toLowerCase() !== existingDepartment.name.toLowerCase()) {
-        const nameExists = await departmentsCollection.findOne({
-          name: { $regex: new RegExp(`^${name.trim()}$`, 'i') },
-          _id: { $ne: new ObjectId(departmentId) }
-        });
+        const nameExists = await departmentsCollection.findOne(
+          addOrgIdToQuery({
+            name: { $regex: new RegExp(`^${name.trim()}$`, 'i') },
+            _id: { $ne: new ObjectId(departmentId) }
+          }, org_id)
+        );
         if (nameExists) {
           return NextResponse.json(
             { error: 'Department with this name already exists' },
@@ -226,7 +242,7 @@ export async function PATCH(request: Request) {
     }
 
     await departmentsCollection.updateOne(
-      { _id: new ObjectId(departmentId) },
+      addOrgIdToQuery({ _id: new ObjectId(departmentId) }, org_id),
       { $set: updateData }
     );
 
@@ -253,22 +269,29 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'Department ID is required' }, { status: 400 });
     }
 
+    // Get org_id from token - required for organization scoping
+    const org_id = requireOrgIdFromToken(decoded);
+
     const client = await clientPromise;
     const db = client.db(DATABASE_NAME);
     const departmentsCollection = db.collection('departments');
 
-    // Get department before deleting
-    const department = await departmentsCollection.findOne({
-      _id: new ObjectId(departmentId)
-    });
+    // Get department before deleting - must be in the same organization
+    const department = await departmentsCollection.findOne(
+      addOrgIdToQuery({
+        _id: new ObjectId(departmentId)
+      }, org_id)
+    );
     if (!department) {
-      return NextResponse.json({ error: 'Department not found' }, { status: 404 });
+      return NextResponse.json({ error: 'Department not found in your organization' }, { status: 404 });
     }
 
     // Delete department
-    await departmentsCollection.deleteOne({
-      _id: new ObjectId(departmentId)
-    });
+    await departmentsCollection.deleteOne(
+      addOrgIdToQuery({
+        _id: new ObjectId(departmentId)
+      }, org_id)
+    );
 
     return NextResponse.json(
       { success: true, message: 'Department deleted successfully' },

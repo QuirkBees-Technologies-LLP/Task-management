@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
 import clientPromise from '../../lib/mongodb';
 import { DATABASE_NAME } from '../../config';
-import { verifyToken, userRolesServer } from '../../helpers';
+import { verifyToken, userRolesServer, requireOrgIdFromToken, getOrgIdFromToken } from '../../helpers';
+import { addOrgIdToQuery, addOrgIdToDocument } from '../../lib/orgIdHelper';
 
 // GET: Fetch all staff members
 export async function GET(request: Request) {
@@ -16,12 +17,15 @@ export async function GET(request: Request) {
     const search = searchParams.get('search') || '';
     const role = searchParams.get('role') || '';
 
+    // Get org_id from token - required for organization scoping
+    const org_id = requireOrgIdFromToken(decoded);
+
     const client = await clientPromise;
     const db = client.db(DATABASE_NAME);
     const usersCollection = db.collection('users');
 
-    // Build query
-    const query: any = {};
+    // Build query with org_id filter
+    const query: any = addOrgIdToQuery({}, org_id);
     if (search) {
       query.$or = [
         { firstName: { $regex: search, $options: 'i' } },
@@ -43,9 +47,9 @@ export async function GET(request: Request) {
       .sort({ createdAt: -1 })
       .toArray();
 
-    // Fetch departments to populate department and position names
+    // Fetch departments to populate department and position names (scoped to organization)
     const departmentsCollection = db.collection('departments');
-    const departments = await departmentsCollection.find({}).toArray();
+    const departments = await departmentsCollection.find(addOrgIdToQuery({}, org_id)).toArray();
     const departmentsMap = new Map();
     departments.forEach((dept) => {
       departmentsMap.set(dept._id.toString(), {
@@ -131,19 +135,22 @@ export async function POST(request: Request) {
       );
     }
 
+    // Get org_id from token - required for organization scoping
+    const org_id = requireOrgIdFromToken(decoded);
+
     const client = await clientPromise;
     const db = client.db(DATABASE_NAME);
     const usersCollection = db.collection('users');
 
-    // Check if user exists
-    const existingUser = await usersCollection.findOne({
-      email
-    });
+    // Check if user exists in the same organization
+    const existingUser = await usersCollection.findOne(
+      addOrgIdToQuery({ email }, org_id)
+    );
     if (existingUser) {
-      return NextResponse.json({ error: 'User with this email already exists' }, { status: 400 });
+      return NextResponse.json({ error: 'User with this email already exists in your organization' }, { status: 400 });
     }
 
-    const newStaff: any = {
+    const newStaff: any = addOrgIdToDocument({
       firstName,
       lastName,
       email,
@@ -151,7 +158,7 @@ export async function POST(request: Request) {
       phone: phone || '',
       createdAt: new Date(),
       updatedAt: new Date(),
-    };
+    }, org_id);
 
     // Store departmentId and positionId as ObjectIds if provided
     if (departmentId) {
@@ -189,16 +196,21 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'Staff ID is required' }, { status: 400 });
     }
 
+    // Get org_id from token - required for organization scoping
+    const org_id = requireOrgIdFromToken(decoded);
+
     const client = await clientPromise;
     const db = client.db(DATABASE_NAME);
     const usersCollection = db.collection('users');
 
-    // Verify staff member exists
-    const existingStaff = await usersCollection.findOne({
-      _id: new ObjectId(staffId)
-    });
+    // Verify staff member exists in the same organization
+    const existingStaff = await usersCollection.findOne(
+      addOrgIdToQuery({
+        _id: new ObjectId(staffId)
+      }, org_id)
+    );
     if (!existingStaff) {
-      return NextResponse.json({ error: 'Staff member not found' }, { status: 404 });
+      return NextResponse.json({ error: 'Staff member not found in your organization' }, { status: 404 });
     }
 
     const setData: any = { updatedAt: new Date() };
@@ -244,7 +256,7 @@ export async function PATCH(request: Request) {
     }
 
     const result = await usersCollection.updateOne(
-      { _id: new ObjectId(staffId) },
+      addOrgIdToQuery({ _id: new ObjectId(staffId) }, org_id),
       updateOperation
     );
 
@@ -272,26 +284,33 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'Staff ID is required' }, { status: 400 });
     }
 
+    // Get org_id from token - required for organization scoping
+    const org_id = requireOrgIdFromToken(decoded);
+
     const client = await clientPromise;
     const db = client.db(DATABASE_NAME);
     const usersCollection = db.collection('users');
 
     // Prevent deleting yourself
-    if (decoded.id === staffId) {
+    if (decoded.id === staffId || decoded.user_id === staffId) {
       return NextResponse.json({ error: 'You cannot delete your own account' }, { status: 400 });
     }
 
-    // Verify staff member exists
-    const existingStaff = await usersCollection.findOne({
-      _id: new ObjectId(staffId)
-    });
+    // Verify staff member exists in the same organization
+    const existingStaff = await usersCollection.findOne(
+      addOrgIdToQuery({
+        _id: new ObjectId(staffId)
+      }, org_id)
+    );
     if (!existingStaff) {
-      return NextResponse.json({ error: 'Staff member not found' }, { status: 404 });
+      return NextResponse.json({ error: 'Staff member not found in your organization' }, { status: 404 });
     }
 
-    const result = await usersCollection.deleteOne({
-      _id: new ObjectId(staffId)
-    });
+    const result = await usersCollection.deleteOne(
+      addOrgIdToQuery({
+        _id: new ObjectId(staffId)
+      }, org_id)
+    );
 
     if (result.deletedCount === 0) {
       return NextResponse.json({ error: 'Staff member not found' }, { status: 404 });

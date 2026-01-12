@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
 import clientPromise from '../../lib/mongodb';
 import { DATABASE_NAME } from '../../config';
-import { verifyToken } from '../../helpers';
+import { verifyToken, requireOrgIdFromToken, getOrgIdFromToken } from '../../helpers';
+import { addOrgIdToQuery, addOrgIdToDocument } from '../../lib/orgIdHelper';
 
 // GET: Fetch all invoices
 export async function GET(request: Request) {
@@ -16,11 +17,14 @@ export async function GET(request: Request) {
     const search = searchParams.get('search') || '';
     const status = searchParams.get('status') || '';
 
+    // Get org_id from token - required for organization scoping
+    const org_id = requireOrgIdFromToken(decoded);
+
     const client = await clientPromise;
     const db = client.db(DATABASE_NAME);
     const invoicesCollection = db.collection('invoices');
 
-    const query: any = {};
+    const query: any = addOrgIdToQuery({}, org_id);
     if (search) {
       query.$or = [
         { invoiceNumber: { $regex: search, $options: 'i' } },
@@ -101,14 +105,17 @@ export async function POST(request: Request) {
       );
     }
 
+    // Get org_id from token - required for organization scoping
+    const org_id = requireOrgIdFromToken(decoded);
+
     const client = await clientPromise;
     const db = client.db(DATABASE_NAME);
     const invoicesCollection = db.collection('invoices');
 
-    // Check if invoice number exists
-    const existingInvoice = await invoicesCollection.findOne({
-      invoiceNumber
-    });
+    // Check if invoice number exists in the same organization
+    const existingInvoice = await invoicesCollection.findOne(
+      addOrgIdToQuery({ invoiceNumber }, org_id)
+    );
     if (existingInvoice) {
       return NextResponse.json({ error: 'Invoice number already exists' }, { status: 400 });
     }
@@ -162,7 +169,7 @@ export async function POST(request: Request) {
         accountType: '',
       };
 
-    const newInvoice = {
+    const newInvoice = addOrgIdToDocument({
       invoiceNumber,
       clientName,
       clientProject: clientProject || '',
@@ -179,8 +186,8 @@ export async function POST(request: Request) {
       bankingDetails: bankingInfo,
       createdAt: new Date(),
       updatedAt: new Date(),
-      createdBy: decoded.id,
-    };
+      createdBy: decoded.id || decoded.user_id,
+    }, org_id);
 
     const result = await invoicesCollection.insertOne(newInvoice);
 
@@ -222,16 +229,21 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'Invoice ID is required' }, { status: 400 });
     }
 
+    // Get org_id from token - required for organization scoping
+    const org_id = requireOrgIdFromToken(decoded);
+
     const client = await clientPromise;
     const db = client.db(DATABASE_NAME);
     const invoicesCollection = db.collection('invoices');
 
-    // Verify invoice exists
-    const existingInvoice = await invoicesCollection.findOne({
-      _id: new ObjectId(invoiceId)
-    });
+    // Verify invoice exists in the same organization
+    const existingInvoice = await invoicesCollection.findOne(
+      addOrgIdToQuery({
+        _id: new ObjectId(invoiceId)
+      }, org_id)
+    );
     if (!existingInvoice) {
-      return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
+      return NextResponse.json({ error: 'Invoice not found in your organization' }, { status: 404 });
     }
 
     // CRITICAL: Invoice company/banking details are IMMUTABLE - never update them
@@ -254,7 +266,7 @@ export async function PATCH(request: Request) {
     delete updateData.bankingDetails;
 
     const result = await invoicesCollection.updateOne(
-      { _id: new ObjectId(invoiceId) },
+      addOrgIdToQuery({ _id: new ObjectId(invoiceId) }, org_id),
       { $set: updateData }
     );
 
@@ -282,21 +294,28 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'Invoice ID is required' }, { status: 400 });
     }
 
+    // Get org_id from token - required for organization scoping
+    const org_id = requireOrgIdFromToken(decoded);
+
     const client = await clientPromise;
     const db = client.db(DATABASE_NAME);
     const invoicesCollection = db.collection('invoices');
 
-    // Verify invoice exists
-    const existingInvoice = await invoicesCollection.findOne({
-      _id: new ObjectId(invoiceId)
-    });
+    // Verify invoice exists in the same organization
+    const existingInvoice = await invoicesCollection.findOne(
+      addOrgIdToQuery({
+        _id: new ObjectId(invoiceId)
+      }, org_id)
+    );
     if (!existingInvoice) {
-      return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
+      return NextResponse.json({ error: 'Invoice not found in your organization' }, { status: 404 });
     }
 
-    const result = await invoicesCollection.deleteOne({
-      _id: new ObjectId(invoiceId)
-    });
+    const result = await invoicesCollection.deleteOne(
+      addOrgIdToQuery({
+        _id: new ObjectId(invoiceId)
+      }, org_id)
+    );
 
     if (result.deletedCount === 0) {
       return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });

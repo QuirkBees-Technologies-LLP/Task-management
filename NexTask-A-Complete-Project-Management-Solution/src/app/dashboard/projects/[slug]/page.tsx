@@ -37,6 +37,12 @@ export default function ProjectDetails() {
     setDeleteOpen(true);
   };
 
+  // Handle saving the project
+  const handleSaveProject = (updatedProject: any) => {
+    enqueueSnackbar('Project updated successfully!', { variant: 'success' });
+    setEditOpen(false);
+  };
+
   return (
     <>
       {/* Page Header */}
@@ -66,6 +72,7 @@ export default function ProjectDetails() {
         setInitialValues={() => setEditOpen(false)}
         visible={editOpen}
         setVisible={setEditOpen}
+        onSave={handleSaveProject}
       />
 
       {/* Delete Confirmation Dialog */}

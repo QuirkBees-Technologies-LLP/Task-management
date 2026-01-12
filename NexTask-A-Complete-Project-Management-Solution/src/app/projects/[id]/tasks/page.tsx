@@ -253,8 +253,8 @@ const ProjectTasksPage: React.FC = () => {
     setSelectedTask(task);
     // Convert assignee ObjectId to string if it exists
     const assigneeValue = task.assignee
-      ? (typeof task.assignee === 'object' && task.assignee && '_id' in task.assignee && task.assignee._id
-        ? task.assignee._id.toString()
+      ? (typeof task.assignee === 'object' && task.assignee && '_id' in task.assignee
+        ? (task.assignee as any)._id.toString()
         : String(task.assignee))
       : '';
     setFormData({
@@ -285,9 +285,9 @@ const ProjectTasksPage: React.FC = () => {
 
       if (selectedTask && selectedTask._id) {
         // Update existing task
-        const taskIdString = typeof selectedTask._id === 'object'
-          ? selectedTask._id.toString()
-          : String(selectedTask._id);
+        const taskIdString = typeof selectedTask._id === 'object' && selectedTask._id !== null
+          ? (selectedTask._id as any).toString()
+          : String(selectedTask._id ?? '');
         const updateResponse = await axios.patch(
           `/api/projects/${projectId}/tasks`,
           {
@@ -357,9 +357,9 @@ const ProjectTasksPage: React.FC = () => {
         return;
       }
 
-      const taskIdString = typeof selectedTask._id === 'object'
+      const taskIdString = typeof selectedTask._id === 'object' && selectedTask._id !== null
         ? selectedTask._id.toString()
-        : String(selectedTask._id);
+        : String(selectedTask._id ?? '');
       const deleteResponse = await axios.delete(`/api/projects/${projectId}/tasks?taskId=${taskIdString}`, {
         headers: {
           Authorization: `Bearer ${token}`,

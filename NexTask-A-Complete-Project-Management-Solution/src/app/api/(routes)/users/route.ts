@@ -3,11 +3,12 @@ import { ObjectId } from 'mongodb';
 import clientPromise from '../../lib/mongodb';
 import { DATABASE_NAME, JWT_SECRET, senderEmail, tokenExpiryLong } from '../../config';
 import bcrypt from 'bcrypt';
-import { userRolesServer, verifyToken, extractPublicId } from '../../helpers';
+import { userRolesServer, verifyToken, extractPublicId, requireOrgIdFromToken, getOrgIdFromToken } from '../../helpers';
 import { sendEmail } from '../../lib/email';
 import { emailTemplateVariables } from '@/utils/constants';
 import jwt from 'jsonwebtoken';
 import cloudinary from '../../lib/cloudinary';
+import { addOrgIdToQuery, addOrgIdToDocument } from '../../lib/orgIdHelper';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -54,8 +55,17 @@ export async function GET(request: Request) {
       return NextResponse.json(currentUser, { status: 200 });
     }
 
-    // Fetch all users
-    const users = await usersCollection.find({}).toArray();
+    // Get org_id from token for organization scoping
+    const org_id = getOrgIdFromToken(decoded);
+    
+    // Build query with org_id filter
+    const query: any = {};
+    if (org_id) {
+      query.org_id = org_id;
+    }
+
+    // Fetch all users in the organization
+    const users = await usersCollection.find(query).toArray();
 
     // Filter out current user
     const filteredUsers = users.filter((user) => user.email !== myUser?.email);
@@ -76,6 +86,9 @@ export async function POST(request: Request) {
 
     const { email, firstName, lastName, superuser } = body;
 
+    // Get org_id from token - required for organization scoping
+    const org_id = requireOrgIdFromToken(decoded);
+
     const client = await clientPromise;
     const db = client.db(DATABASE_NAME);
     const usersCollection = db.collection('users');
@@ -93,18 +106,21 @@ export async function POST(request: Request) {
       }
     }
 
-    // Check if the user already exists in ANY organization
-    const existingUser = await usersCollection.findOne({ email });
+    // Check if the user already exists in the same organization
+    const existingUser = await usersCollection.findOne({ 
+      email,
+      org_id: org_id 
+    });
     if (existingUser) {
-      return NextResponse.json({ error: 'User with this email already exists' }, { status: 400 });
+      return NextResponse.json({ error: 'User with this email already exists in your organization' }, { status: 400 });
     }
 
     // Generate a temporary password
     const tempPassword = Math.random().toString(36).slice(-8); // Generate an 8-character random password
     const hashedPassword = await bcrypt.hash(tempPassword, 10);
 
-    // Create the user in the database
-    const newUser = await usersCollection.insertOne({
+    // Create the user in the database with org_id
+    const newUserData = addOrgIdToDocument({
       email,
       firstName,
       lastName,
@@ -115,7 +131,9 @@ export async function POST(request: Request) {
       role: superuser ? userRolesServer.admin : userRolesServer.regular, // Default role for invited users
       superuser: superuser ?? false, // Set superuser based on the request
       emailVerified: false,
-    });
+    }, org_id);
+
+    const newUser = await usersCollection.insertOne(newUserData);
 
     // Send an email to the user with the temporary password
     const invTemplate = await emailTemplatesCollection.findOne({
@@ -236,14 +254,20 @@ export async function PATCH(request: Request) {
       );
     }
 
+    // Get org_id from token - required for organization scoping
+    const org_id = requireOrgIdFromToken(decoded);
+
     const client = await clientPromise;
     const db = client.db(DATABASE_NAME);
     const usersCollection = db.collection('users');
 
-    // Get the user to update
-    const userToUpdate = await usersCollection.findOne({ _id: new ObjectId(userId) });
+    // Get the user to update - must be in the same organization
+    const userToUpdate = await usersCollection.findOne({ 
+      _id: new ObjectId(userId),
+      org_id: org_id 
+    });
     if (!userToUpdate) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      return NextResponse.json({ error: 'User not found in your organization' }, { status: 404 });
     }
 
     // Prevent users from changing their own role
@@ -283,14 +307,20 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
     }
 
+    // Get org_id from token - required for organization scoping
+    const org_id = requireOrgIdFromToken(decoded);
+
     const client = await clientPromise;
     const db = client.db(DATABASE_NAME);
     const usersCollection = db.collection('users');
 
-    // Get the user to delete
-    const userToDelete = await usersCollection.findOne({ _id: new ObjectId(id) });
+    // Get the user to delete - must be in the same organization
+    const userToDelete = await usersCollection.findOne({ 
+      _id: new ObjectId(id),
+      org_id: org_id 
+    });
     if (!userToDelete) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      return NextResponse.json({ error: 'User not found in your organization' }, { status: 404 });
     }
 
     // Prevent users from deleting themselves
@@ -302,7 +332,10 @@ export async function DELETE(request: Request) {
     }
 
     // Delete the user
-    const result = await usersCollection.deleteOne({ _id: new ObjectId(id) });
+    const result = await usersCollection.deleteOne({ 
+      _id: new ObjectId(id),
+      org_id: org_id 
+    });
 
     if (result.deletedCount === 0) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });

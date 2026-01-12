@@ -2,14 +2,24 @@ import { NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
 import clientPromise from '../../lib/mongodb';
 import { DATABASE_NAME } from '../../config';
-import { verifyToken } from '../../helpers';
+import { verifyToken, getOrgIdFromToken, requireOrgIdFromToken } from '../../helpers';
+import { addOrgIdToQuery, addOrgIdToDocument } from '../../lib/orgIdHelper';
 
-// GET: Fetch all contracts
+// GET: Fetch all contracts (filtered by organization)
 export async function GET(request: Request) {
   const { decoded, error, status } = await verifyToken(request);
   if (error) return NextResponse.json({ error }, { status });
 
   try {
+    // Get org_id from token for organization scoping
+    const org_id = getOrgIdFromToken(decoded);
+    if (!org_id) {
+      return NextResponse.json(
+        { error: 'Organization ID is required' },
+        { status: 403 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1', 10);
     const limit = parseInt(searchParams.get('limit') || '10', 10);
@@ -20,7 +30,8 @@ export async function GET(request: Request) {
     const db = client.db(DATABASE_NAME);
     const contractsCollection = db.collection('contracts');
 
-    const query: any = {};
+    // Build query with org_id filter
+    const query: any = addOrgIdToQuery({}, org_id);
     if (search) {
       query.$or = [
         { contractNumber: { $regex: search, $options: 'i' } },
@@ -64,12 +75,15 @@ export async function GET(request: Request) {
   }
 }
 
-// POST: Create new contract
+// POST: Create new contract (with org_id)
 export async function POST(request: Request) {
   const { decoded, error, status } = await verifyToken(request);
   if (error) return NextResponse.json({ error }, { status });
 
   try {
+    // Get org_id from token - required for organization scoping
+    const org_id = requireOrgIdFromToken(decoded);
+
     const body = await request.json();
     const { contractNumber, title, clientName, clientEmail, startDate, endDate, value, status: contractStatus, terms, description } = body;
 
@@ -84,15 +98,16 @@ export async function POST(request: Request) {
     const db = client.db(DATABASE_NAME);
     const contractsCollection = db.collection('contracts');
 
-    // Check if contract number exists
-    const existingContract = await contractsCollection.findOne({
-      contractNumber
-    });
+    // Check if contract number exists in the same organization
+    const existingContract = await contractsCollection.findOne(
+      addOrgIdToQuery({ contractNumber }, org_id)
+    );
     if (existingContract) {
-      return NextResponse.json({ error: 'Contract number already exists' }, { status: 400 });
+      return NextResponse.json({ error: 'Contract number already exists in your organization' }, { status: 400 });
     }
 
-    const newContract = {
+    // Create contract with org_id
+    const newContract = addOrgIdToDocument({
       contractNumber,
       title,
       clientName,
@@ -106,7 +121,7 @@ export async function POST(request: Request) {
       createdAt: new Date(),
       updatedAt: new Date(),
       createdBy: decoded.id,
-    };
+    }, org_id);
 
     const result = await contractsCollection.insertOne(newContract);
 
@@ -123,12 +138,15 @@ export async function POST(request: Request) {
   }
 }
 
-// PATCH: Update contract
+// PATCH: Update contract (with org_id check)
 export async function PATCH(request: Request) {
   const { decoded, error, status } = await verifyToken(request);
   if (error) return NextResponse.json({ error }, { status });
 
   try {
+    // Get org_id from token - required for organization scoping
+    const org_id = requireOrgIdFromToken(decoded);
+
     const body = await request.json();
     const { contractId, contractNumber, title, clientName, clientEmail, startDate, endDate, value, status: contractStatus, terms, description } = body;
 
@@ -140,12 +158,12 @@ export async function PATCH(request: Request) {
     const db = client.db(DATABASE_NAME);
     const contractsCollection = db.collection('contracts');
 
-    // Verify contract exists
-    const existingContract = await contractsCollection.findOne({
-      _id: new ObjectId(contractId)
-    });
+    // Verify contract exists in the same organization
+    const existingContract = await contractsCollection.findOne(
+      addOrgIdToQuery({ _id: new ObjectId(contractId) }, org_id)
+    );
     if (!existingContract) {
-      return NextResponse.json({ error: 'Contract not found' }, { status: 404 });
+      return NextResponse.json({ error: 'Contract not found in your organization' }, { status: 404 });
     }
 
     const updateData: any = { updatedAt: new Date() };
@@ -161,7 +179,7 @@ export async function PATCH(request: Request) {
     if (description !== undefined) updateData.description = description;
 
     const result = await contractsCollection.updateOne(
-      { _id: new ObjectId(contractId) },
+      addOrgIdToQuery({ _id: new ObjectId(contractId) }, org_id),
       { $set: updateData }
     );
 
@@ -176,12 +194,15 @@ export async function PATCH(request: Request) {
   }
 }
 
-// DELETE: Delete contract
+// DELETE: Delete contract (with org_id check)
 export async function DELETE(request: Request) {
   const { decoded, error, status } = await verifyToken(request);
   if (error) return NextResponse.json({ error }, { status });
 
   try {
+    // Get org_id from token - required for organization scoping
+    const org_id = requireOrgIdFromToken(decoded);
+
     const { searchParams } = new URL(request.url);
     const contractId = searchParams.get('_id');
 
@@ -193,17 +214,17 @@ export async function DELETE(request: Request) {
     const db = client.db(DATABASE_NAME);
     const contractsCollection = db.collection('contracts');
 
-    // Verify contract exists
-    const existingContract = await contractsCollection.findOne({
-      _id: new ObjectId(contractId)
-    });
+    // Verify contract exists in the same organization
+    const existingContract = await contractsCollection.findOne(
+      addOrgIdToQuery({ _id: new ObjectId(contractId) }, org_id)
+    );
     if (!existingContract) {
-      return NextResponse.json({ error: 'Contract not found' }, { status: 404 });
+      return NextResponse.json({ error: 'Contract not found in your organization' }, { status: 404 });
     }
 
-    const result = await contractsCollection.deleteOne({
-      _id: new ObjectId(contractId)
-    });
+    const result = await contractsCollection.deleteOne(
+      addOrgIdToQuery({ _id: new ObjectId(contractId) }, org_id)
+    );
 
     if (result.deletedCount === 0) {
       return NextResponse.json({ error: 'Contract not found' }, { status: 404 });

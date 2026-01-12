@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import clientPromise from '../../lib/mongodb';
 import { DATABASE_NAME } from '../../config';
-import { verifyToken } from '../../helpers';
+import { verifyToken, getOrgIdFromToken } from '../../helpers';
 import { ObjectId } from 'mongodb';
 
 export async function GET(request: Request) {
@@ -9,33 +9,43 @@ export async function GET(request: Request) {
   if (error) return NextResponse.json({ error }, { status });
 
   try {
+    // Get org_id from token
+    const org_id = getOrgIdFromToken(decoded);
+    if (!org_id) {
+      return NextResponse.json(
+        { error: 'Organization ID is required' },
+        { status: 403 }
+      );
+    }
+
     const client = await clientPromise;
     const db = client.db(DATABASE_NAME);
     const projectsCollection = db.collection('projects');
     const tasksCollection = db.collection('tasks');
 
-    // Get last 5 updated tasks
+    // Get last 5 updated tasks filtered by org_id
     const recentTasks = await tasksCollection
-      .find({})
+      .find({ org_id: org_id })
       .sort({ updatedAt: -1 })
       .limit(5)
       .toArray();
 
-    // Get last 5 created projects
+    // Get last 5 created projects filtered by org_id
     const recentProjects = await projectsCollection
-      .find({})
+      .find({ org_id: org_id })
       .sort({ createdAt: -1 })
       .limit(5)
       .toArray();
 
-    // Populate assignee info for tasks
+    // Populate assignee info for tasks (filter users by org_id)
     const usersCollection = db.collection('users');
     const tasksWithAssignees = await Promise.all(
       recentTasks.map(async (task) => {
         let assigneeInfo = null;
         if (task.assignee) {
           const user = await usersCollection.findOne({
-            _id: task.assignee
+            _id: task.assignee,
+            org_id: org_id // Ensure assignee belongs to same org
           });
           if (user) {
             assigneeInfo = {

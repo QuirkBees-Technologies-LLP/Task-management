@@ -30,7 +30,7 @@ const TaskDetailsView: React.FC<TaskDetailsViewProps> = ({ open, onClose, task, 
   if (!task) return null;
 
   const getPriorityColor = getPriorityColorUtil;
-  };
+  
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return 'Not set';

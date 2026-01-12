@@ -170,8 +170,8 @@ export default function Reports() {
 
       // Apply status filter
       if (filters.status !== 'all') {
-        filteredData = filteredData.filter((task: Task) => {
-          const taskStatus = (task.status || '').toLowerCase();
+        filteredData = filteredData.filter((item: any) => {
+          const taskStatus = (item.status || '').toLowerCase();
           switch (filters.status) {
             case 'in_progress':
               return taskStatus === 'in progress' || taskStatus === 'in-progress';

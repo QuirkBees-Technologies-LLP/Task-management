@@ -2,14 +2,24 @@ import { NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
 import clientPromise from '../../lib/mongodb';
 import { DATABASE_NAME } from '../../config';
-import { verifyToken } from '../../helpers';
+import { verifyToken, getOrgIdFromToken, requireOrgIdFromToken } from '../../helpers';
+import { addOrgIdToQuery, addOrgIdToDocument } from '../../lib/orgIdHelper';
 
-// GET: Fetch calendar events and tasks
+// GET: Fetch calendar events and tasks (filtered by organization)
 export async function GET(request: Request) {
   const { decoded, error, status } = await verifyToken(request);
   if (error) return NextResponse.json({ error }, { status });
 
   try {
+    // Get org_id from token for organization scoping
+    const org_id = getOrgIdFromToken(decoded);
+    if (!org_id) {
+      return NextResponse.json(
+        { error: 'Organization ID is required' },
+        { status: 403 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
@@ -21,9 +31,9 @@ export async function GET(request: Request) {
 
     const allEvents: any[] = [];
 
-    // Fetch calendar events
+    // Fetch calendar events filtered by org_id
     const eventsCollection = db.collection('calendarEvents');
-    const query: any = {};
+    const query: any = addOrgIdToQuery({}, org_id);
     if (startDate || endDate) {
       query.startDate = {};
       if (startDate) query.startDate.$gte = new Date(startDate);
@@ -46,12 +56,12 @@ export async function GET(request: Request) {
       });
     });
 
-    // Fetch tasks with due dates if requested
+    // Fetch tasks with due dates if requested (filtered by org_id)
     if (includeTasks) {
       const tasksCollection = db.collection('tasks');
-      const taskQuery: any = {
+      const taskQuery: any = addOrgIdToQuery({
         dueDate: { $exists: true, $ne: null }
-      };
+      }, org_id);
 
       if (startDate || endDate) {
         taskQuery.dueDate = {};
@@ -107,12 +117,15 @@ export async function GET(request: Request) {
   }
 }
 
-// POST: Create calendar event
+// POST: Create calendar event (with org_id)
 export async function POST(request: Request) {
   const { decoded, error, status } = await verifyToken(request);
   if (error) return NextResponse.json({ error }, { status });
 
   try {
+    // Get org_id from token - required for organization scoping
+    const org_id = requireOrgIdFromToken(decoded);
+
     const body = await request.json();
     const { title, description, startDate, endDate, type, location, attendees } = body;
 
@@ -127,7 +140,8 @@ export async function POST(request: Request) {
     const db = client.db(DATABASE_NAME);
     const eventsCollection = db.collection('calendarEvents');
 
-    const newEvent = {
+    // Create event with org_id
+    const newEvent = addOrgIdToDocument({
       title,
       description: description || '',
       startDate: new Date(startDate),
@@ -138,7 +152,7 @@ export async function POST(request: Request) {
       createdAt: new Date(),
       updatedAt: new Date(),
       createdBy: decoded.id,
-    };
+    }, org_id);
 
     const result = await eventsCollection.insertOne(newEvent);
 
@@ -155,12 +169,15 @@ export async function POST(request: Request) {
   }
 }
 
-// PATCH: Update calendar event
+// PATCH: Update calendar event (with org_id check)
 export async function PATCH(request: Request) {
   const { decoded, error, status } = await verifyToken(request);
   if (error) return NextResponse.json({ error }, { status });
 
   try {
+    // Get org_id from token - required for organization scoping
+    const org_id = requireOrgIdFromToken(decoded);
+
     const body = await request.json();
     const { eventId, title, description, startDate, endDate, type, location, attendees } = body;
 
@@ -172,12 +189,12 @@ export async function PATCH(request: Request) {
     const db = client.db(DATABASE_NAME);
     const eventsCollection = db.collection('calendarEvents');
 
-    // Verify event exists
-    const existingEvent = await eventsCollection.findOne({
-      _id: new ObjectId(eventId)
-    });
+    // Verify event exists in the same organization
+    const existingEvent = await eventsCollection.findOne(
+      addOrgIdToQuery({ _id: new ObjectId(eventId) }, org_id)
+    );
     if (!existingEvent) {
-      return NextResponse.json({ error: 'Event not found' }, { status: 404 });
+      return NextResponse.json({ error: 'Event not found in your organization' }, { status: 404 });
     }
 
     const updateData: any = { updatedAt: new Date() };
@@ -190,7 +207,7 @@ export async function PATCH(request: Request) {
     if (attendees) updateData.attendees = attendees;
 
     const result = await eventsCollection.updateOne(
-      { _id: new ObjectId(eventId) },
+      addOrgIdToQuery({ _id: new ObjectId(eventId) }, org_id),
       { $set: updateData }
     );
 
@@ -205,12 +222,15 @@ export async function PATCH(request: Request) {
   }
 }
 
-// DELETE: Delete calendar event
+// DELETE: Delete calendar event (with org_id check)
 export async function DELETE(request: Request) {
   const { decoded, error, status } = await verifyToken(request);
   if (error) return NextResponse.json({ error }, { status });
 
   try {
+    // Get org_id from token - required for organization scoping
+    const org_id = requireOrgIdFromToken(decoded);
+
     const { searchParams } = new URL(request.url);
     const eventId = searchParams.get('_id');
 
@@ -222,17 +242,17 @@ export async function DELETE(request: Request) {
     const db = client.db(DATABASE_NAME);
     const eventsCollection = db.collection('calendarEvents');
 
-    // Verify event exists
-    const existingEvent = await eventsCollection.findOne({
-      _id: new ObjectId(eventId)
-    });
+    // Verify event exists in the same organization
+    const existingEvent = await eventsCollection.findOne(
+      addOrgIdToQuery({ _id: new ObjectId(eventId) }, org_id)
+    );
     if (!existingEvent) {
-      return NextResponse.json({ error: 'Event not found' }, { status: 404 });
+      return NextResponse.json({ error: 'Event not found in your organization' }, { status: 404 });
     }
 
-    const result = await eventsCollection.deleteOne({
-      _id: new ObjectId(eventId)
-    });
+    const result = await eventsCollection.deleteOne(
+      addOrgIdToQuery({ _id: new ObjectId(eventId) }, org_id)
+    );
 
     if (result.deletedCount === 0) {
       return NextResponse.json({ error: 'Event not found' }, { status: 404 });

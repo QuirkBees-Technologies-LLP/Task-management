@@ -2,12 +2,13 @@ import { NextResponse } from 'next/server';
 import clientPromise from '../../lib/mongodb';
 import { DATABASE_NAME } from '../../config';
 import { ObjectId } from 'mongodb';
-import { userRolesServer, verifyToken } from '../../helpers';
+import { userRolesServer, verifyToken, requireOrgIdFromToken, getOrgIdFromToken } from '../../helpers';
 import { addTaskForAllUsers, deleteTaskForAllUsers } from '../../lib/taskController';
+import { addOrgIdToQuery, addOrgIdToDocument } from '../../lib/orgIdHelper';
 
 // POST: Add a new task
 export async function POST(request: Request) {
-  const { error, status } = await verifyToken(request, userRolesServer.admin, true);
+  const { decoded, error, status } = await verifyToken(request, userRolesServer.admin, true);
   if (error) return NextResponse.json({ error }, { status });
 
   try {
@@ -23,12 +24,15 @@ export async function POST(request: Request) {
       );
     }
 
+    // Get org_id from token - required for organization scoping
+    const org_id = requireOrgIdFromToken(decoded);
+
     const client = await clientPromise;
     const db = client.db(DATABASE_NAME);
     const tasksCollection = db.collection('tasks');
-    const count = await tasksCollection.countDocuments();
+    const count = await tasksCollection.countDocuments(addOrgIdToQuery({}, org_id));
 
-    const result = await tasksCollection.insertOne({
+    const newTask = addOrgIdToDocument({
       title,
       description,
       dueDate: new Date(dueDate),
@@ -36,7 +40,9 @@ export async function POST(request: Request) {
       createdAt: new Date(),
       updatedAt: new Date(),
       order: count + 1,
-    });
+    }, org_id);
+
+    const result = await tasksCollection.insertOne(newTask);
 
     await addTaskForAllUsers(result);
 
@@ -52,7 +58,7 @@ export async function POST(request: Request) {
 
 // PUT: Update an existing task
 export async function PUT(request: Request) {
-  const { error, status } = await verifyToken(request, userRolesServer.admin);
+  const { decoded, error, status } = await verifyToken(request, userRolesServer.admin);
   if (error) return NextResponse.json({ error }, { status });
 
   try {
@@ -68,12 +74,15 @@ export async function PUT(request: Request) {
       );
     }
 
+    // Get org_id from token - required for organization scoping
+    const org_id = requireOrgIdFromToken(decoded);
+
     const client = await clientPromise;
     const db = client.db(DATABASE_NAME);
     const tasksCollection = db.collection('tasks');
 
     const result = await tasksCollection.updateOne(
-      { _id: new ObjectId(_id) },
+      addOrgIdToQuery({ _id: new ObjectId(_id) }, org_id),
       {
         $set: {
           title,
@@ -98,7 +107,7 @@ export async function PUT(request: Request) {
 
 // GET: Retrieve all tasks
 export async function GET(request: Request) {
-  const { error, status } = await verifyToken(request, userRolesServer.admin);
+  const { decoded, error, status } = await verifyToken(request, userRolesServer.admin);
   if (error) return NextResponse.json({ error }, { status });
 
   try {
@@ -109,12 +118,15 @@ export async function GET(request: Request) {
     const sortBy = searchParams.get('sortBy') || 'createdAt';
     const sortOrder = searchParams.get('sortOrder') || 'desc';
 
+    // Get org_id from token - required for organization scoping
+    const org_id = requireOrgIdFromToken(decoded);
+
     const client = await clientPromise;
     const db = client.db(DATABASE_NAME);
     const tasksCollection = db.collection('tasks');
 
-    // Build query for search
-    const query: any = {};
+    // Build query for search with org_id filter
+    const query: any = addOrgIdToQuery({}, org_id);
     if (search) {
       query.$or = [
         { title: { $regex: search, $options: 'i' } },
@@ -137,7 +149,7 @@ export async function GET(request: Request) {
 
     // Get paginated tasks
     const skip = (page - 1) * limit;
-    let tasks = await tasksCollection
+    const tasks = await tasksCollection
       .find(query)
       .sort(sort)
       .skip(skip)
@@ -173,7 +185,7 @@ export async function GET(request: Request) {
 
 // DELETE: Remove a task by ID
 export async function DELETE(request: Request) {
-  const { error, status } = await verifyToken(request, userRolesServer.admin);
+  const { decoded, error, status } = await verifyToken(request, userRolesServer.admin);
   if (error) return NextResponse.json({ error }, { status });
 
   try {
@@ -184,11 +196,16 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'Task ID (_id) is required' }, { status: 400 });
     }
 
+    // Get org_id from token - required for organization scoping
+    const org_id = requireOrgIdFromToken(decoded);
+
     const client = await clientPromise;
     const db = client.db(DATABASE_NAME);
     const tasksCollection = db.collection('tasks');
 
-    const result = await tasksCollection.deleteOne({ _id: new ObjectId(id) });
+    const result = await tasksCollection.deleteOne(
+      addOrgIdToQuery({ _id: new ObjectId(id) }, org_id)
+    );
 
     if (result.deletedCount === 0) {
       return NextResponse.json({ error: 'Task not found' }, { status: 404 });
@@ -205,7 +222,7 @@ export async function DELETE(request: Request) {
 
 // PATCH: Update task order
 export async function PATCH(request: Request) {
-  const { error, status } = await verifyToken(request, userRolesServer.admin);
+  const { decoded, error, status } = await verifyToken(request, userRolesServer.admin);
   if (error) return NextResponse.json({ error }, { status });
 
   try {
@@ -216,13 +233,16 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'orderedTasks array is required' }, { status: 400 });
     }
 
+    // Get org_id from token - required for organization scoping
+    const org_id = requireOrgIdFromToken(decoded);
+
     const client = await clientPromise;
     const db = client.db(DATABASE_NAME);
     const tasksCollection = db.collection('tasks');
 
     const bulkOps = orderedTasks.map((task) => ({
       updateOne: {
-        filter: { _id: new ObjectId(task._id) },
+        filter: addOrgIdToQuery({ _id: new ObjectId(task._id) }, org_id),
         update: { $set: { order: task.order, updatedAt: new Date() } },
       },
     }));

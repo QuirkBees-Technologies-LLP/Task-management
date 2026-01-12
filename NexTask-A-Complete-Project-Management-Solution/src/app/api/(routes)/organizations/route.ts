@@ -224,18 +224,22 @@ export async function POST(request: Request) {
         const tempPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8).toUpperCase();
         const hashedPassword = await bcrypt.hash(tempPassword, 10);
 
-        // Create owner user first
+        // IMPORTANT: Owner must have role 'Admin' (not 'ORG_ADMIN' or any other value)
+        // This is the standard admin role used throughout the system
+        // We explicitly use 'Admin' string to ensure consistency
         const ownerUser = {
             firstName: ownerName.split(' ')[0] || ownerName,
             lastName: ownerName.split(' ').slice(1).join(' ') || '',
             email: ownerEmail,
             password: hashedPassword,
-            role: userRolesServer.admin,
+            role: 'Admin', // Explicitly use 'Admin' string - this is the standard admin role
             isTemporaryPassword: true,
             isEmailVerified: false,
             createdAt: new Date(),
             updatedAt: new Date(),
         };
+
+        console.log('Creating owner user with role: Admin for email:', ownerEmail);
 
         let ownerId: ObjectId;
         let ownerResult;
@@ -243,6 +247,17 @@ export async function POST(request: Request) {
         try {
             ownerResult = await usersCollection.insertOne(ownerUser);
             ownerId = ownerResult.insertedId;
+            
+            // Verify the role was set correctly - must be exactly 'Admin'
+            const verifyOwner = await usersCollection.findOne({ _id: ownerId });
+            if (verifyOwner && verifyOwner.role !== 'Admin') {
+                console.error('ERROR: Owner role was not set correctly! Expected "Admin", got:', verifyOwner.role);
+                // Fix it immediately - set to 'Admin'
+                await usersCollection.updateOne(
+                    { _id: ownerId },
+                    { $set: { role: 'Admin' } }
+                );
+            }
         } catch (userError: any) {
             console.error('Error creating owner user:', userError);
             return NextResponse.json(
@@ -305,12 +320,31 @@ export async function POST(request: Request) {
             );
         }
 
-        // Update owner user with organization reference (for future use)
+        // Update owner user with organization reference and org_id
         try {
             await usersCollection.updateOne(
                 { _id: ownerId },
-                { $set: { organizationId: result.insertedId } }
+                { $set: { 
+                    organizationId: result.insertedId,
+                    org_id: result.insertedId  // Set org_id for organization scoping
+                    // NOTE: We explicitly do NOT set role here to avoid overwriting it
+                } }
             );
+            
+            // Verify role is still correct after update - must be exactly 'Admin'
+            const verifyAfterUpdate = await usersCollection.findOne({ _id: ownerId });
+            if (verifyAfterUpdate && verifyAfterUpdate.role !== 'Admin') {
+                console.error('CRITICAL: Role was lost after org_id update! Fixing...', {
+                    email: verifyAfterUpdate.email,
+                    currentRole: verifyAfterUpdate.role,
+                    expectedRole: 'Admin'
+                });
+                // Fix it immediately - set to 'Admin'
+                await usersCollection.updateOne(
+                    { _id: ownerId },
+                    { $set: { role: 'Admin' } }
+                );
+            }
         } catch (updateError) {
             // Log but don't fail - organization is already created
             console.error('Error updating owner with organization ID:', updateError);

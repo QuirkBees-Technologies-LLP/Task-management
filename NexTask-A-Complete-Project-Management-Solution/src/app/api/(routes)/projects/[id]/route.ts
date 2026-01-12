@@ -1,14 +1,25 @@
 import { NextResponse } from 'next/server';
 import clientPromise from '../../../lib/mongodb';
 import { DATABASE_NAME } from '../../../config';
-import { verifyToken, userRolesServer } from '../../../helpers';
+import { verifyToken, userRolesServer, getOrgIdFromToken, verifySystemAdmin } from '../../../helpers';
 import { sendEmail } from '@/utils/sendEmail';
 import { getEmailTemplate } from '@/utils/emailTemplates';
 import { ObjectId } from 'mongodb';
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
-  const { decoded, error, status } = await verifyToken(request);
-  if (error) return NextResponse.json({ error }, { status });
+  // Check if system admin
+  const systemAdminCheck = await verifySystemAdmin(request);
+  const isSystemAdmin = !systemAdminCheck.error;
+
+  // If not system admin, verify as regular user
+  let decoded: any;
+  if (!isSystemAdmin) {
+    const tokenResult = await verifyToken(request);
+    if (tokenResult.error) return NextResponse.json({ error: tokenResult.error }, { status: tokenResult.status });
+    decoded = tokenResult.decoded;
+  } else {
+    decoded = systemAdminCheck.decoded;
+  }
 
   try {
     const id = params?.id || new URL(request.url).pathname.split('/').pop();
@@ -25,6 +36,28 @@ export async function GET(request: Request, { params }: { params: { id: string }
 
     if (!project) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
+
+    // If not system admin, verify project belongs to user's org
+    if (!isSystemAdmin) {
+      const org_id = getOrgIdFromToken(decoded);
+      if (!org_id) {
+        return NextResponse.json(
+          { error: 'Organization ID is required' },
+          { status: 403 }
+        );
+      }
+
+      const projectOrgId = project.org_id instanceof ObjectId
+        ? project.org_id
+        : new ObjectId(project.org_id);
+
+      if (!projectOrgId.equals(org_id)) {
+        return NextResponse.json(
+          { error: 'Project not found' },
+          { status: 404 }
+        );
+      }
     }
 
     return NextResponse.json({ success: true, project }, { status: 200 });
@@ -45,6 +78,15 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       return NextResponse.json({ error: 'Project ID is required' }, { status: 400 });
     }
 
+    // Get org_id from token
+    const org_id = getOrgIdFromToken(decoded);
+    if (!org_id) {
+      return NextResponse.json(
+        { error: 'Organization ID is required' },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     const { name, clientName, description, dueDate, status: projectStatus } = body;
 
@@ -52,10 +94,21 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     const db = client.db(DATABASE_NAME);
     const projectsCollection = db.collection('projects');
 
-    // Check if project exists
+    // Check if project exists and belongs to user's org
     const existingProject = await projectsCollection.findOne({ _id: new ObjectId(id) });
     if (!existingProject) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
+
+    const projectOrgId = existingProject.org_id instanceof ObjectId
+      ? existingProject.org_id
+      : new ObjectId(existingProject.org_id);
+
+    if (!projectOrgId.equals(org_id)) {
+      return NextResponse.json(
+        { error: 'You can only modify projects in your own organization' },
+        { status: 403 }
+      );
     }
 
     // Prepare update object
@@ -100,6 +153,15 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       return NextResponse.json({ error: 'Project ID is required' }, { status: 400 });
     }
 
+    // Get org_id from token
+    const org_id = getOrgIdFromToken(decoded);
+    if (!org_id) {
+      return NextResponse.json(
+        { error: 'Organization ID is required' },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     const { name, description, status: projectStatus, startDate, endDate, milestone, updateMessage } = body;
 
@@ -112,6 +174,17 @@ export async function PUT(request: Request, { params }: { params: { id: string }
 
     if (!existingProject) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
+
+    const projectOrgId = existingProject.org_id instanceof ObjectId
+      ? existingProject.org_id
+      : new ObjectId(existingProject.org_id);
+
+    if (!projectOrgId.equals(org_id)) {
+      return NextResponse.json(
+        { error: 'You can only modify projects in your own organization' },
+        { status: 403 }
+      );
     }
 
     // Prepare update object
@@ -154,7 +227,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
           typeof m === 'object' ? new ObjectId(m.userId || m.id || m._id) : new ObjectId(m)
         );
         const usersCollection = db.collection('users');
-        const members = await usersCollection.find({ _id: { $in: memberIds } }).toArray();
+        const members = await usersCollection.find({ _id: { $in: memberIds }, org_id: org_id }).toArray();
         memberEmails = members.map((m: any) => m.email).filter(Boolean);
         members.forEach((m: any) => {
           if (m.email && m.firstName && m.lastName) {
@@ -166,10 +239,10 @@ export async function PUT(request: Request, { params }: { params: { id: string }
         memberEmails = existingProject.memberEmails.filter(Boolean);
       }
 
-      // If no members found, try to get all users (fallback)
+      // If no members found, try to get all users in the org (fallback)
       if (memberEmails.length === 0) {
         const usersCollection = db.collection('users');
-        const allUsers = await usersCollection.find({}).toArray();
+        const allUsers = await usersCollection.find({ org_id: org_id }).toArray();
         memberEmails = allUsers.map((u: any) => u.email).filter(Boolean);
         allUsers.forEach((u: any) => {
           if (u.email && u.firstName && u.lastName) {
@@ -226,17 +299,37 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
       return NextResponse.json({ error: 'Project ID is required' }, { status: 400 });
     }
 
+    // Get org_id from token
+    const org_id = getOrgIdFromToken(decoded);
+    if (!org_id) {
+      return NextResponse.json(
+        { error: 'Organization ID is required' },
+        { status: 403 }
+      );
+    }
+
     const client = await clientPromise;
     const db = client.db(DATABASE_NAME);
     const projectsCollection = db.collection('projects');
 
-    // Verify project exists
+    // Verify project belongs to user's org
     const existingProject = await projectsCollection.findOne({ _id: new ObjectId(id) });
     if (!existingProject) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
-    const result = await projectsCollection.deleteOne({ _id: new ObjectId(id) });
+    const projectOrgId = existingProject.org_id instanceof ObjectId
+      ? existingProject.org_id
+      : new ObjectId(existingProject.org_id);
+
+    if (!projectOrgId.equals(org_id)) {
+      return NextResponse.json(
+        { error: 'You can only delete projects in your own organization' },
+        { status: 403 }
+      );
+    }
+
+    const result = await projectsCollection.deleteOne({ _id: new ObjectId(id), org_id: org_id });
 
     if (result.deletedCount === 0) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
