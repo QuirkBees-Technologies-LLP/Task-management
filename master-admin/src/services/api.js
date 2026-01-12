@@ -67,8 +67,8 @@ export const organizationAPI = {
   create: (payload) =>
     api.post("/superadmin/organizations", payload),
 
-  list: ({ page = 1, limit = 10, search = "", plan = "" }) =>
-    api.get("/superadmin/organizations", { params: { page, limit, search, plan } }),
+  list: ({ page = 1, limit = 10, search = "", plan = "", status = "" }) =>
+    api.get("/superadmin/organizations", { params: { page, limit, search, plan, status } }),
 
   updateStatus: (id, payload) =>
     api.patch(`/superadmin/organizations/${id}`, payload),

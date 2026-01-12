@@ -154,7 +154,7 @@ const Plans = () => {
         title: "Price",
         dataIndex: "price",
         key: "price",
-        render: (v) => <b>₹{v}</b>,
+        render: (v) => <b>${v}</b>,
       },
       {
         title: "Billing",

@@ -9,7 +9,11 @@ import {
   Space,
 } from "antd";
 import { useEffect } from "react";
-import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
+import {
+  DeleteOutlined,
+  PlusOutlined,
+  DollarOutlined,
+} from "@ant-design/icons";
 
 const { TextArea } = Input;
 
@@ -72,17 +76,13 @@ const PlansFormModal = ({
         <Form.Item
           name="price"
           label="Price"
-          rules={[
-            { required: true, message: "Price is required" },
-            { type: "number", min: 0, message: "Price must be 0 or greater" },
-          ]}
+          rules={[{ required: true, message: "Price is required" }]}
         >
-          <InputNumber
-            style={{ width: "100%" }}
+          <Input
+            type="number"
             min={0}
-            precision={0}
-            step={1}
             placeholder="Enter price"
+            addonBefore={<DollarOutlined />}
           />
         </Form.Item>
 

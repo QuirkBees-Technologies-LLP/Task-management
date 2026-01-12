@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Modal, Form, Input, Button, Select } from "antd";
-import PlanSelect from "../components/PlanSelect";
+import CommonSelect from "./CommonSelect";
 
 const OrganizationFormModal = ({
   open,
@@ -10,8 +10,8 @@ const OrganizationFormModal = ({
   onSubmit,
 }) => {
   const [form] = Form.useForm();
-  const isEditing = Boolean(initialValues?._id);  
-  
+  const isEditing = Boolean(initialValues?._id);
+
   /* -------------------- Populate Form -------------------- */
   useEffect(() => {
     if (!open) return;
@@ -105,11 +105,22 @@ const OrganizationFormModal = ({
         <Form.Item
           label="Select Plan"
           name="planId"
-          getValueFromEvent={(value) => value}
           rules={[{ required: true, message: "Please select a plan" }]}
         >
-          <PlanSelect />
+          <CommonSelect
+            placeholder="Select a plan"
+            fetcher={async () => {
+              const res = await plansAPI.list();
+              return res.data?.plans || [];
+            }}
+            filterFn={(plan) => plan.status === "active"}
+            mapOption={(plan) => ({
+              label: plan.plan_name,
+              value: plan._id,
+            })}
+          />
         </Form.Item>
+
         <div style={{ textAlign: "right" }}>
           <Button
             type="primary"
