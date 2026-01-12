@@ -5,6 +5,7 @@ import { DATABASE_NAME } from '../../../../config';
 import { verifySystemAdmin } from '../../../../helpers';
 import { validateSlug, normalizeSlug } from '../../../../lib/organizations';
 import { clearSlugCache } from '../../../../lib/orgMiddleware';
+import { resolvePlanNameToId } from '../../../../lib/planResolver';
 
 /**
  * GET: Fetch single organization by ID
@@ -83,6 +84,7 @@ export async function GET(
           ownerEmail,
           ownerFirstName,
           ownerLastName,
+          planId: organization.planId ? organization.planId.toString() : null,
           planName: organization.planName || '',
           planStartDate: organization.planStartDate || null,
           planEndDate: organization.planEndDate || null,
@@ -222,9 +224,24 @@ export async function PATCH(
       updateData.slug = normalizedSlug;
     }
 
-    // Update plan fields if provided
+    // Resolve planName to planId (if provided) - always update both together
     if (planName !== undefined) {
-      updateData.planName = planName || '';
+      if (planName === null || planName === '' || (typeof planName === 'string' && planName.trim() === '')) {
+        // Clear plan if empty/null
+        updateData.planId = null;
+        updateData.planName = '';
+      } else {
+        try {
+          const planResolution = await resolvePlanNameToId(planName);
+          updateData.planId = planResolution.planId;
+          updateData.planName = planResolution.resolvedPlanName;
+        } catch (planError: any) {
+          return NextResponse.json(
+            { error: planError.message || 'Failed to resolve plan' },
+            { status: 400 }
+          );
+        }
+      }
     }
 
     if (planStartDate !== undefined) {
@@ -407,6 +424,7 @@ export async function PATCH(
           ownerEmail,
           ownerFirstName,
           ownerLastName,
+          planId: updatedOrg!.planId ? updatedOrg!.planId.toString() : null,
           planName: updatedOrg!.planName || '',
           planStartDate: updatedOrg!.planStartDate || null,
           planEndDate: updatedOrg!.planEndDate || null,

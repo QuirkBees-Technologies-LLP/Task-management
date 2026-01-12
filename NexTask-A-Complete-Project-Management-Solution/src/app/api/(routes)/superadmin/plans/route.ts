@@ -34,12 +34,43 @@ export async function GET(request: Request) {
       query.status = statusFilter;
     }
 
-    // Add search functionality
+    // Global search: search across all relevant fields with partial, case-insensitive matching
     if (search) {
-      query.$or = [
+      const searchConditions: any[] = [
         { plan_name: { $regex: search, $options: 'i' } },
         { description: { $regex: search, $options: 'i' } },
+        { status: { $regex: search, $options: 'i' } },
+        { billing_period: { $regex: search, $options: 'i' } },
       ];
+
+      // Search in price - try exact numeric match first
+      const searchNum = parseFloat(search);
+      if (!isNaN(searchNum)) {
+        searchConditions.push({ price: searchNum });
+      }
+      
+      // Search price as string representation for partial matching (e.g., "99" matches "199")
+      searchConditions.push({ 
+        $expr: { 
+          $regexMatch: { 
+            input: { $toString: '$price' }, 
+            regex: search, 
+            options: 'i' 
+          } 
+        } 
+      });
+
+      // Search in features array (partial match in any feature string)
+      searchConditions.push({ 
+        features: { 
+          $elemMatch: { 
+            $regex: search, 
+            $options: 'i' 
+          } 
+        } 
+      });
+
+      query.$or = searchConditions;
     }
 
     // Fetch plans with pagination

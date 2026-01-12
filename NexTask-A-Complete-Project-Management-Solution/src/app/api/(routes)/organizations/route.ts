@@ -4,6 +4,7 @@ import clientPromise from '../../lib/mongodb';
 import { DATABASE_NAME, JWT_SECRET, senderEmail, tokenExpiryLong } from '../../config';
 import { verifyToken, userRolesServer } from '../../helpers';
 import { ensureOrganizationIndexes, validateSlug, normalizeSlug } from '../../lib/organizations';
+import { resolvePlanNameToId, resolvePlanSearchToIds } from '../../lib/planResolver';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { sendEmail } from '../../lib/email';
@@ -19,20 +20,68 @@ export async function GET(request: Request) {
         const page = parseInt(searchParams.get('page') || '1', 10);
         const limit = parseInt(searchParams.get('limit') || '10', 10);
         const search = searchParams.get('search') || '';
+        const planSearch = searchParams.get('planSearch') || '';
         const statusFilter = searchParams.get('status') || '';
 
         const client = await clientPromise;
         const db = client.db(DATABASE_NAME);
         const organizationsCollection = db.collection('organizations');
+        const usersCollection = db.collection('users');
 
         // Build query
         const query: any = { deletedAt: null }; // Only non-deleted organizations
+        
+        // Global search: search across organization-related fields (excluding plan-based filtering)
         if (search) {
-            query.$or = [
+            const searchConditions: any[] = [
                 { name: { $regex: search, $options: 'i' } },
                 { slug: { $regex: search, $options: 'i' } },
+                { status: { $regex: search, $options: 'i' } },
             ];
+            
+            // Search by owner information - find matching users first
+            const matchingOwners = await usersCollection
+                .find({
+                    $or: [
+                        { email: { $regex: search, $options: 'i' } },
+                        { firstName: { $regex: search, $options: 'i' } },
+                        { lastName: { $regex: search, $options: 'i' } },
+                    ],
+                })
+                .project({ _id: 1 })
+                .toArray();
+            
+            if (matchingOwners.length > 0) {
+                const ownerIds = matchingOwners.map((owner) => owner._id);
+                searchConditions.push({ ownerId: { $in: ownerIds } });
+            }
+            
+            query.$or = searchConditions;
         }
+
+        // Plan-based filtering using planSearch (ID-driven, not text-based on planName)
+        if (planSearch) {
+            const planIds = await resolvePlanSearchToIds(planSearch);
+            if (planIds.length === 0) {
+                // No matching plans => return empty result
+                return NextResponse.json(
+                    {
+                        success: true,
+                        organizations: [],
+                        pagination: {
+                            page,
+                            limit,
+                            total: 0,
+                            totalPages: 0,
+                        },
+                    },
+                    { status: 200 }
+                );
+            }
+            // Filter organizations by planId
+            query.planId = { $in: planIds };
+        }
+        
         if (statusFilter) {
             query.status = statusFilter;
         }
@@ -48,7 +97,6 @@ export async function GET(request: Request) {
             .toArray();
 
         // Populate owner information
-        const usersCollection = db.collection('users');
         const organizationsWithOwner = await Promise.all(
             organizations.map(async (org) => {
                 let ownerInfo = null;
@@ -67,6 +115,8 @@ export async function GET(request: Request) {
                     ...org,
                     _id: org._id.toString(),
                     ownerId: org.ownerId ? org.ownerId.toString() : null,
+                    planId: org.planId ? org.planId.toString() : null,
+                    planName: org.planName || '',
                     owner: ownerInfo,
                 };
             })
@@ -201,6 +251,24 @@ export async function POST(request: Request) {
             );
         }
 
+        // Resolve planName to planId (if provided)
+        let resolvedPlanId: ObjectId | null = null;
+        let resolvedPlanName = '';
+        if (planName && typeof planName === 'string' && planName.trim() !== '') {
+            try {
+                const planResolution = await resolvePlanNameToId(planName);
+                resolvedPlanId = planResolution.planId;
+                resolvedPlanName = planResolution.resolvedPlanName;
+            } catch (planError: any) {
+                // If owner creation succeeded but plan resolution fails, clean up owner
+                await usersCollection.deleteOne({ _id: ownerId });
+                return NextResponse.json(
+                    { error: planError.message || 'Failed to resolve plan' },
+                    { status: 400 }
+                );
+            }
+        }
+
         // Create the organization
         // Note: _id will be auto-generated by MongoDB and serves as org_id
         const newOrganization = {
@@ -209,7 +277,8 @@ export async function POST(request: Request) {
             slug_history: [normalizedSlug], // Track slug history
             status: orgStatus || 'active',
             ownerId,
-            planName: planName || '',
+            planId: resolvedPlanId,
+            planName: resolvedPlanName,
             planStartDate: planStartDate ? new Date(planStartDate) : null,
             planEndDate: planEndDate ? new Date(planEndDate) : null,
             createdAt: new Date(),
@@ -304,6 +373,8 @@ export async function POST(request: Request) {
                     ...newOrganization,
                     _id: result.insertedId.toString(),
                     ownerId: ownerId.toString(),
+                    planId: resolvedPlanId ? resolvedPlanId.toString() : null,
+                    planName: resolvedPlanName,
                 },
             },
             { status: 201 }

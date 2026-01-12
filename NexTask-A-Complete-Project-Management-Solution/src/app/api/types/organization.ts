@@ -17,6 +17,7 @@ export interface Organization {
     slug_history?: string[]; // Track slug changes
     status: OrganizationStatus;
     ownerId: string; // Reference to users collection
+    planId?: string; // Reference to plans collection (source of truth)
     planName?: string;
     planStartDate?: Date | string | null;
     planEndDate?: Date | string | null;
