@@ -156,7 +156,46 @@ export async function PATCH(
       updateData.status = body.status;
     }
 
-    if (body.planName !== undefined) {
+    // Handle planId or planName - planId takes precedence
+    if (body.planId !== undefined) {
+      // If planId is provided directly, validate it and get plan name
+      if (body.planId === null || body.planId === '') {
+        updateData.planId = null;
+        updateData.planName = '';
+      } else {
+        try {
+          if (!ObjectId.isValid(body.planId)) {
+            return NextResponse.json(
+              { error: 'Invalid planId format' },
+              { status: 400 }
+            );
+          }
+          
+          const plansCollection = db.collection('plans');
+          const planDoc = await plansCollection.findOne({
+            _id: new ObjectId(body.planId),
+            status: 'active',
+            deletedAt: null,
+          });
+          
+          if (!planDoc) {
+            return NextResponse.json(
+              { error: 'Plan not found or inactive for the provided planId' },
+              { status: 400 }
+            );
+          }
+          
+          updateData.planId = planDoc._id;
+          updateData.planName = planDoc.plan_name || '';
+        } catch (planError: any) {
+          return NextResponse.json(
+            { error: planError.message || 'Failed to validate plan' },
+            { status: 400 }
+          );
+        }
+      }
+    } else if (body.planName !== undefined) {
+      // If planName is provided (and planId is not), resolve it to planId
       if (body.planName === null || body.planName === '' || (typeof body.planName === 'string' && body.planName.trim() === '')) {
         updateData.planId = null;
         updateData.planName = '';

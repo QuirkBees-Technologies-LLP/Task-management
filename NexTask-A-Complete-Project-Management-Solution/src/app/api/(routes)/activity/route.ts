@@ -73,8 +73,8 @@ export async function GET(request: Request) {
     // Combine and sort by timestamp (most recent first)
     const combinedActivity = [...tasksWithAssignees, ...projectsFormatted]
       .sort((a, b) => {
-        const dateA = a.updatedAt || a.createdAt;
-        const dateB = b.updatedAt || b.createdAt;
+        const dateA = (a as any).updatedAt || (a as any).createdAt;
+        const dateB = (b as any).updatedAt || (b as any).createdAt;
         return new Date(dateB).getTime() - new Date(dateA).getTime();
       })
       .slice(0, 10); // Get top 10 most recent

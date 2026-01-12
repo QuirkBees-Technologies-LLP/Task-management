@@ -1,4 +1,4 @@
-import { RoleListKeys, ResponsiveTableColumn } from './types';
+import { RoleListKeys, ResponsiveTableColumn, Role } from './types';
 
 const rolesColumns: ResponsiveTableColumn[] = [
   {
@@ -8,19 +8,19 @@ const rolesColumns: ResponsiveTableColumn[] = [
   {
     title: 'Description',
     key: 'description',
-    render: (role: Role) => role.description || 'No description',
+    render: (role: Role) => <>{role.description || 'No description'}</>,
   },
   {
     title: 'Permissions',
     key: 'permissionsCount',
     align: 'center',
-    render: (role: Role) => `${role.permissionsCount || 0} permission(s)`,
+    render: (role: Role) => <>{role.permissionsCount || 0} permission(s)</>,
   },
   {
     title: 'Assigned Users',
     key: 'assignedUsers',
     align: 'center',
-    render: (role: Role) => `${role.assignedUsers || 0} user(s)`,
+    render: (role: Role) => <>{role.assignedUsers || 0} user(s)</>,
   },
 ];
 
