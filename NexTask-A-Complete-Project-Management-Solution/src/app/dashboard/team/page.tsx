@@ -79,6 +79,7 @@ const StaffManagementPage: React.FC = () => {
     firstName: '',
     lastName: '',
     email: '',
+    password: '',
     role: 'Regular',
     departmentId: '',
     positionId: '',
@@ -168,6 +169,7 @@ const StaffManagementPage: React.FC = () => {
       firstName: '',
       lastName: '',
       email: '',
+      password: '',
       role: 'Regular',
       departmentId: '',
       positionId: '',
@@ -183,6 +185,7 @@ const StaffManagementPage: React.FC = () => {
       firstName: item.firstName || '',
       lastName: item.lastName || '',
       email: item.email || '',
+      password: '', // Password field is empty on edit - admin can set new password
       role: item.role || 'Regular',
       departmentId: item.departmentId || '',
       positionId: item.positionId || '',
@@ -202,6 +205,15 @@ const StaffManagementPage: React.FC = () => {
     if (!formData.firstName || !formData.lastName || !formData.email) {
       enqueueSnackbar({
         message: 'First name, last name, and email are required',
+        variant: 'error',
+      });
+      return;
+    }
+
+    // Password is required for new staff, optional for updates
+    if (!selectedStaff && !formData.password) {
+      enqueueSnackbar({
+        message: 'Password is required for new staff members',
         variant: 'error',
       });
       return;
@@ -419,6 +431,15 @@ const StaffManagementPage: React.FC = () => {
               required
               fullWidth
             />
+            <TextField
+              label="Password"
+              type="text"
+              value={formData.password}
+              onChange={(e) => setFormData((prev) => ({ ...prev, password: e.target.value }))}
+              required={!selectedStaff}
+              fullWidth
+              helperText={selectedStaff ? 'Leave empty to keep current password, or enter new password' : 'Password will be visible to admin'}
+            />
             <FormControl fullWidth>
               <InputLabel>Role</InputLabel>
               <Select
@@ -479,7 +500,7 @@ const StaffManagementPage: React.FC = () => {
           <Button
             onClick={handleSave}
             variant="contained"
-            disabled={saving || !formData.firstName || !formData.lastName || !formData.email}
+            disabled={saving || !formData.firstName || !formData.lastName || !formData.email || (!selectedStaff && !formData.password)}
             startIcon={saving && <CircularProgress size={15} color="inherit" />}
           >
             {selectedStaff ? 'Update' : 'Create'}

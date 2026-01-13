@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
+import bcrypt from 'bcrypt';
 import clientPromise from '../../lib/mongodb';
 import { DATABASE_NAME } from '../../config';
 import { verifyToken, userRolesServer, requireOrgIdFromToken, getOrgIdFromToken } from '../../helpers';
@@ -126,11 +127,18 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const { firstName, lastName, email, role, departmentId, positionId, phone } = body;
+    const { firstName, lastName, email, password, role, departmentId, positionId, phone } = body;
 
     if (!firstName || !lastName || !email) {
       return NextResponse.json(
         { error: 'First name, last name, and email are required' },
+        { status: 400 }
+      );
+    }
+
+    if (!password) {
+      return NextResponse.json(
+        { error: 'Password is required' },
         { status: 400 }
       );
     }
@@ -150,10 +158,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'User with this email already exists in your organization' }, { status: 400 });
     }
 
+    // Hash the password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
     const newStaff: any = addOrgIdToDocument({
       firstName,
       lastName,
       email,
+      password: hashedPassword,
       role: role || 'Regular',
       phone: phone || '',
       createdAt: new Date(),
@@ -190,7 +202,7 @@ export async function PATCH(request: Request) {
 
   try {
     const body = await request.json();
-    const { staffId, firstName, lastName, email, role, departmentId, positionId, phone } = body;
+    const { staffId, firstName, lastName, email, password, role, departmentId, positionId, phone } = body;
 
     if (!staffId) {
       return NextResponse.json({ error: 'Staff ID is required' }, { status: 400 });
@@ -221,6 +233,12 @@ export async function PATCH(request: Request) {
     if (email) setData.email = email;
     if (role) setData.role = role;
     if (phone !== undefined) setData.phone = phone;
+    
+    // Handle password update - only if provided
+    if (password && password.trim() !== '') {
+      const hashedPassword = await bcrypt.hash(password, 10);
+      setData.password = hashedPassword;
+    }
 
     // Handle departmentId and positionId as ObjectIds
     if (departmentId !== undefined) {

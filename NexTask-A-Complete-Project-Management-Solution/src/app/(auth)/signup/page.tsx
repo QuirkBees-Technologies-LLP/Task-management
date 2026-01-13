@@ -1,10 +1,16 @@
-import SignupPage from '.';
+'use client';
 
-export const metadata = {
-  title: 'Sign Up - NexTask',
-  description: 'Create a new account on NexTask.',
-};
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+
+// Redirect signup to login - public signup is disabled
 const Signup = () => {
-  return <SignupPage />;
+  const router = useRouter();
+  
+  useEffect(() => {
+    router.replace('/login');
+  }, [router]);
+  
+  return null;
 };
 export default Signup;

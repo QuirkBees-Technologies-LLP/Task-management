@@ -240,14 +240,6 @@ const ChangePasswordPage: React.FC = () => {
             </Button>
             <Grid2 container justifyContent="center">
               <Typography variant="body2">
-                Don’t have an account?
-                <MuiLink component={Link} href="/signup" sx={{ ml: 1 }}>
-                  Sign Up
-                </MuiLink>
-              </Typography>
-            </Grid2>
-            <Grid2 container justifyContent="center">
-              <Typography variant="body2">
                 Login instead?
                 <MuiLink component={Link} href="/login" sx={{ ml: 1 }}>
                   Signin

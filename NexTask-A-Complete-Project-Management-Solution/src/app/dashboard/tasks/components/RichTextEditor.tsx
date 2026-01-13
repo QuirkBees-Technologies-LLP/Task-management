@@ -1,10 +1,8 @@
 'use client';
 import React, { useRef, useState, useEffect, useMemo } from 'react';
-import ReactQuill, { Quill } from 'react-quill';
-import 'react-quill/dist/quill.snow.css';
+import dynamic from 'next/dynamic';
 import {
   Box,
-  Paper,
   Popover,
   List,
   ListItem,
@@ -13,13 +11,22 @@ import {
   Avatar,
   Typography,
   useTheme,
-  Stack,
 } from '@mui/material';
-import { Close } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 import axios from 'axios';
 import { safeLocalStorageGet } from '@/utils/helpers';
 import { accessTokenKey } from '@/utils/constants';
+
+// Dynamically import ReactQuill to prevent SSR issues
+const ReactQuill = dynamic(() => import('react-quill'), {
+  ssr: false,
+  loading: () => null,
+});
+
+// Dynamically import Quill CSS only on client
+if (typeof window !== 'undefined') {
+  require('react-quill/dist/quill.snow.css');
+}
 
 const EditorContainer = styled(Box)(({ theme }) => ({
   '& .ql-container': {
@@ -178,58 +185,159 @@ interface RichTextEditorProps {
   }) => void;
 }
 
-// Custom Mention Blot
-const Mention = Quill.import('blots/inline');
-
-class MentionBlot extends Mention {
-  static blotName = 'mention';
-  static tagName = 'span';
-  static className = 'mention';
-
-  static create(data: { id: string; name: string }) {
-    const node = super.create();
-    node.setAttribute('data-mention-id', data.id);
-    node.setAttribute('data-mention-name', data.name);
-    node.setAttribute('contenteditable', 'false');
-    // Don't set textContent here - it will be set by Quill's insertText
-    node.style.backgroundColor = '#e3f2fd';
-    node.style.padding = '2px 4px';
-    node.style.borderRadius = '3px';
-    node.style.color = '#1976d2';
-    return node;
-  }
-
-  static value(node: HTMLElement) {
-    return {
-      id: node.getAttribute('data-mention-id'),
-      name: node.getAttribute('data-mention-name'),
-    };
-  }
-}
-
-Quill.register(MentionBlot);
-
 const RichTextEditor: React.FC<RichTextEditorProps> = ({
   value,
   onChange,
   placeholder = 'Type / for menu',
-  onAddAttachment,
 }) => {
   const theme = useTheme();
-  const quillRef = useRef<ReactQuill>(null);
+  const quillRef = useRef<any>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [mentionSearch, setMentionSearch] = useState('');
   const [mentionAnchor, setMentionAnchor] = useState<{ el: HTMLElement; index: number } | null>(null);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [tooltip, setTooltip] = useState<{ text: string; x: number; y: number } | null>(null);
+  const [isQuillReady, setIsQuillReady] = useState(false);
+
+  // Register Quill MentionBlot only on client side
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const registerQuillBlot = async () => {
+      try {
+        // Import react-quill to get access to Quill
+        const ReactQuillModule = await import('react-quill');
+        const ReactQuillDefault = ReactQuillModule.default;
+        
+        // Access Quill from react-quill
+        const Quill = (ReactQuillDefault as any).Quill || (ReactQuillModule as any).Quill;
+        
+        if (!Quill) {
+          // Fallback: try importing quill directly
+          const quillModule = await import('quill');
+          const QuillClass = (quillModule as any).default || quillModule;
+          
+          // Custom Mention Blot
+          const Mention = QuillClass.import('blots/inline');
+
+          class MentionBlot extends Mention {
+            static blotName = 'mention';
+            static tagName = 'span';
+            static className = 'mention';
+
+            static create(data: { id: string; name: string }) {
+              const node = super.create();
+              node.setAttribute('data-mention-id', data.id);
+              node.setAttribute('data-mention-name', data.name);
+              node.setAttribute('contenteditable', 'false');
+              node.style.backgroundColor = '#e3f2fd';
+              node.style.padding = '2px 4px';
+              node.style.borderRadius = '3px';
+              node.style.color = '#1976d2';
+              return node;
+            }
+
+            static value(node: HTMLElement) {
+              return {
+                id: node.getAttribute('data-mention-id'),
+                name: node.getAttribute('data-mention-name'),
+              };
+            }
+          }
+
+          QuillClass.register(MentionBlot);
+        } else {
+          // Custom Mention Blot
+          const Mention = (Quill as any).import('blots/inline');
+
+          class MentionBlot extends Mention {
+            static blotName = 'mention';
+            static tagName = 'span';
+            static className = 'mention';
+
+            static create(data: { id: string; name: string }) {
+              const node = super.create();
+              node.setAttribute('data-mention-id', data.id);
+              node.setAttribute('data-mention-name', data.name);
+              node.setAttribute('contenteditable', 'false');
+              node.style.backgroundColor = '#e3f2fd';
+              node.style.padding = '2px 4px';
+              node.style.borderRadius = '3px';
+              node.style.color = '#1976d2';
+              return node;
+            }
+
+            static value(node: HTMLElement) {
+              return {
+                id: node.getAttribute('data-mention-id'),
+                name: node.getAttribute('data-mention-name'),
+              };
+            }
+          }
+
+          (Quill as any).register(MentionBlot);
+        }
+        
+        setIsQuillReady(true);
+      } catch (error) {
+        console.error('Error registering Quill blot:', error);
+        // Still set ready to allow editor to render even if mention fails
+        setIsQuillReady(true);
+      }
+    };
+
+    registerQuillBlot();
+  }, []);
 
   useEffect(() => {
+    const fetchUsers = async () => {
+      setLoadingUsers(true);
+      try {
+        const token = safeLocalStorageGet(accessTokenKey);
+        if (!token) return;
+
+        const response = await axios.get('/api/staff?limit=1000', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (response.data.success) {
+          const staffUsers = (response.data.staff || []).map((s: any) => ({
+            _id: s._id,
+            firstName: s.firstName || '',
+            lastName: s.lastName || '',
+            email: s.email || '',
+            role: s.role || '',
+          }));
+          setUsers(staffUsers);
+        } else {
+          // Fallback to users API
+          const usersResponse = await axios.get('/api/users', {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (Array.isArray(usersResponse.data)) {
+            const usersList = usersResponse.data.map((u: any) => ({
+              _id: typeof u._id === 'string' ? u._id : (u._id?.toString() || ''),
+              firstName: u.firstName || '',
+              lastName: u.lastName || '',
+              email: u.email || '',
+              role: u.role || '',
+            }));
+            setUsers(usersList);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching users:', error);
+      } finally {
+        setLoadingUsers(false);
+      }
+    };
+
     fetchUsers();
   }, []);
 
   // Add tooltips to toolbar buttons
   useEffect(() => {
-    if (!quillRef.current) return;
+    if (!quillRef.current || !isQuillReady) return;
 
     const toolbar = quillRef.current.getEditor().getModule('toolbar').container;
     if (!toolbar) return;
@@ -264,26 +372,26 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
       let tooltipText = '';
       let tooltipName = '';
       let tooltipShortcut = '';
-      
+
       for (const [selector, tooltip] of Object.entries(tooltipMap)) {
         if (selector.includes('[')) {
           const [baseClass, attr] = selector.split('[');
           const [attrName, attrValue] = attr.replace(']', '').split('=');
           const value = attrValue.replace(/"/g, '');
-          
+
           if (button.classList.contains(baseClass) && button.getAttribute(attrName) === value) {
             tooltipName = tooltip.name;
             tooltipShortcut = tooltip.shortcut || '';
-            tooltipText = tooltip.shortcut 
-              ? `${tooltip.name}\n${tooltip.shortcut}` 
+            tooltipText = tooltip.shortcut
+              ? `${tooltip.name}\n${tooltip.shortcut}`
               : tooltip.name;
             break;
           }
         } else if (button.classList.contains(selector)) {
           tooltipName = tooltip.name;
           tooltipShortcut = tooltip.shortcut || '';
-          tooltipText = tooltip.shortcut 
-            ? `${tooltip.name}\n${tooltip.shortcut}` 
+          tooltipText = tooltip.shortcut
+            ? `${tooltip.name}\n${tooltip.shortcut}`
             : tooltip.name;
           break;
         }
@@ -316,49 +424,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
         pickerButton.removeEventListener('mouseleave', hideTooltip);
       }
     };
-  }, [value]);
-
-  const fetchUsers = async () => {
-    setLoadingUsers(true);
-    try {
-      const token = safeLocalStorageGet(accessTokenKey);
-      if (!token) return;
-
-      const response = await axios.get('/api/staff?limit=1000', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (response.data.success) {
-        const staffUsers = (response.data.staff || []).map((s: any) => ({
-          _id: s._id,
-          firstName: s.firstName || '',
-          lastName: s.lastName || '',
-          email: s.email || '',
-          role: s.role || '',
-        }));
-        setUsers(staffUsers);
-      } else {
-        // Fallback to users API
-        const usersResponse = await axios.get('/api/users', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (Array.isArray(usersResponse.data)) {
-          const usersList = usersResponse.data.map((u: any) => ({
-            _id: typeof u._id === 'string' ? u._id : (u._id?.toString() || ''),
-            firstName: u.firstName || '',
-            lastName: u.lastName || '',
-            email: u.email || '',
-            role: u.role || '',
-          }));
-          setUsers(usersList);
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching users:', error);
-    } finally {
-      setLoadingUsers(false);
-    }
-  };
+  }, [value, isQuillReady]);
 
   const filteredUsers = useMemo(() => {
     if (!mentionSearch) return users.slice(0, 5);
@@ -373,7 +439,12 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
       .slice(0, 5);
   }, [users, mentionSearch]);
 
-  const handleTextChange = (content: string, delta: any, source: string, editor: ReactQuill.UnprivilegedEditor) => {
+  const handleTextChange = (
+    content: string,
+    delta: any,
+    source: string,
+    editor: any
+  ) => {
     onChange(content);
 
     if (source === 'user') {
@@ -432,7 +503,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
 
       // Delete the @ and text after it
       quill.deleteText(lastAtIndex, deleteLength, 'user');
-      
+
       // Insert the mention text with format
       // Quill's insertText signature: insertText(index, text, format, value, source)
       const mentionText = `@${user.firstName} ${user.lastName}`;
@@ -446,7 +517,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
         },
         'user'
       );
-      
+
       // Move cursor after the mention
       quill.setSelection({ index: lastAtIndex + mentionText.length, length: 0 }, 'user');
     }
@@ -454,7 +525,6 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     setMentionAnchor(null);
     setMentionSearch('');
   };
-
 
   const modules = useMemo(
     () => ({
@@ -484,10 +554,26 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     'mention',
   ];
 
+  // Don't render ReactQuill until it's ready
+  if (!isQuillReady || typeof window === 'undefined') {
+    return (
+      <Box>
+        <EditorContainer>
+          <Box sx={{ minHeight: '80px', p: 2, border: `1px solid ${theme.palette.divider}`, borderRadius: 1 }}>
+            <Typography variant="body2" color="text.secondary">
+              Loading editor...
+            </Typography>
+          </Box>
+        </EditorContainer>
+      </Box>
+    );
+  }
+
   return (
     <Box>
       <EditorContainer>
         <ReactQuill
+          // @ts-ignore - Dynamic import causes ref typing issues
           ref={quillRef}
           theme="snow"
           value={value}
@@ -629,7 +715,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
             ))
           ) : (
             <ListItem>
-              <ListItemText primary="No users found" />
+              <ListItemText primary={loadingUsers ? 'Loading users...' : 'No users found'} />
             </ListItem>
           )}
         </List>
@@ -639,4 +725,3 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
 };
 
 export default RichTextEditor;
-

@@ -51,6 +51,12 @@ interface ApiTask {
 export default function TaskManagement() {
   const router = useRouter();
   const theme = useTheme();
+  
+  // Redirect to projects page if accessed directly
+  useEffect(() => {
+    router.replace('/dashboard/projects');
+  }, [router]);
+  
   const [tasks, setTasks] = useState<Task[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);

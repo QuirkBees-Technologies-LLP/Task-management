@@ -61,6 +61,11 @@ const TaskDetailsPage: React.FC = () => {
   const taskId = params?.id as string;
   const projectId = params?.projectId as string;
 
+  // Redirect to projects page if accessed directly (tasks must be accessed through projects)
+  useEffect(() => {
+    router.replace('/dashboard/projects');
+  }, [router]);
+
   const [loading, setLoading] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);
   const [isEditing, setIsEditing] = useState<boolean>(false);
@@ -206,7 +211,7 @@ const TaskDetailsPage: React.FC = () => {
           setProject(formattedProject);
         } else {
           enqueueSnackbar({ message: 'Task not found', variant: 'error' });
-          router.push('/dashboard/tasks');
+          router.push('/dashboard/projects');
         }
       }
     } catch (error: any) {
@@ -215,7 +220,7 @@ const TaskDetailsPage: React.FC = () => {
         message: error.response?.data?.error || 'Failed to fetch task',
         variant: 'error',
       });
-      router.push('/dashboard/tasks');
+      router.push('/dashboard/projects');
     } finally {
       setLoading(false);
     }
@@ -442,7 +447,7 @@ const TaskDetailsPage: React.FC = () => {
     <Box sx={{ p: 3 }}>
       <ActionBar>
         <Stack direction="row" spacing={2} alignItems="center">
-          <IconButton onClick={() => router.push('/dashboard/tasks')} size="small">
+          <IconButton onClick={() => router.push('/dashboard/projects')} size="small">
             <ArrowBack />
           </IconButton>
           <Typography variant="h6" sx={{ fontWeight: 600 }}>
