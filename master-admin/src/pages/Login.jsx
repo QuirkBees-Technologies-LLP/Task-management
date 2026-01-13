@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { Form, Input, Button, Card, Alert, App } from "antd";
 import { EyeInvisibleOutlined, EyeTwoTone } from "@ant-design/icons";
 import carImage from "../assets/images/car-one.jpeg";
@@ -50,14 +50,6 @@ const Login = () => {
         message.error("Please enter a valid email address");
         return;
       }
-
-      // Validate password strength
-      // const passwordValidation = validatePassword(values.password);
-      // if (!passwordValidation.isValid) {
-      //     const errorMessage = passwordValidation.errors.join('\n');
-      //     message.error(errorMessage);
-      //     return;
-      // }
 
       await login({
         email: values.email,

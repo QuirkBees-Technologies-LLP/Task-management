@@ -1,13 +1,11 @@
-import { useState } from 'react';
 import './App.css';
 import { Routes, Route, Navigate } from "react-router-dom";
 import AppLayout from './components/AppLayout';
 import Login from './pages/Login';
 import { ConfigProvider, App as AntdApp } from 'antd';
 import Dashboard from './pages/Dashboard';
-import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
-import PublicRoutes from './components/publicRoutes';
+import PublicRoutes from './components/PublicRoutes';
 import Organisation from './pages/Organisation';
 import Plans from './pages/Plans';
 

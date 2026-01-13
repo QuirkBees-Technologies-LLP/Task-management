@@ -369,7 +369,7 @@ const Organisation = () => {
       <Row style={{ marginBottom: 16 }}>
         <Col>
           <DebouncedSearch
-            placeholder="Search by organization name"
+            placeholder="Search"
             onSearch={handleSearch}
             className="search_data"
           />

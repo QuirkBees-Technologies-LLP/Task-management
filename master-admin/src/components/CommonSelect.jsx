@@ -1,20 +1,20 @@
 import { Select } from "antd";
 import { useEffect, useMemo, useState } from "react";
 
-/**
- * Generic Select component
- */
+
+ //Generic Select component
+ 
 const CommonSelect = ({
   value,
   onChange,
 
-  /** async function that returns data */
+  // async function that returns data 
   fetcher,
 
-  /** optional filter function */
+  // optional filter function 
   filterFn,
 
-  /** map item -> { label, value } */
+  // map item -> { label, value }
   mapOption,
 
   placeholder = "Select",

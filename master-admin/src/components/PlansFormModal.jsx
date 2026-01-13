@@ -1,13 +1,4 @@
-import {
-  Modal,
-  Form,
-  Input,
-  InputNumber,
-  Select,
-  Switch,
-  Button,
-  Space,
-} from "antd";
+import { Modal, Form, Input, Select, Switch, Button } from "antd";
 import { useEffect } from "react";
 import {
   DeleteOutlined,

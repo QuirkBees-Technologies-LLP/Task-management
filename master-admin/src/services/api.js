@@ -106,14 +106,4 @@ export const plansAPI = {
     api.delete(`/superadmin/plans/${id}`),
 };
 
-/* ----------------------------------------------------
-   Dashboard APIs (Super Admin)
----------------------------------------------------- */
-
-export const dashboardAPI = {
-  // GET /api/superadmin/dashboard
-  getStats: () =>
-    api.get('/superadmin/dashboard'),
-};
-
 export default api;

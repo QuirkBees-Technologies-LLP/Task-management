@@ -1,4 +1,3 @@
-import React from "react";
 import { Button, Layout, Avatar, Dropdown } from "antd";
 import { MenuFoldOutlined, MenuUnfoldOutlined, UserOutlined, LogoutOutlined, CameraOutlined } from "@ant-design/icons";
 import { useAuth } from "../contexts/AuthContext";
@@ -14,19 +13,8 @@ const HeaderBar = ({ collapsed, setCollapsed }) => {
     logout();
     navigate('/login');
   };
-
-  const handleChangePhoto = () => {
-    // TODO: Implement photo change functionality
-    console.log('Change photo clicked');
-  };
-
+  
   const items = [
-    // {
-    //   key: "changePhoto",
-    //   label: "Change Photo",
-    //   icon: <CameraOutlined />,
-    //   onClick: handleChangePhoto,
-    // },
     {
       key: "logout",
       label: "Logout",
