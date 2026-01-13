@@ -1,30 +1,86 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Box, Paper, Typography, useTheme } from '@mui/material';
 import dynamic from 'next/dynamic';
 import { ApexOptions } from 'apexcharts';
 import { grey } from '@mui/material/colors';
 import { renderToString } from 'react-dom/server';
+import axios from 'axios';
+import { safeLocalStorageGet } from '@/utils/helpers';
+import { accessTokenKey } from '@/utils/constants';
+
 const Chart = dynamic(() => import('react-apexcharts'), { ssr: false });
+
+type DataPoint = {
+  x: number;
+  y: number;
+};
 
 const ApexChart = () => {
   const theme = useTheme();
-  const dates = useMemo(
-    () => [
-      { x: new Date('2023-01-01').getTime(), y: 1000000 },
-      { x: new Date('2023-02-01').getTime(), y: 1500000 },
-      { x: new Date('2023-03-01').getTime(), y: 1250000 },
-      { x: new Date('2023-04-01').getTime(), y: 2000000 },
-    ],
-    []
-  );
+  const [dataPoints, setDataPoints] = useState<DataPoint[]>([]);
+
+  useEffect(() => {
+    const fetchClientData = async () => {
+      try {
+        const token = safeLocalStorageGet(accessTokenKey);
+        if (!token) return;
+
+        const response = await axios.get('/api/clients?limit=1000', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (!response.data?.success) return;
+
+        const clients: any[] = response.data.clients || [];
+
+        // Bucket clients by month/year of creation
+        const buckets = new Map<string, number>();
+
+        clients.forEach((client) => {
+          const createdAt = client.createdAt ? new Date(client.createdAt) : null;
+          if (!createdAt || isNaN(createdAt.getTime())) return;
+
+          const year = createdAt.getFullYear();
+          const month = createdAt.getMonth(); // 0-based
+          const key = `${year}-${month}`;
+
+          buckets.set(key, (buckets.get(key) || 0) + 1);
+        });
+
+        const points: DataPoint[] = Array.from(buckets.entries())
+          .map(([key, count]) => {
+            const [yearStr, monthStr] = key.split('-');
+            const year = Number(yearStr);
+            const month = Number(monthStr);
+
+            return {
+              x: new Date(year, month, 1).getTime(),
+              y: count,
+            };
+          })
+          .sort((a, b) => a.x - b.x);
+
+        setDataPoints(points);
+      } catch (error) {
+        console.error('Error fetching customer chart data:', error);
+      }
+    };
+
+    fetchClientData();
+  }, []);
 
   const series: ApexOptions['series'] = useMemo(
     () => [
       {
-        data: dates,
+        data: dataPoints.length
+          ? dataPoints
+          : [
+              // Single zero point so empty orgs don't show fake data
+              { x: new Date().getTime(), y: 0 },
+            ],
       },
     ],
-    [dates]
+    [dataPoints]
   );
 
   const options: ApexOptions = useMemo(
@@ -46,7 +102,7 @@ const ApexChart = () => {
       colors: [theme.palette.primary.main, theme.palette.secondary.main],
       yaxis: {
         labels: {
-          formatter: (val) => `${(val / 1000).toFixed(0)}k`,
+          formatter: (val) => `${Math.round(val)}`,
           style: {
             fontFamily: theme.typography.fontFamily,
             colors: theme.palette.text.primary,
@@ -119,11 +175,9 @@ const ApexChart = () => {
   );
 
   return (
-    <>
-      <Box height={300}>
-        <Chart options={options} series={series} type="area" height="100%" />
-      </Box>
-    </>
+    <Box height={300}>
+      <Chart options={options} series={series} type="area" height="100%" />
+    </Box>
   );
 };
 
