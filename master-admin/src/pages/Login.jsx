@@ -42,7 +42,6 @@ const Login = () => {
 
   const onFinish = async (values) => {
     try {
-      setLoading(true);
       setError("");
 
       // Validate email format
@@ -50,7 +49,14 @@ const Login = () => {
         message.error("Please enter a valid email address");
         return;
       }
+      // Validate password
+      const passwordValidation = validatePassword(values.password);
+      if (!passwordValidation.isValid) {
+        message.error(passwordValidation.errors[0]);
+        return;
+      }
 
+      setLoading(true);
       await login({
         email: values.email,
         password: values.password,

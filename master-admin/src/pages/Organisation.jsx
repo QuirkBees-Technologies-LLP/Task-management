@@ -211,7 +211,21 @@ const Organisation = () => {
           selectedPlanName
         );
       } catch (error) {
-        message.error(error.response?.data?.message || "Operation failed");
+        const backendError = error?.response?.data?.error;
+
+        // Handle duplicate slug error at form level
+        if (backendError === "Organization with this slug already exists") {
+          form.setFields([
+            {
+              name: "slug",
+              errors: [
+                "This slug is already in use. Please enter a unique slug.",
+              ],
+            },
+          ]);
+        } else {
+          message.error(error?.response?.data?.message || "Operation failed");
+        }
       } finally {
         setSubmitLoading(false);
       }

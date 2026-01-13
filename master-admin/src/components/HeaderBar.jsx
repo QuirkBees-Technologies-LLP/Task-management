@@ -1,5 +1,5 @@
 import { Button, Layout, Avatar, Dropdown } from "antd";
-import { MenuFoldOutlined, MenuUnfoldOutlined, UserOutlined, LogoutOutlined, CameraOutlined } from "@ant-design/icons";
+import { MenuFoldOutlined, MenuUnfoldOutlined, LogoutOutlined } from "@ant-design/icons";
 import { useAuth } from "../contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 
@@ -13,7 +13,7 @@ const HeaderBar = ({ collapsed, setCollapsed }) => {
     logout();
     navigate('/login');
   };
-  
+
   const items = [
     {
       key: "logout",

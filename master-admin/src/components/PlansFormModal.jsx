@@ -35,6 +35,11 @@ const PlansFormModal = ({
       form.resetFields();
     }
   }, [open, initialValues, form]);
+  /* -------------------- No number Validation -------------------- */
+  const noNumberRule = {
+    pattern: /^[A-Za-z\s]+$/,
+    message: "This field must not contain numbers",
+  };
 
   return (
     <Modal
@@ -55,7 +60,7 @@ const PlansFormModal = ({
         <Form.Item
           name="plan_name"
           label="Plan Name"
-          rules={[{ required: true, message: "Plan name is required" }]}
+          rules={[{ required: true, message: "Plan name is required" },, noNumberRule]}
         >
           <Input placeholder="Enter plan name" />
         </Form.Item>
