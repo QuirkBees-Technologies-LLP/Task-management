@@ -32,7 +32,7 @@ import { accessTokenKey } from '@/utils/constants';
 import { enqueueSnackbar } from 'notistack';
 import { useRouter, useParams } from 'next/navigation';
 
-import { Task } from '@/app/dashboard/tasks/types';
+import { Task, TaskAttachment, Subtask } from '@/app/dashboard/tasks/types';
 import { Project } from '@/app/dashboard/projects/types';
 
 interface ApiTask {
@@ -43,6 +43,8 @@ interface ApiTask {
   priority?: string;
   projectId?: string;
   dueDate?: string;
+  attachments?: TaskAttachment[];
+  subtasks?: Subtask[];
   assignee?: string[] | any[] | string; // Array of user IDs (or legacy single ID)
 }
 
