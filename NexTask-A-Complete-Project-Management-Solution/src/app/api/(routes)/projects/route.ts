@@ -3,6 +3,7 @@ import clientPromise from '../../lib/mongodb';
 import { DATABASE_NAME } from '../../config';
 import { verifyToken, userRolesServer, requireOrgIdFromToken, getOrgIdFromToken } from '../../helpers';
 import { addOrgIdToQuery, addOrgIdToDocument } from '../../lib/orgIdHelper';
+import { ObjectId } from 'mongodb';
 
 export async function GET(request: Request) {
   const { decoded, error, status } = await verifyToken(request);
@@ -28,6 +29,18 @@ export async function GET(request: Request) {
 
     // Build query for search with org_id filter
     const query: any = addOrgIdToQuery({}, org_id);
+
+    // For Regular users, only show projects they are assigned to.
+    // Admins and system-level users can see all projects in the org.
+    if (decoded.role === userRolesServer.regular) {
+      const userId = decoded.id || decoded.user_id;
+      if (!userId) {
+        return NextResponse.json({ error: 'User ID is required' }, { status: 403 });
+      }
+      const userObjectId = new ObjectId(userId);
+      query.assignee = userObjectId;
+    }
+    
     if (search) {
       query.$or = [
         { name: { $regex: search, $options: 'i' } },
@@ -82,7 +95,7 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const { name, clientName, description, dueDate, status: projectStatus } = body;
+    const { name, clientName, description, dueDate, status: projectStatus, assignee, attachments } = body;
 
     // Validation
     if (!name || !description) {
@@ -110,6 +123,50 @@ export async function POST(request: Request) {
       );
     }
 
+    // Validate and map assignee IDs (same pattern as tasks API)
+    // Projects MUST have at least one assignee - projects are only visible to assigned users
+    const assigneeIds: ObjectId[] = [];
+    const creatorId = new ObjectId(decoded.id || decoded.user_id);
+
+    if (assignee && Array.isArray(assignee) && assignee.length > 0) {
+      try {
+        const usersCollection = db.collection('users');
+
+        for (const assigneeIdStr of assignee) {
+          if (!assigneeIdStr || typeof assigneeIdStr !== 'string' || assigneeIdStr.trim() === '') continue;
+
+          if (!ObjectId.isValid(assigneeIdStr)) {
+            return NextResponse.json({ error: `Invalid assignee ID format: ${assigneeIdStr}` }, { status: 400 });
+          }
+
+          const assigneeUser = await usersCollection.findOne({
+            _id: new ObjectId(assigneeIdStr),
+          });
+
+          if (!assigneeUser) {
+            return NextResponse.json({ error: `Assignee user not found: ${assigneeIdStr}` }, { status: 404 });
+          }
+
+          assigneeIds.push(new ObjectId(assigneeIdStr));
+        }
+      } catch (error) {
+        console.error('Error validating project assignees:', error);
+        return NextResponse.json({ error: 'Invalid assignee ID format' }, { status: 400 });
+      }
+    }
+
+    // If no assignees provided, automatically add the creator as an assignee
+    // This ensures the project creator can always see and access their project
+    if (assigneeIds.length === 0) {
+      assigneeIds.push(creatorId);
+    } else {
+      // Ensure creator is always in the assignee list (even if not explicitly added)
+      const creatorAlreadyAssigned = assigneeIds.some(id => id.equals(creatorId));
+      if (!creatorAlreadyAssigned) {
+        assigneeIds.push(creatorId);
+      }
+    }
+
     // Create the project with org_id
     const newProject = addOrgIdToDocument({
       name,
@@ -117,6 +174,8 @@ export async function POST(request: Request) {
       description,
       status: projectStatus || 'Pending',
       dueDate: dueDate ? new Date(dueDate) : null,
+      assignee: assigneeIds,
+      attachments: Array.isArray(attachments) ? attachments : [],
       createdAt: new Date(),
       updatedAt: new Date(),
       createdBy: decoded.id || decoded.user_id,

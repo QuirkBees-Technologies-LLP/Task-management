@@ -67,6 +67,8 @@ export default function Projects() {
     status: '',
     startDate: '',
     endDate: '',
+    assignee: [],
+    attachments: [],
   });
 
   useEffect(() => {
@@ -95,6 +97,10 @@ export default function Projects() {
           status: p.status || 'Pending',
           startDate: p.createdAt ? new Date(p.createdAt).toISOString().split('T')[0] : '',
           endDate: p.dueDate ? new Date(p.dueDate).toISOString().split('T')[0] : '',
+          assignee: Array.isArray(p.assignee)
+            ? p.assignee.map((id: any) => (typeof id === 'string' ? id : id?.toString() || ''))
+            : [],
+          attachments: Array.isArray(p.attachments) ? p.attachments : [],
         }));
 
         // Fetch task counts for each project
@@ -231,6 +237,19 @@ export default function Projects() {
       theme.palette.error.light,
     ];
     return colors[index % colors.length];
+  };
+
+  // Strip basic HTML tags from rich text descriptions for card preview
+  const getPlainTextDescription = (html?: string) => {
+    if (!html) return '';
+    try {
+      // Remove HTML tags
+      const withoutTags = html.replace(/<[^>]+>/g, ' ');
+      // Collapse whitespace and trim
+      return withoutTags.replace(/\s+/g, ' ').trim();
+    } catch {
+      return html;
+    }
   };
 
   const formatDate = (dateString?: string) => {
@@ -387,7 +406,7 @@ export default function Projects() {
                           minHeight: '2.5em',
                         }}
                       >
-                        {project.description}
+                        {getPlainTextDescription(project.description)}
                       </Typography>
                     )}
 

@@ -53,6 +53,7 @@ interface Staff {
   departmentId?: string;
   positionId?: string;
   phone?: string;
+  password?: string; // Plain text password for admin viewing
 }
 
 interface Department {
@@ -149,7 +150,17 @@ const StaffManagementPage: React.FC = () => {
       });
 
       if (response.data.success) {
-        setStaff(response.data.staff || []);
+        const staffData = response.data.staff || [];
+        // Debug: Log to see if password field is present
+        if (staffData.length > 0) {
+          console.log('Fetched staff data sample:', {
+            email: staffData[0].email,
+            hasPassword: !!staffData[0].password,
+            passwordLength: staffData[0].password?.length || 0,
+            passwordValue: staffData[0].password ? '***' : 'EMPTY'
+          });
+        }
+        setStaff(staffData);
         setTotalPages(response.data.pagination?.totalPages || 1);
       }
     } catch (error: any) {
@@ -181,11 +192,13 @@ const StaffManagementPage: React.FC = () => {
 
   const handleOpenEdit = (item: Staff) => {
     setSelectedStaff(item);
+    // Debug: Log the item to see what password field we're getting
+    console.log('Editing staff item:', { email: item.email, password: item.password, hasPassword: !!item.password });
     setFormData({
       firstName: item.firstName || '',
       lastName: item.lastName || '',
       email: item.email || '',
-      password: '', // Password field is empty on edit - admin can set new password
+      password: item.password || '', // Show existing password to admin (plain text) - this should come from API as plainTextPassword
       role: item.role || 'Regular',
       departmentId: item.departmentId || '',
       positionId: item.positionId || '',
@@ -438,7 +451,7 @@ const StaffManagementPage: React.FC = () => {
               onChange={(e) => setFormData((prev) => ({ ...prev, password: e.target.value }))}
               required={!selectedStaff}
               fullWidth
-              helperText={selectedStaff ? 'Leave empty to keep current password, or enter new password' : 'Password will be visible to admin'}
+              helperText={selectedStaff ? 'Password is visible to admin. Enter new password to update.' : 'Password will be visible to admin'}
             />
             <FormControl fullWidth>
               <InputLabel>Role</InputLabel>

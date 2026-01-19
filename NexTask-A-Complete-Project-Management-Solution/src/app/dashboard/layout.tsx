@@ -86,10 +86,23 @@ export default function Layout({ children }: LayoutProps) {
     return isSuperUser ? userRoutes.Superuser : userRoutes[userInfo.role];
   }, [userInfo?.role, isSuperUser, userRoutes]);
 
+  // Immediate redirect for /dashboard - don't wait for userInfo
+  useEffect(() => {
+    if (token && pathname === '/dashboard') {
+      router.push('/dashboard/projects');
+    }
+  }, [token, pathname, router]);
+
   useEffect(() => {
     // Use a timeout to debounce route validation and prevent blocking navigation
     const timeoutId = setTimeout(() => {
       if (token && userInfo?.role && currentUserRoutes) {
+        // Redirect /dashboard to /dashboard/projects (backup check)
+        if (pathname === '/dashboard') {
+          router.push('/dashboard/projects');
+          return;
+        }
+
         // Check if user is trying to access admin routes
         if (pathname.startsWith('/dashboard/admin') || pathname.startsWith('/admin')) {
           // Only allow Admin or Superuser to access admin routes
@@ -98,7 +111,7 @@ export default function Layout({ children }: LayoutProps) {
               message: 'Access denied. Admin privileges required.',
               variant: 'error',
             });
-            router.push('/dashboard');
+            router.push('/dashboard/projects'); // Redirect to projects instead of dashboard
             return;
           }
         }
@@ -125,7 +138,7 @@ export default function Layout({ children }: LayoutProps) {
           const isSubRoute = pathParts.length > 1 && currentUserRoutes.includes(baseRoute);
           
           if (!isDynamicRoute && !isSubRoute) {
-            router.push('/dashboard');
+            router.push('/dashboard/projects'); // Redirect to projects instead of dashboard
           }
         }
       }

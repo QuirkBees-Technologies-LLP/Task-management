@@ -32,6 +32,44 @@ export async function GET(
       return NextResponse.json({ error: 'Project ID is required' }, { status: 400 });
     }
 
+    const client = await clientPromise;
+    const db = client.db(DATABASE_NAME);
+    const projectsCollection = db.collection('projects');
+    
+    // Verify project exists
+    const project = await projectsCollection.findOne({ _id: new ObjectId(projectId) });
+    if (!project) {
+      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
+
+    // For regular users only, enforce assignee-based access to project tasks
+    if (decoded.role !== 'Admin') {
+      const userId = decoded.id || decoded.user_id;
+      if (!userId) {
+        return NextResponse.json({ error: 'User ID is required' }, { status: 403 });
+      }
+      const userObjectId = new ObjectId(userId);
+
+      if (!project.assignee || !Array.isArray(project.assignee) || project.assignee.length === 0) {
+        return NextResponse.json(
+          { error: 'Access denied. You are not assigned to this project.' },
+          { status: 403 }
+        );
+      }
+
+      const isAssigned = project.assignee.some((assigneeId: any) => {
+        const assigneeObjectId = assigneeId instanceof ObjectId ? assigneeId : new ObjectId(assigneeId);
+        return assigneeObjectId.equals(userObjectId);
+      });
+
+      if (!isAssigned) {
+        return NextResponse.json(
+          { error: 'Access denied. You are not assigned to this project.' },
+          { status: 403 }
+        );
+      }
+    }
+
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1', 10);
     const limit = parseInt(searchParams.get('limit') || '10', 10);
@@ -39,8 +77,6 @@ export async function GET(
     const sortBy = searchParams.get('sortBy') || 'createdAt';
     const sortOrder = searchParams.get('sortOrder') || 'desc';
 
-    const client = await clientPromise;
-    const db = client.db(DATABASE_NAME);
     const tasksCollection = db.collection('tasks');
 
     // Build query for search and project filter
@@ -182,6 +218,13 @@ export async function POST(
       return NextResponse.json({ error: 'Project ID is required' }, { status: 400 });
     }
 
+    // Get current user ID for access checks (regular users only)
+    const userId = decoded.id || decoded.user_id;
+    if (!userId) {
+      return NextResponse.json({ error: 'User ID is required' }, { status: 403 });
+    }
+    const userObjectId = new ObjectId(userId);
+
     const body = await request.json();
     const { title, description, assignee, status: taskStatus, priority, dueDate, attachments, subtasks, sectionId } = body;
 
@@ -202,6 +245,50 @@ export async function POST(
     const project = await projectsCollection.findOne({ _id: new ObjectId(projectId) });
     if (!project) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
+
+    // For regular users only, enforce assignee-based access
+    if (decoded.role !== 'Admin') {
+      if (!project.assignee || !Array.isArray(project.assignee) || project.assignee.length === 0) {
+        return NextResponse.json(
+          { error: 'Access denied. You are not assigned to this project.' },
+          { status: 403 }
+        );
+      }
+
+      const isAssigned = project.assignee.some((assigneeId: any) => {
+        const assigneeObjectId = assigneeId instanceof ObjectId ? assigneeId : new ObjectId(assigneeId);
+        return assigneeObjectId.equals(userObjectId);
+      });
+
+      if (!isAssigned) {
+        return NextResponse.json(
+          { error: 'Access denied. You are not assigned to this project.' },
+          { status: 403 }
+        );
+      }
+    }
+
+    // Check if user is assigned to this project - projects are only accessible to assigned users
+    if (!project.assignee || !Array.isArray(project.assignee) || project.assignee.length === 0) {
+      // Project has no assignees - deny access
+      return NextResponse.json(
+        { error: 'Access denied. You are not assigned to this project.' },
+        { status: 403 }
+      );
+    }
+
+    // Check if user's ObjectId is in the assignee array
+    const isAssigned = project.assignee.some((assigneeId: any) => {
+      const assigneeObjectId = assigneeId instanceof ObjectId ? assigneeId : new ObjectId(assigneeId);
+      return assigneeObjectId.equals(userObjectId);
+    });
+
+    if (!isAssigned) {
+      return NextResponse.json(
+        { error: 'Access denied. You are not assigned to this project.' },
+        { status: 403 }
+      );
     }
 
     // Validate section if provided
@@ -414,6 +501,13 @@ export async function PATCH(
       return NextResponse.json({ error: 'Project ID is required' }, { status: 400 });
     }
 
+    // Get current user ID - projects are only accessible to assigned users
+    const userId = decoded.id || decoded.user_id;
+    if (!userId) {
+      return NextResponse.json({ error: 'User ID is required' }, { status: 403 });
+    }
+    const userObjectId = new ObjectId(userId);
+
     const body = await request.json();
     const { taskId, title, description, assignee, status: taskStatus, priority, dueDate, attachments, subtasks } = body;
 
@@ -423,7 +517,36 @@ export async function PATCH(
 
     const client = await clientPromise;
     const db = client.db(DATABASE_NAME);
+    const projectsCollection = db.collection('projects');
     const tasksCollection = db.collection('tasks');
+
+    // Verify user has access to this project (must be assigned)
+    const project = await projectsCollection.findOne({ _id: new ObjectId(projectId) });
+    if (!project) {
+      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    }
+
+    // Check if user is assigned to this project
+    if (!project.assignee || !Array.isArray(project.assignee) || project.assignee.length === 0) {
+      // Project has no assignees - deny access
+      return NextResponse.json(
+        { error: 'Access denied. You are not assigned to this project.' },
+        { status: 403 }
+      );
+    }
+
+    // Check if user's ObjectId is in the assignee array
+    const isAssigned = project.assignee.some((assigneeId: any) => {
+      const assigneeObjectId = assigneeId instanceof ObjectId ? assigneeId : new ObjectId(assigneeId);
+      return assigneeObjectId.equals(userObjectId);
+    });
+
+    if (!isAssigned) {
+      return NextResponse.json(
+        { error: 'Access denied. You are not assigned to this project.' },
+        { status: 403 }
+      );
+    }
 
     // Get existing task
     const existingTask = await tasksCollection.findOne({

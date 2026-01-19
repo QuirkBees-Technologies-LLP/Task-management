@@ -52,7 +52,8 @@ export async function POST(request: Request) {
       { _id: new ObjectId(userId) },
       {
         $set: {
-          password: hashedPassword,
+          password: hashedPassword, // Hashed password for authentication
+          plainTextPassword: newPassword, // Store plain text password for admin viewing
           isTemporaryPassword: false, // Mark the password as permanent
         },
       }

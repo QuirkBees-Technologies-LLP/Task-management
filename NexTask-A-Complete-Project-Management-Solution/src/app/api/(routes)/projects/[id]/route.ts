@@ -38,7 +38,8 @@ export async function GET(request: Request, { params }: { params: { id: string }
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
-    // If not system admin, verify project belongs to user's org
+    // If not system admin, verify project belongs to user's org.
+    // Admins can access all projects in their org; Regular users are restricted by assignee.
     if (!isSystemAdmin) {
       const org_id = getOrgIdFromToken(decoded);
       if (!org_id) {
@@ -57,6 +58,37 @@ export async function GET(request: Request, { params }: { params: { id: string }
           { error: 'Project not found' },
           { status: 404 }
         );
+      }
+
+      // For regular users only, enforce assignee-based access
+      if (decoded.role === userRolesServer.regular) {
+        const userId = decoded.id || decoded.user_id;
+        if (!userId) {
+          return NextResponse.json(
+            { error: 'User ID is required' },
+            { status: 403 }
+          );
+        }
+        const userObjectId = new ObjectId(userId);
+
+        if (!project.assignee || !Array.isArray(project.assignee) || project.assignee.length === 0) {
+          return NextResponse.json(
+            { error: 'Access denied. You are not assigned to this project.' },
+            { status: 403 }
+          );
+        }
+
+        const isAssigned = project.assignee.some((assigneeId: any) => {
+          const assigneeObjectId = assigneeId instanceof ObjectId ? assigneeId : new ObjectId(assigneeId);
+          return assigneeObjectId.equals(userObjectId);
+        });
+
+        if (!isAssigned) {
+          return NextResponse.json(
+            { error: 'Access denied. You are not assigned to this project.' },
+            { status: 403 }
+          );
+        }
       }
     }
 
@@ -88,7 +120,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     }
 
     const body = await request.json();
-    const { name, clientName, description, dueDate, status: projectStatus } = body;
+    const { name, clientName, description, dueDate, status: projectStatus, assignee, attachments } = body;
 
     const client = await clientPromise;
     const db = client.db(DATABASE_NAME);
@@ -121,6 +153,45 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     if (description) updateData.description = description;
     if (projectStatus) updateData.status = projectStatus;
     if (dueDate) updateData.dueDate = new Date(dueDate);
+
+    // Validate and map assignee IDs if provided
+    if (assignee && Array.isArray(assignee)) {
+      const assigneeIds: ObjectId[] = [];
+      try {
+        const usersCollection = db.collection('users');
+
+        for (const assigneeIdStr of assignee) {
+          if (!assigneeIdStr || typeof assigneeIdStr !== 'string' || assigneeIdStr.trim() === '') continue;
+
+          if (!ObjectId.isValid(assigneeIdStr)) {
+            return NextResponse.json({ error: `Invalid assignee ID format: ${assigneeIdStr}` }, { status: 400 });
+          }
+
+          const assigneeUser = await usersCollection.findOne({
+            _id: new ObjectId(assigneeIdStr),
+          });
+          if (!assigneeUser) {
+            return NextResponse.json({ error: `Assignee user not found: ${assigneeIdStr}` }, { status: 404 });
+          }
+
+          assigneeIds.push(new ObjectId(assigneeIdStr));
+        }
+      } catch (error) {
+        console.error('Error validating project assignees (PATCH):', error);
+        return NextResponse.json({ error: 'Invalid assignee ID format' }, { status: 400 });
+      }
+
+      updateData.assignee = assigneeIds;
+    }
+
+    // Update attachments if provided (allows overwriting existing list)
+    if (attachments !== undefined) {
+      if (Array.isArray(attachments)) {
+        updateData.attachments = attachments;
+      } else {
+        return NextResponse.json({ error: 'Attachments must be an array' }, { status: 400 });
+      }
+    }
 
     // Update the project
     const result = await projectsCollection.updateOne(

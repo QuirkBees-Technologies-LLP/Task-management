@@ -19,7 +19,12 @@ import {
 
 // Define the items for the sidebar
 export const superUserItems = [
-  { title: 'Dashboard', icon: <DashboardOutlined fontSize="small" />, key: '' },
+  // { title: 'Dashboard', icon: <DashboardOutlined fontSize="small" />, key: '' }, // Commented out - Dashboard hidden from menu
+  {
+    title: 'Projects',
+    icon: <FolderOutlined fontSize="small" />,
+    key: 'projects',  
+  },
   {
     title: 'Staff Management',
     icon: <PeopleOutline fontSize="small" />,
@@ -29,11 +34,6 @@ export const superUserItems = [
     title: 'Email Templates',
     icon: <EmailOutlined fontSize="small" />,
     key: 'email-templates',
-  },
-  {
-    title: 'Projects',
-    icon: <FolderOutlined fontSize="small" />,
-    key: 'projects',
   },
   {
     title: 'Invoices',
@@ -88,50 +88,84 @@ export const adminItems = (() => {
     (item) => !['', 'manage-apis', 'email-templates', 'permissions'].includes(item.key)
   );
 
-  // Find the index of Staff Management
-  const staffManagementIndex = filteredItems.findIndex(item => item.key === 'team');
+  // Explicitly ensure Projects is first - find it and place it at the beginning
+  const projectsItem = filteredItems.find(item => item.key === 'projects');
+  const otherItems = filteredItems.filter(item => item.key !== 'projects');
 
+  // Find the index of Staff Management in other items
+  const staffManagementIndex = otherItems.findIndex(item => item.key === 'team');
+
+  // Build the array with Projects explicitly first
+  const itemsWithDepartment: any[] = [];
+  
+  // Add Projects first - this is critical for the requirement
+  if (projectsItem) {
+    itemsWithDepartment.push(projectsItem);
+  }
+  
+  // Add items before Department (Staff Management)
+  itemsWithDepartment.push(...otherItems.slice(0, staffManagementIndex + 1));
+  
   // Insert Department right after Staff Management
-  const itemsWithDepartment = [
-    ...filteredItems.slice(0, staffManagementIndex + 1),
-    {
-      title: 'Department',
-      icon: <BusinessOutlined fontSize="small" />,
-      key: 'admin/departments',
-    },
-    ...filteredItems.slice(staffManagementIndex + 1),
-    {
-      title: 'Admin',
-      icon: <AdminPanelSettingsOutlined fontSize="small" />,
-      key: 'admin',
-      children: [],
-    },
-  ];
+  itemsWithDepartment.push({
+    title: 'Department',
+    icon: <BusinessOutlined fontSize="small" />,
+    key: 'admin/departments',
+  });
+  
+  // Add remaining items
+  itemsWithDepartment.push(...otherItems.slice(staffManagementIndex + 1));
+  
+  // Add Admin at the end
+  itemsWithDepartment.push({
+    title: 'Admin',
+    icon: <AdminPanelSettingsOutlined fontSize="small" />,
+    key: 'admin',
+    children: [],
+  });
 
   return itemsWithDepartment;
 })();
 
 // Add Admin menu to superUserItems as well
 export const superUserItemsWithAdmin = (() => {
-  // Find the index of Staff Management
-  const staffManagementIndex = superUserItems.findIndex(item => item.key === 'team');
+  // Explicitly ensure Projects is first - find it and place it at the beginning
+  const projectsItem = superUserItems.find(item => item.key === 'projects');
+  const otherItems = superUserItems.filter(item => item.key !== 'projects');
 
+  // Find the index of Staff Management in other items
+  const staffManagementIndex = otherItems.findIndex(item => item.key === 'team');
+
+  // Build the array with Projects explicitly first
+  const itemsWithAdmin: any[] = [];
+  
+  // Add Projects first - this is critical for the requirement
+  if (projectsItem) {
+    itemsWithAdmin.push(projectsItem);
+  }
+  
+  // Add items before Department (Staff Management)
+  itemsWithAdmin.push(...otherItems.slice(0, staffManagementIndex + 1));
+  
   // Insert Department right after Staff Management
-  return [
-    ...superUserItems.slice(0, staffManagementIndex + 1),
-    {
-      title: 'Department',
-      icon: <BusinessOutlined fontSize="small" />,
-      key: 'admin/departments',
-    },
-    ...superUserItems.slice(staffManagementIndex + 1),
-    {
-      title: 'Admin',
-      icon: <AdminPanelSettingsOutlined fontSize="small" />,
-      key: 'admin',
-      children: [],
-    },
-  ];
+  itemsWithAdmin.push({
+    title: 'Department',
+    icon: <BusinessOutlined fontSize="small" />,
+    key: 'admin/departments',
+  });
+  
+  // Add remaining items
+  itemsWithAdmin.push(...otherItems.slice(staffManagementIndex + 1));
+  
+  // Add Admin at the end
+  itemsWithAdmin.push({
+    title: 'Admin',
+    icon: <AdminPanelSettingsOutlined fontSize="small" />,
+    key: 'admin',
+    children: [],
+  });
+
+  return itemsWithAdmin;
 })();
 
 export const regularItems = adminItems.filter(

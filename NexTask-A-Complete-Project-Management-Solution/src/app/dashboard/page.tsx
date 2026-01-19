@@ -1,5 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   CheckCircleOutline,
   GroupOutlined,
@@ -20,7 +21,20 @@ import axios from 'axios';
 import { safeLocalStorageGet } from '@/utils/helpers';
 import { accessTokenKey } from '@/utils/constants';
 
+// Dashboard page is commented out - redirecting to projects instead
+// All dashboard functionality should be accessed through /dashboard/projects
 export default function Dashboard() {
+  const router = useRouter();
+  
+  // Immediately redirect to projects - Dashboard page should not be accessible
+  useEffect(() => {
+    router.push('/dashboard/projects');
+  }, [router]);
+
+  // Return null or a loading state while redirecting
+  return null;
+  
+  /* COMMENTED OUT - Dashboard page content - redirecting to projects instead
   const theme = useTheme();
   const [projects, setProjects] = useState([]);
   const [projectsLoading, setProjectsLoading] = useState(true);
@@ -284,4 +298,5 @@ export default function Dashboard() {
       </Grid2>
     </>
   );
+  */
 }

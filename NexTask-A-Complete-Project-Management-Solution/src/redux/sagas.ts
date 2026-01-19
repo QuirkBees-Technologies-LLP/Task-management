@@ -112,6 +112,7 @@ axios.interceptors.response.use(
 function* userLogin({ payload }: any) {
   try {
     const { email, password } = payload?.formData;
+    const router = payload?.router; // Get router from payload
 
     const response = yield call(axios.post, '/api/auth/login', {
       email,
@@ -127,7 +128,12 @@ function* userLogin({ payload }: any) {
     } else {
       enqueueSnackbar({ message: 'Signin Success!', variant: 'success' });
       localStorage.setItem(accessTokenKey, response.data.token);
-      navigateTo('/dashboard');
+      // Use router from payload if available, otherwise fallback to navigateTo
+      if (router) {
+        router.push('/dashboard/projects'); // Redirect to projects instead of dashboard
+      } else {
+        navigateTo('/dashboard/projects'); // Fallback to global router
+      }
       yield put(loginSuccess(response.data));
       yield put(fetchUserInfo());
     }
@@ -160,7 +166,7 @@ function* postNewUser({ payload }: any) {
 }
 
 function* changePasswordSaga({ payload }: any) {
-  const { newPassword, setFormData, token, email } = payload;
+  const { oldPassword, newPassword, setFormData, token, email } = payload;
 
   if (token) {
     try {
@@ -176,6 +182,7 @@ function* changePasswordSaga({ payload }: any) {
         axios.post,
         '/api/auth/change-password',
         {
+          oldPassword, // Send oldPassword (current password) to API
           newPassword,
         },
         options

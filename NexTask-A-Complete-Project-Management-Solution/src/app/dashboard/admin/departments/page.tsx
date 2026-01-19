@@ -80,7 +80,7 @@ const DepartmentsPage: React.FC = () => {
 
   useEffect(() => {
     if (!isAdmin) {
-      router.push('/dashboard');
+      router.push('/dashboard/projects'); // Redirect to projects instead of dashboard
       return;
     }
     fetchDepartments();

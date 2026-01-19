@@ -67,7 +67,7 @@ const AdminUsersPage: React.FC = () => {
   useEffect(() => {
     // Check if user is admin
     if (currentUser && currentUser.role !== 'Admin' && !currentUser.superuser) {
-      router.push('/dashboard');
+      router.push('/dashboard/projects'); // Redirect to projects instead of dashboard
       return;
     }
     fetchUsers();

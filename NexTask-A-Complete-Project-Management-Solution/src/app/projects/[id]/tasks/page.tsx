@@ -94,6 +94,14 @@ export default function ProjectTasksPage() {
       }
     } catch (error: any) {
       console.error('Error fetching project:', error);
+      // If user is not assigned to project (403), redirect to projects page
+      if (error.response?.status === 403) {
+        enqueueSnackbar({
+          message: 'Access denied. You are not assigned to this project.',
+          variant: 'error',
+        });
+        router.push('/dashboard/projects');
+      }
     }
   };
 
@@ -136,10 +144,19 @@ export default function ProjectTasksPage() {
       }
     } catch (error: any) {
       console.error('Error fetching tasks:', error);
-      enqueueSnackbar({
-        message: error.response?.data?.error || 'Failed to fetch tasks',
-        variant: 'error',
-      });
+      // If user is not assigned to project (403), redirect to projects page
+      if (error.response?.status === 403) {
+        enqueueSnackbar({
+          message: 'Access denied. You are not assigned to this project.',
+          variant: 'error',
+        });
+        router.push('/dashboard/projects');
+      } else {
+        enqueueSnackbar({
+          message: error.response?.data?.error || 'Failed to fetch tasks',
+          variant: 'error',
+        });
+      }
     } finally {
       setLoading(false);
     }

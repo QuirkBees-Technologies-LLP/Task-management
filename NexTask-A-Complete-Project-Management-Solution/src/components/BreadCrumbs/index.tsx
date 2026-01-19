@@ -56,25 +56,49 @@ const DynamicBreadcrumbs = ({ inDashboard = true }) => {
 
   const generateBreadcrumbs = useCallback(() => {
     const pathSegments = pathname.split('/').filter(Boolean);
-    const breadcrumbPaths: Breadcrumb[] = pathSegments.map((segment, index) => {
-      const href = '/' + pathSegments.slice(0, index + 1).join('/');
+    
+    // Filter out 'dashboard' from breadcrumb labels - Dashboard should NEVER appear in breadcrumbs
+    // Use case-insensitive filtering to catch any variations
+    const filteredSegments = pathSegments.filter(segment => 
+      segment.toLowerCase() !== 'dashboard'
+    );
+    
+    // If no segments remain after filtering, return empty breadcrumbs
+    if (filteredSegments.length === 0) {
+      setBreadcrumbs([]);
+      return;
+    }
+    
+    const breadcrumbPaths: Breadcrumb[] = filteredSegments.map((segment, index) => {
+      // Reconstruct href - need to include /dashboard prefix for proper routing
+      const hrefSegments = ['dashboard', ...filteredSegments.slice(0, index + 1)];
+      const href = '/' + hrefSegments.join('/');
       
       // Replace project ID with project name if available
       let label = segment;
       if (
-        pathSegments.length >= 3 &&
-        pathSegments[0] === 'projects' &&
-        pathSegments[2] === 'tasks' &&
+        filteredSegments.length >= 3 &&
+        filteredSegments[0] === 'projects' &&
+        filteredSegments[2] === 'tasks' &&
         index === 1 &&
         projectName &&
         /^[a-f0-9]{24}$/i.test(segment)
       ) {
         label = projectName;
       } else {
+        // Capitalize the label, but ensure 'dashboard' never appears even if capitalized
         label = segment
           .replace(/-/g, ' ')
           .split(' ')
-          .map((word) => capitalize(word))
+          .map((word) => {
+            // Double-check: never allow 'dashboard' or 'Dashboard' as a label
+            const lowerWord = word.toLowerCase();
+            if (lowerWord === 'dashboard') {
+              return ''; // Skip dashboard entirely
+            }
+            return capitalize(word);
+          })
+          .filter(word => word !== '') // Remove any empty strings
           .join(' ');
       }
 
@@ -82,14 +106,15 @@ const DynamicBreadcrumbs = ({ inDashboard = true }) => {
         label,
         href,
       };
-    });
+    }).filter(breadcrumb => breadcrumb.label !== '' && breadcrumb.label.toLowerCase() !== 'dashboard'); // Final safety check
 
-    if (breadcrumbPaths.length > 0 && breadcrumbPaths[0].href !== '/dashboard' && inDashboard) {
-      breadcrumbPaths.unshift({
-        label: 'Dashboard',
-        href: '/dashboard',
-      });
-    }
+    // Commented out - Dashboard should NEVER appear in breadcrumbs
+    // if (breadcrumbPaths.length > 0 && breadcrumbPaths[0].href !== '/dashboard' && inDashboard) {
+    //   breadcrumbPaths.unshift({
+    //     label: 'Dashboard',
+    //     href: '/dashboard',
+    //   });
+    // }
 
     setBreadcrumbs(breadcrumbPaths);
   }, [pathname, projectName, inDashboard]);
@@ -98,16 +123,37 @@ const DynamicBreadcrumbs = ({ inDashboard = true }) => {
     generateBreadcrumbs();
   }, [pathname, projectName, generateBreadcrumbs]);
 
-  return breadcrumbs.length > 1 ? (
+  // Filter out any breadcrumbs that might have 'dashboard' as label (final safety check)
+  const safeBreadcrumbs = breadcrumbs.filter(
+    (crumb) => crumb.label.toLowerCase() !== 'dashboard' && crumb.label !== ''
+  );
+
+  // Only show breadcrumbs if there's at least one valid breadcrumb
+  // and it's not just a single "Dashboard" breadcrumb
+  if (safeBreadcrumbs.length === 0) {
+    return null;
+  }
+
+  // If there's only one breadcrumb, show it (but never if it's Dashboard)
+  if (safeBreadcrumbs.length === 1) {
+    return (
+      <Breadcrumbs aria-label="breadcrumbs" sx={{ '&& > *': { fontSize: 14 }, mb: 2 }}>
+        <Typography fontWeight={700}>{safeBreadcrumbs[0].label}</Typography>
+      </Breadcrumbs>
+    );
+  }
+
+  // Multiple breadcrumbs
+  return (
     <Breadcrumbs aria-label="breadcrumbs" sx={{ '&& > *': { fontSize: 14 }, mb: 2 }}>
-      {breadcrumbs[0] && (
-        <Link component={NextLink} href={breadcrumbs[0].href} key="home" color="inherit">
-          {breadcrumbs[0].label}
+      {safeBreadcrumbs[0] && (
+        <Link component={NextLink} href={safeBreadcrumbs[0].href} key="home" color="inherit">
+          {safeBreadcrumbs[0].label}
         </Link>
       )}
-      {breadcrumbs.slice(1).map((breadcrumb, index) => (
+      {safeBreadcrumbs.slice(1).map((breadcrumb, index) => (
         <span key={index}>
-          {index === breadcrumbs.length - 2 ? (
+          {index === safeBreadcrumbs.length - 2 ? (
             <Typography fontWeight={700}>{breadcrumb.label}</Typography>
           ) : (
             <Link component={NextLink} key={breadcrumb.href} href={breadcrumb.href} color="inherit">
@@ -117,7 +163,7 @@ const DynamicBreadcrumbs = ({ inDashboard = true }) => {
         </span>
       ))}
     </Breadcrumbs>
-  ) : null;
+  );
 };
 
 export default DynamicBreadcrumbs;

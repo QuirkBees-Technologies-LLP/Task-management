@@ -82,7 +82,7 @@ const AdminUsersPage: React.FC = () => {
         message: 'Access denied. Admin privileges required.',
         variant: 'error',
       });
-      router.push('/dashboard');
+      router.push('/dashboard/projects'); // Redirect to projects instead of dashboard
       return;
     }
 

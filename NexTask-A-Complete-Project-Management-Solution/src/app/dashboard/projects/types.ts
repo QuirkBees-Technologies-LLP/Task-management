@@ -2,6 +2,8 @@ export type ProjectStatus = 'Completed' | 'In Progress' | 'Pending' | string;
 
 export type ColumnAlignment = 'left' | 'center' | 'right';
 
+import type { TaskAttachment } from '@/app/dashboard/tasks/types';
+
 export interface Project {
   id?: string | number;
   name?: string;
@@ -11,6 +13,8 @@ export interface Project {
   startDate?: string;
   endDate?: string;
   dueDate?: string; // Added for task-related project usage
+  assignee?: string[]; // Array of user IDs assigned to the project
+  attachments?: TaskAttachment[]; // Reuse task attachment structure for projects
 }
 
 export interface ResponsiveTableColumn {
