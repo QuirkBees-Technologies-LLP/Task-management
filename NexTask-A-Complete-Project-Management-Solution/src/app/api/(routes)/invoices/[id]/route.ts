@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
 import clientPromise from '../../../lib/mongodb';
 import { DATABASE_NAME } from '../../../config';
-import { verifyToken } from '../../../helpers';
+import { verifyToken, requireOrgIdFromToken } from '../../../helpers';
+import { addOrgIdToQuery } from '../../../lib/orgIdHelper';
 
 // GET: Fetch single invoice by ID
 export async function GET(
@@ -24,12 +25,15 @@ export async function GET(
       return NextResponse.json({ error: 'Invalid invoice ID format' }, { status: 400 });
     }
 
+    // Get org_id from token - required for organization scoping
+    const org_id = requireOrgIdFromToken(decoded);
+
     const client = await clientPromise;
     const db = client.db(DATABASE_NAME);
     const invoicesCollection = db.collection('invoices');
 
-    // Build query
-    const query: any = { _id: new ObjectId(id) };
+    // Build query scoped to the current organization
+    const query: any = addOrgIdToQuery({ _id: new ObjectId(id) }, org_id);
 
     const invoice = await invoicesCollection.findOne(query);
 
@@ -78,9 +82,12 @@ export async function GET(
       const companySettingsCollection = db.collection('companySettings');
       const bankingDetailsCollection = db.collection('bankingDetails');
 
+      // Fetch current settings scoped to the same organization as the invoice.
+      // Never use global settings without org_id, to avoid leaking data
+      // from another organization.
       const [companySettings, bankingInfo] = await Promise.all([
-        companySettingsCollection.findOne({}),
-        bankingDetailsCollection.findOne({}),
+        companySettingsCollection.findOne(addOrgIdToQuery({}, org_id)),
+        bankingDetailsCollection.findOne(addOrgIdToQuery({}, org_id)),
       ]);
 
       // Only fetch and use current settings if the field doesn't exist on the invoice document
