@@ -56,12 +56,13 @@ export const SortableItem: React.FC<SortableItemProps> = ({
       }
     };
 
-    document.addEventListener('keydown', handleEscape);
-
-    // Cleanup
-    return () => {
-      document.removeEventListener('keydown', handleEscape);
-    };
+    if (typeof document !== 'undefined') {
+      document.addEventListener('keydown', handleEscape);
+      // Cleanup
+      return () => {
+        document.removeEventListener('keydown', handleEscape);
+      };
+    }
   }, [open]);
 
   // Cleanup menu state on unmount

@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   DndContext,
   closestCenter,
+  pointerWithin,
   DragEndEvent,
   DragStartEvent,
   useDroppable,
@@ -67,7 +68,7 @@ interface TaskSection {
 }
 
 interface Task {
-  _id: string;
+  _id?: string;
   title: string;
   description: string;
   status?: string; // Add status field to Task interface
@@ -192,10 +193,12 @@ const TaskSectionColumn: React.FC<{
         }
       };
 
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => {
-        document.removeEventListener('mousedown', handleClickOutside);
-      };
+      if (typeof document !== 'undefined') {
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+          document.removeEventListener('mousedown', handleClickOutside);
+        };
+      }
     }, [anchorEl]);
 
     const handleMenuClick = (event: React.MouseEvent<HTMLElement>) => {
@@ -580,8 +583,18 @@ const TaskBoard: React.FC<TaskBoardProps> = ({
   const isSuperUser = useSelector(selectSuperuser);
   const canManageSections = isSuperUser || userInfo?.role === 'Admin';
   const sensors = useSensors(
-    useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 120, tolerance: 8 } }),
+    // Make drag start feel immediate while still preventing accidental drags
+    useSensor(MouseSensor, {
+      activationConstraint: {
+        distance: 2,
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 80,
+        tolerance: 6,
+      },
+    }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
@@ -910,7 +923,9 @@ const TaskBoard: React.FC<TaskBoardProps> = ({
     <>
       <DndContext
         sensors={sensors}
-        collisionDetection={closestCenter}
+        // Use pointer-based collision so the whole column reacts as a drop zone,
+        // not just the area near the bottom or the centers of individual cards.
+        collisionDetection={pointerWithin}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >

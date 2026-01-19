@@ -1,6 +1,5 @@
 import { JWT_SECRET } from '@/app/api/config';
 import { clients, contracts, invoices, projects, roles, tasks, teams } from './data';
-import dayjs from 'dayjs';
 
 export const accessTokenKey = `token.${JWT_SECRET}`;
 export const drawerWidth = 250;

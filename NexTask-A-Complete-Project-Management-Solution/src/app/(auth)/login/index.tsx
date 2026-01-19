@@ -207,14 +207,6 @@ const SignInPage: React.FC = () => {
 
         <Grid2 container justifyContent="center">
           <Typography variant="body2">
-            Don’t have an account?
-            <MuiLink component={Link} href="/signup" sx={{ ml: 1 }}>
-              Sign Up
-            </MuiLink>
-          </Typography>
-        </Grid2>
-        <Grid2 container justifyContent="center">
-          <Typography variant="body2">
             Forgot Password?
             <MuiLink component={Link} href="/change-password" sx={{ ml: 1 }}>
               Reset

@@ -10,7 +10,7 @@ export function isTokenExpired(token: string): boolean {
     }
     // Check if token is expired (exp is in seconds, Date.now() is in milliseconds)
     return decoded.exp * 1000 < Date.now();
-  } catch (error) {
+  } catch {
     // If decoding fails, consider token expired/invalid
     return true;
   }

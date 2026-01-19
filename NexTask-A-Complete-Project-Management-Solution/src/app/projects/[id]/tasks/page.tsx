@@ -1,138 +1,105 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import dynamicImport from 'next/dynamic';
+
+// Prevent static generation since this page uses browser APIs
+export const dynamic = 'force-dynamic';
+
 import {
   Box,
-  Button,
-  Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  IconButton,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  MenuItem,
-  FormControl,
-  InputLabel,
-  Select,
-  Typography,
+  useTheme,
   CircularProgress,
-  Stack,
-  Chip,
-  Avatar,
-  Tooltip,
-  InputAdornment,
-  Pagination,
+  Typography,
+  Paper,
 } from '@mui/material';
-import {
-  AddOutlined,
-  EditOutlined,
-  DeleteOutline,
-  History,
-  Search as SearchIcon,
-} from '@mui/icons-material';
-import { useRouter, useParams } from 'next/navigation';
+
+// Dynamically import components that use browser APIs (@dnd-kit) to prevent SSR issues
+const TaskBoard = dynamicImport(() => import('@/app/dashboard/tasks/components/TaskBoard'), {
+  ssr: false,
+});
+const TaskListView = dynamicImport(() => import('@/app/dashboard/tasks/components/TaskListView'), {
+  ssr: false,
+});
 import PageHeader from '@/components/PageHeader';
+import DeleteDialog from '@/app/dashboard/tasks/components/DeleteTask';
+import TaskDialog from '@/app/dashboard/tasks/components/TaskModal';
+import { ViewModule, ViewList } from '@mui/icons-material';
+import { ToggleButton, ToggleButtonGroup, Tooltip } from '@mui/material';
 import axios from 'axios';
 import { safeLocalStorageGet } from '@/utils/helpers';
 import { accessTokenKey } from '@/utils/constants';
 import { enqueueSnackbar } from 'notistack';
+import { useRouter, useParams } from 'next/navigation';
 
-interface Task {
+import { Task, TaskAttachment, Subtask } from '@/app/dashboard/tasks/types';
+import { Project } from '@/app/dashboard/projects/types';
+
+interface ApiTask {
   _id: string;
   title: string;
   description: string;
   status: string;
-  assignee?: string;
-  assigneeInfo?: {
-    _id: string;
-    firstName: string;
-    lastName: string;
-    email: string;
-  };
-  statusHistory?: Array<{
-    status: string;
-    timestamp: string;
-    changedBy: string;
-  }>;
+  priority?: string;
+  projectId?: string;
+  dueDate?: string;
+  attachments?: TaskAttachment[];
+  subtasks?: Subtask[];
+  assignee?: string[] | any[] | string; // Array of user IDs (or legacy single ID)
 }
 
-interface User {
-  _id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-}
-
-interface TaskStatus {
-  value: string;
-  label: string;
-  order: number;
-  color: 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning';
-}
-
-const ProjectTasksPage: React.FC = () => {
+export default function ProjectTasksPage() {
   const router = useRouter();
   const params = useParams();
+  const theme = useTheme();
   const projectId = params?.id as string;
 
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
-  const [taskStatuses, setTaskStatuses] = useState<TaskStatus[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [usersLoading, setUsersLoading] = useState(true);
-  const [statusesLoading, setStatusesLoading] = useState(true);
-  const [taskDialogOpen, setTaskDialogOpen] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    assignee: '',
-    status: '',
-  });
+  // Redirect if no projectId
+  useEffect(() => {
+    if (!projectId) {
+      router.replace('/dashboard/projects');
+    }
+  }, [projectId, router]);
 
-  // Pagination and filtering
-  const [page, setPage] = useState(1);
-  const [limit] = useState(10);
-  const [totalPages, setTotalPages] = useState(1);
-  const [search, setSearch] = useState('');
-  const [sortBy, setSortBy] = useState('createdAt');
-  const [sortOrder, setSortOrder] = useState('desc');
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [taskDialogOpen, setOpenDialog] = useState(false);
+  const [taskDeleteOpen, setTaskDeleteOpen] = useState(false);
+  const [currentTask, setCurrentTask] = useState<Task | null>(null);
+  const [selectedSectionId, setSelectedSectionId] = useState<string>('');
+  const [savingTask, setSavingTask] = useState(false);
+  const [view, setView] = useState<'board' | 'list'>('board');
+  const [projectName, setProjectName] = useState<string>('');
 
   useEffect(() => {
     if (projectId) {
       fetchTasks();
+      fetchProject();
+      fetchProjects(); // For the task dialog project selector
     }
-  }, [projectId, page, search, sortBy, sortOrder]);
+  }, [projectId]);
 
-  useEffect(() => {
-    if (projectId) {
-      fetchUsers();
-      fetchTaskStatuses();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectId]); // Only fetch users and statuses once when projectId changes
+  const fetchProject = async () => {
+    try {
+      const token = safeLocalStorageGet(accessTokenKey);
+      if (!token) return;
 
-  // Set default status when statuses are loaded
-  useEffect(() => {
-    if (taskStatuses.length > 0 && !formData.status) {
-      setFormData((prev) => ({
-        ...prev,
-        status: taskStatuses[0].value,
-      }));
+      const response = await axios.get(`/api/projects/${projectId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (response.data.success && response.data.project) {
+        setProjectName(response.data.project.name || 'Project Tasks');
+      }
+    } catch (error: any) {
+      console.error('Error fetching project:', error);
     }
-  }, [taskStatuses]);
+  };
 
   const fetchTasks = async () => {
+    if (!projectId) return;
+    
     setLoading(true);
     try {
       const token = safeLocalStorageGet(accessTokenKey);
@@ -141,35 +108,34 @@ const ProjectTasksPage: React.FC = () => {
         return;
       }
 
-      const params = new URLSearchParams({
-        page: page.toString(),
-        limit: limit.toString(),
-        sortBy,
-        sortOrder,
-        ...(search && { search }),
-      });
-
-      const response = await axios.get(`/api/projects/${projectId}/tasks?${params.toString()}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+      // Fetch tasks for this specific project
+      const response = await axios.get(`/api/projects/${projectId}/tasks?limit=1000`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       if (response.data.success) {
-        setTasks(response.data.tasks || []);
-        if (response.data.pagination) {
-          setTotalPages(response.data.pagination.totalPages || 1);
-        } else {
-          setTotalPages(1);
-        }
-      } else {
-        setTasks([]);
-        setTotalPages(1);
+        const allTasks = response.data.tasks || [];
+
+        // Convert API tasks to Task format
+        const convertedTasks: Task[] = allTasks.map((t: ApiTask) => ({
+          id: typeof t._id === 'string' ? t._id : String(t._id || ''),
+          title: t.title,
+          description: t.description,
+          status: t.status === 'pending' ? 'Todo' : t.status === 'in-progress' ? 'In Progress' : t.status === 'completed' ? 'Done' : t.status,
+          priority: t.priority || 'Medium',
+          projectId: typeof t.projectId === 'string' ? t.projectId : String(t.projectId || projectId),
+          dueDate: t.dueDate || '',
+          attachments: t.attachments || [],
+          subtasks: t.subtasks || [],
+          assignee: (t.assignee && Array.isArray(t.assignee)) 
+            ? t.assignee.map((id: any) => String(id))
+            : (t.assignee ? [String(t.assignee)] : []), // Convert to array format (handle legacy single ID)
+        }));
+
+        setTasks(convertedTasks);
       }
     } catch (error: any) {
       console.error('Error fetching tasks:', error);
-      setTasks([]);
-      setTotalPages(1);
       enqueueSnackbar({
         message: error.response?.data?.error || 'Failed to fetch tasks',
         variant: 'error',
@@ -179,222 +145,236 @@ const ProjectTasksPage: React.FC = () => {
     }
   };
 
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearch(e.target.value);
-    setPage(1); // Reset to first page on search
-  };
-
-  const fetchUsers = async () => {
+  const fetchProjects = async () => {
     try {
       const token = safeLocalStorageGet(accessTokenKey);
-      if (!token) {
-        return;
-      }
+      if (!token) return;
 
-      const response = await axios.get('/api/users', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+      const response = await axios.get('/api/projects?limit=1000', {
+        headers: { Authorization: `Bearer ${token}` },
       });
 
-      setUsers(response.data || []);
-    } catch (error: any) {
-      console.error('Error fetching users:', error);
-    } finally {
-      setUsersLoading(false);
-    }
-  };
-
-  const fetchTaskStatuses = async () => {
-    try {
-      const token = safeLocalStorageGet(accessTokenKey);
-      if (!token) {
-        return;
-      }
-
-      const response = await axios.get('/api/config/task-statuses', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (response.data.success && response.data.statuses) {
-        // Sort by order
-        const sortedStatuses = [...response.data.statuses].sort((a: TaskStatus, b: TaskStatus) => a.order - b.order);
-        setTaskStatuses(sortedStatuses);
+      if (response.data.success) {
+        const convertedProjects: Project[] = (response.data.projects || []).map((p: any) => ({
+          id: p._id,
+          name: p.name,
+          description: p.description,
+          status: p.status || 'Pending',
+          startDate: p.createdAt ? new Date(p.createdAt).toISOString().split('T')[0] : '',
+          endDate: p.dueDate ? new Date(p.dueDate).toISOString().split('T')[0] : '',
+        }));
+        setProjects(convertedProjects);
       }
     } catch (error: any) {
-      console.error('Error fetching task statuses:', error);
-      // Fallback to default statuses if API fails
-      setTaskStatuses([
-        { value: 'pending', label: 'Pending', order: 0, color: 'default' },
-        { value: 'in-progress', label: 'In Progress', order: 1, color: 'warning' },
-        { value: 'completed', label: 'Completed', order: 2, color: 'success' },
-      ]);
-    } finally {
-      setStatusesLoading(false);
+      console.error('Error fetching projects:', error);
     }
   };
 
-  const handleOpenCreateDialog = () => {
-    setSelectedTask(null);
-    // Use first status as default
-    const defaultStatus = taskStatuses.length > 0 ? taskStatuses[0].value : 'pending';
-    setFormData({
-      title: '',
-      description: '',
-      assignee: '',
-      status: defaultStatus,
-    });
-    setTaskDialogOpen(true);
-  };
+  const handleOpenDialog = (task: Task | null = null) => {
+    console.log('handleOpenDialog called with:', task);
 
-  const handleOpenEditDialog = (task: Task) => {
-    setSelectedTask(task);
-    // Convert assignee ObjectId to string if it exists
-    const assigneeValue = task.assignee
-      ? (typeof task.assignee === 'object' && task.assignee && '_id' in task.assignee
-        ? (task.assignee as any)._id.toString()
-        : String(task.assignee))
-      : '';
-    setFormData({
-      title: task.title,
-      description: task.description,
-      assignee: assigneeValue,
-      status: task.status,
-    });
-    setTaskDialogOpen(true);
-  };
-
-  const handleSaveTask = async () => {
-    if (!formData.title || !formData.description) {
-      enqueueSnackbar({
-        message: 'Title and description are required',
-        variant: 'error',
-      });
-      return;
+    // If task is provided, try to get the latest version from tasks array to ensure we have the most up-to-date status
+    // IMPORTANT: Match by both task ID AND project ID to prevent opening tasks from other projects
+    let taskToUse = task;
+    if (task && task.id && task.projectId) {
+      const latestTask = tasks.find(
+        (t) => String(t.id) === String(task.id) && String(t.projectId) === String(task.projectId)
+      );
+      if (latestTask) {
+        // Use the latest task from the array to ensure we have the most up-to-date status
+        taskToUse = latestTask;
+      }
     }
 
-    setSaving(true);
+    setCurrentTask(
+      taskToUse || {
+        id: '0',
+        title: '',
+        description: '',
+        status: 'Todo',
+        priority: 'Medium',
+        projectId: projectId || '',
+        dueDate: '',
+        assignee: [],
+      }
+    );
+    setOpenDialog(true);
+  };
+
+  const handleCloseTaskDialog = () => {
+    setOpenDialog(false);
+    setCurrentTask(null);
+    setSelectedSectionId('');
+  };
+
+  const handleSaveTask = async (task: Task, keepOpen: boolean = false) => {
+    if (savingTask) return; // prevent duplicate submissions
+    setSavingTask(true);
+    console.log('handleSaveTask called with:', task, 'keepOpen:', keepOpen);
     try {
       const token = safeLocalStorageGet(accessTokenKey);
       if (!token) {
         router.push('/login');
+        setSavingTask(false);
         return;
       }
 
-      if (selectedTask && selectedTask._id) {
-        // Update existing task
-        const taskIdString = typeof selectedTask._id === 'object' && selectedTask._id !== null
-          ? (selectedTask._id as any).toString()
-          : String(selectedTask._id ?? '');
-        const updateResponse = await axios.patch(
-          `/api/projects/${projectId}/tasks`,
-          {
-            taskId: taskIdString,
-            ...formData,
-          },
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+      // Ensure task is assigned to current project
+      const taskProjectId = task.projectId || projectId;
+      if (!taskProjectId) {
+        enqueueSnackbar({ message: 'Project ID is required', variant: 'error' });
+        setSavingTask(false);
+        return;
+      }
 
-        if (updateResponse.data.success) {
-          enqueueSnackbar({
-            message: 'Task updated successfully',
-            variant: 'success',
-          });
-        } else {
-          throw new Error(updateResponse.data.error || 'Failed to update task');
+      // Find the project for this task
+      const project = projects.find((p) => String(p.id) === String(taskProjectId));
+      if (!project) {
+        enqueueSnackbar({ message: 'Project not found', variant: 'error' });
+        setSavingTask(false);
+        return;
+      }
+
+      // Convert status back to API format
+      // Handle standard statuses and custom statuses that contain "done" or "completed"
+      const statusLower = task.status.toLowerCase();
+      let apiStatus = task.status;
+      if (statusLower === 'todo' || statusLower === 'pending') {
+        apiStatus = 'pending';
+      } else if (statusLower === 'in progress' || statusLower === 'in-progress') {
+        apiStatus = 'in-progress';
+      } else if (statusLower === 'done' || statusLower.includes('done') || statusLower.includes('completed')) {
+        apiStatus = 'completed';
+      }
+
+      if (task.id && task.id !== '0' && task.id !== 0) {
+        // Update existing task
+        console.log('Updating task:', { taskId: task.id, projectId: taskProjectId });
+
+        // Build update payload
+        const updatePayload: any = {
+          taskId: String(task.id),
+          title: task.title,
+          description: task.description,
+          priority: task.priority,
+          dueDate: task.dueDate || undefined,
+          attachments: task.attachments || [],
+          subtasks: task.subtasks || [],
+          assignee: task.assignee || [], // Include assignee array
+          status: apiStatus,
+        };
+
+        const response = await axios.patch(
+          `/api/projects/${taskProjectId}/tasks`,
+          updatePayload,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        console.log('Update response:', response.data);
+
+        // Check if the response indicates success
+        const isSuccess = response.status >= 200 && response.status < 300 && 
+                         (response.data?.success !== false && response.data?.success !== undefined ? response.data.success : true);
+        
+        if (!isSuccess) {
+          throw new Error(response.data?.error || 'Failed to update task');
+        }
+
+        // Task was successfully saved
+        enqueueSnackbar({ message: 'Task updated successfully', variant: 'success' });
+        // Dispatch event for calendar refresh
+        window.dispatchEvent(new CustomEvent('taskUpdated'));
+
+        // Update the task in the tasks array
+        const updatedTasks = tasks.map((t) => {
+          if (String(t.id) === String(task.id) && String(t.projectId) === String(taskProjectId)) {
+            return { ...t, ...task, projectId: taskProjectId };
+          }
+          return t;
+        });
+        setTasks(updatedTasks);
+
+        // Update currentTask if it's the same task being edited
+        if (currentTask && 
+            String(currentTask.id) === String(task.id) && 
+            String(currentTask.projectId) === String(taskProjectId)) {
+          const updatedCurrentTask = {
+            ...currentTask,
+            ...task,
+            projectId: taskProjectId,
+            status: task.status,
+          };
+          setCurrentTask(updatedCurrentTask);
         }
       } else {
         // Create new task
-        const createResponse = await axios.post(
-          `/api/projects/${projectId}/tasks`,
-          formData,
+        console.log('Creating new task:', { projectId: taskProjectId, sectionId: task.sectionId || selectedSectionId });
+        const response = await axios.post(
+          `/api/projects/${taskProjectId}/tasks`,
           {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
+            title: task.title,
+            description: task.description,
+            status: apiStatus,
+            priority: task.priority,
+            dueDate: task.dueDate || undefined,
+            attachments: task.attachments || [],
+            subtasks: task.subtasks || [],
+            sectionId: task.sectionId || selectedSectionId || undefined,
+            assignee: task.assignee || [], // Include assignee array
+          },
+          { headers: { Authorization: `Bearer ${token}` } }
         );
-
-        if (createResponse.data.success) {
-          enqueueSnackbar({
-            message: 'Task created successfully',
-            variant: 'success',
-          });
-        } else {
-          throw new Error(createResponse.data.error || 'Failed to create task');
+        console.log('Create response:', response.data);
+        
+        // Check if the response indicates success
+        const isSuccess = response.status >= 200 && response.status < 300 && 
+                         (response.data?.success !== false && response.data?.success !== undefined ? response.data.success : true);
+        
+        if (!isSuccess) {
+          throw new Error(response.data?.error || 'Failed to create task');
         }
+        
+        enqueueSnackbar({ message: 'Task created successfully', variant: 'success' });
+        // Dispatch event for calendar refresh
+        window.dispatchEvent(new CustomEvent('taskCreated'));
+        // Clear selected section after task creation
+        setSelectedSectionId('');
       }
 
-      setTaskDialogOpen(false);
-      setSelectedTask(null);
-      fetchTasks();
+      // Only close dialog if keepOpen is false (default behavior for Save button)
+      if (!keepOpen) {
+        handleCloseTaskDialog();
+      }
+
+      // Refresh tasks list
+      try {
+        fetchTasks();
+      } catch (refreshError) {
+        console.error('Error refreshing tasks after save (task was saved successfully):', refreshError);
+      }
     } catch (error: any) {
-      console.error('Error saving task:', error);
-      const errorMessage = error.response?.data?.error || error.message || 'Failed to save task';
-      enqueueSnackbar({
-        message: errorMessage,
-        variant: 'error',
-      });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleDeleteTask = async () => {
-    if (!selectedTask || !selectedTask._id) return;
-
-    setSaving(true);
-    try {
-      const token = safeLocalStorageGet(accessTokenKey);
-      if (!token) {
-        router.push('/login');
-        return;
-      }
-
-      // TypeScript guard: we know selectedTask._id exists from the check above
-      const taskId = selectedTask._id;
-      const taskIdString = typeof taskId === 'object' && taskId !== null
-        ? taskId.toString()
-        : String(taskId ?? '');
-      const deleteResponse = await axios.delete(`/api/projects/${projectId}/tasks?taskId=${taskIdString}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (deleteResponse.data.success) {
+      console.error('Error in handleSaveTask:', error);
+      
+      // Only show error if it's an actual save error
+      if (error.response) {
         enqueueSnackbar({
-          message: 'Task deleted successfully',
-          variant: 'success',
+          message: error.response?.data?.error || 'Failed to save task',
+          variant: 'error',
+        });
+      } else if (error.message && !error.message.includes('refresh')) {
+        enqueueSnackbar({
+          message: error.message || 'Failed to save task',
+          variant: 'error',
         });
       } else {
-        throw new Error(deleteResponse.data.error || 'Failed to delete task');
+        console.error('Unexpected error in handleSaveTask:', error);
       }
-
-      setDeleteDialogOpen(false);
-      setSelectedTask(null);
-      fetchTasks();
-    } catch (error: any) {
-      console.error('Error deleting task:', error);
-      const errorMessage = error.response?.data?.error || error.message || 'Failed to delete task';
-      enqueueSnackbar({
-        message: errorMessage,
-        variant: 'error',
-      });
     } finally {
-      setSaving(false);
+      setSavingTask(false);
     }
   };
 
-  const handleStatusChange = async (task: Task, newStatus: string) => {
-    if (!task._id) return;
-    
+  const handleDeleteTask = async (id: number | string) => {
+    console.log('handleDeleteTask called with id:', id);
     try {
       const token = safeLocalStorageGet(accessTokenKey);
       if (!token) {
@@ -402,67 +382,80 @@ const ProjectTasksPage: React.FC = () => {
         return;
       }
 
-      // TypeScript guard: we know task._id exists from the check above
-      const taskId = task._id;
-      const taskIdString = typeof taskId === 'object' && taskId !== null
-        ? taskId.toString()
-        : String(taskId);
-      const statusResponse = await axios.patch(
+      if (!projectId) {
+        enqueueSnackbar({ message: 'Project ID not found', variant: 'error' });
+        return;
+      }
+
+      const task = tasks.find((t) => String(t.id) === String(id));
+      console.log('Found task for deletion:', task);
+      if (!task) {
+        enqueueSnackbar({ message: 'Task not found', variant: 'error' });
+        return;
+      }
+
+      const taskIdStr = String(id);
+      console.log('Deleting task:', { taskId: taskIdStr, projectId });
+
+      const response = await axios.delete(`/api/projects/${projectId}/tasks?taskId=${taskIdStr}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      console.log('Delete response:', response.data);
+
+      enqueueSnackbar({ message: 'Task deleted successfully', variant: 'success' });
+      setTaskDeleteOpen(false);
+      setCurrentTask(null);
+      fetchTasks();
+      // Dispatch event for calendar refresh
+      window.dispatchEvent(new CustomEvent('taskDeleted'));
+    } catch (error: any) {
+      console.error('Error in handleDeleteTask:', error);
+      enqueueSnackbar({
+        message: error.response?.data?.error || 'Failed to delete task',
+        variant: 'error',
+      });
+    }
+  };
+
+  const handleStatusChange = async (task: Task) => {
+    try {
+      const token = safeLocalStorageGet(accessTokenKey);
+      if (!token) {
+        router.push('/login');
+        return;
+      }
+
+      if (!projectId) {
+        enqueueSnackbar({ message: 'Project ID not found', variant: 'error' });
+        return;
+      }
+
+      // Convert status to API format
+      const apiStatus = task.status === 'Todo' ? 'pending' : task.status === 'In Progress' ? 'in-progress' : task.status === 'Done' ? 'completed' : task.status;
+
+      await axios.patch(
         `/api/projects/${projectId}/tasks`,
         {
-          taskId: taskIdString,
-          status: newStatus,
+          taskId: task.id,
+          status: apiStatus,
         },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      if (statusResponse.data.success) {
-        enqueueSnackbar({
-          message: 'Task status updated successfully',
-          variant: 'success',
-        });
-        fetchTasks();
-      } else {
-        throw new Error(statusResponse.data.error || 'Failed to update task status');
-      }
+      // Refresh tasks after status update
+      fetchTasks();
     } catch (error: any) {
       console.error('Error updating task status:', error);
-      const errorMessage = error.response?.data?.error || error.message || 'Failed to update task status';
       enqueueSnackbar({
-        message: errorMessage,
+        message: error.response?.data?.error || 'Failed to update task status',
         variant: 'error',
       });
+      // Refresh to revert visual change if API call failed
+      fetchTasks();
     }
   };
 
-  const getStatusColor = (status: string) => {
-    const statusConfig = taskStatuses.find((s) => s.value === status);
-    return statusConfig?.color || 'default';
-  };
-
-  const getAvailableStatuses = (currentStatus: string) => {
-    const currentStatusConfig = taskStatuses.find((s) => s.value === currentStatus);
-    if (!currentStatusConfig) return taskStatuses;
-
-    const currentOrder = currentStatusConfig.order;
-    // Return all statuses from current status onwards (no backward progression)
-    return taskStatuses.filter((s) => s.order >= currentOrder);
-  };
-
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return '-';
-    try {
-      return new Date(dateString).toLocaleString();
-    } catch {
-      return dateString;
-    }
-  };
-
-  if (loading || statusesLoading) {
+  if (!projectId) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 400 }}>
         <CircularProgress />
@@ -473,376 +466,154 @@ const ProjectTasksPage: React.FC = () => {
   return (
     <>
       <PageHeader
-        title="Project Tasks"
+        title={projectName || 'Project Tasks'}
         action={
-          <Button
-            variant="contained"
-            startIcon={<AddOutlined />}
-            onClick={handleOpenCreateDialog}
+          <ToggleButtonGroup
+            value={view}
+            exclusive
+            onChange={(_, newView) => {
+              if (newView !== null) {
+                setView(newView);
+              }
+            }}
+            size="small"
+            sx={{
+              '& .MuiToggleButton-root': {
+                border: `1px solid ${theme.palette.divider}`,
+                px: 1.5,
+                py: 0.5,
+              },
+            }}
           >
-            Add Task
-          </Button>
+            <ToggleButton value="board" aria-label="Board view">
+              <Tooltip title="Board View">
+                <ViewModule fontSize="small" />
+              </Tooltip>
+            </ToggleButton>
+            <ToggleButton value="list" aria-label="List view">
+              <Tooltip title="List View">
+                <ViewList fontSize="small" />
+              </Tooltip>
+            </ToggleButton>
+          </ToggleButtonGroup>
         }
       />
-
-      <Box sx={{ mt: 3 }}>
-        {/* Search and Filters */}
-        <Paper sx={{ p: 2, mb: 3 }}>
-          <Stack spacing={2} direction={{ xs: 'column', md: 'row' }} alignItems="center">
-            <TextField
-              placeholder="Search tasks by title or description..."
-              value={search}
-              onChange={handleSearchChange}
-              size="small"
-              fullWidth
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon />
-                  </InputAdornment>
-                ),
-              }}
-            />
-            <FormControl size="small" sx={{ minWidth: 150 }}>
-              <InputLabel>Sort By</InputLabel>
-              <Select
-                value={sortBy}
-                onChange={(e) => {
-                  setSortBy(e.target.value);
-                  setPage(1);
-                }}
-                label="Sort By"
-              >
-                <MenuItem value="createdAt">Created Date</MenuItem>
-                <MenuItem value="title">Title</MenuItem>
-                <MenuItem value="status">Status</MenuItem>
-              </Select>
-            </FormControl>
-            <FormControl size="small" sx={{ minWidth: 120 }}>
-              <InputLabel>Order</InputLabel>
-              <Select
-                value={sortOrder}
-                onChange={(e) => {
-                  setSortOrder(e.target.value);
-                  setPage(1);
-                }}
-                label="Order"
-              >
-                <MenuItem value="asc">Ascending</MenuItem>
-                <MenuItem value="desc">Descending</MenuItem>
-              </Select>
-            </FormControl>
-          </Stack>
-        </Paper>
-        <Paper>
-          <TableContainer>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Title</TableCell>
-                  <TableCell>Description</TableCell>
-                  <TableCell>Assignee</TableCell>
-                  <TableCell>Status</TableCell>
-                  <TableCell align="right">Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {tasks.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5} align="center">
-                      <Typography variant="body2" color="text.secondary" sx={{ py: 4 }}>
-                        No tasks found
-                      </Typography>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  tasks.map((task) => {
-                    const assigneeName = task.assigneeInfo
-                      ? `${task.assigneeInfo.firstName} ${task.assigneeInfo.lastName}`
-                      : 'Unassigned';
-                    const availableStatuses = getAvailableStatuses(task.status);
-
-                    return (
-                      <TableRow key={task._id} hover>
-                        <TableCell>
-                          <Typography variant="body2" fontWeight={500}>
-                            {task.title}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Typography
-                            variant="body2"
-                            sx={{ maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis' }}
-                          >
-                            {task.description}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          {task.assigneeInfo ? (
-                            <Stack direction="row" spacing={1} alignItems="center">
-                              <Avatar sx={{ width: 32, height: 32, fontSize: 14 }}>
-                                {task.assigneeInfo.firstName.charAt(0)}
-                                {task.assigneeInfo.lastName.charAt(0)}
-                              </Avatar>
-                              <Typography variant="body2">{assigneeName}</Typography>
-                            </Stack>
-                          ) : (
-                            <Typography variant="body2" color="text.secondary">
-                              Unassigned
-                            </Typography>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Stack direction="row" spacing={1} alignItems="center">
-                            <Chip
-                              label={taskStatuses.find((s) => s.value === task.status)?.label || task.status}
-                              color={getStatusColor(task.status) as any}
-                              size="small"
-                            />
-                            {availableStatuses.length > 1 && (
-                              <Select
-                                value={task.status}
-                                onChange={(e) => handleStatusChange(task, e.target.value)}
-                                size="small"
-                                sx={{ minWidth: 120 }}
-                              >
-                                {availableStatuses.map((status) => (
-                                  <MenuItem key={status.value} value={status.value}>
-                                    {status.label}
-                                  </MenuItem>
-                                ))}
-                              </Select>
-                            )}
-                          </Stack>
-                        </TableCell>
-                        <TableCell align="right">
-                          <Stack direction="row" spacing={1} justifyContent="flex-end">
-                            {task.statusHistory && task.statusHistory.length > 0 && (
-                              <Tooltip title="View Status History">
-                                <IconButton
-                                  size="small"
-                                  onClick={() => {
-                                    setSelectedTask(task);
-                                    setHistoryDialogOpen(true);
-                                  }}
-                                  color="info"
-                                >
-                                  <History fontSize="small" />
-                                </IconButton>
-                              </Tooltip>
-                            )}
-                            <IconButton
-                              size="small"
-                              onClick={() => handleOpenEditDialog(task)}
-                              color="primary"
-                            >
-                              <EditOutlined fontSize="small" />
-                            </IconButton>
-                            <IconButton
-                              size="small"
-                              onClick={() => {
-                                setSelectedTask(task);
-                                setDeleteDialogOpen(true);
-                              }}
-                              color="error"
-                            >
-                              <DeleteOutline fontSize="small" />
-                            </IconButton>
-                          </Stack>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </Paper>
-
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
-            <Pagination
-              count={totalPages}
-              page={page}
-              onChange={(_, value) => setPage(value)}
-              color="primary"
-              showFirstButton
-              showLastButton
-            />
+      <Box sx={{ width: '100%' }}>
+        {loading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 400 }}>
+            <CircularProgress />
           </Box>
+        ) : (
+          <Paper sx={{ p: 2, mt: 2, overflowX: 'hidden', width: '100%' }}>
+            {view === 'board' ? (
+              <TaskBoard
+                projectId={projectId}
+                refreshBoard={fetchTasks}
+                onEditTask={(task) => {
+                  // Get the actual task status from the task object
+                  // Convert API status format to frontend format if needed
+                  let taskStatus = (task as any).status || 'Todo';
+                  const statusLower = (taskStatus || '').toLowerCase();
+                  if (statusLower === 'pending') {
+                    taskStatus = 'Todo';
+                  } else if (statusLower === 'in-progress') {
+                    taskStatus = 'In Progress';
+                  } else if (statusLower === 'completed') {
+                    taskStatus = 'Done';
+                  }
+
+                  const convertedTask: Task = {
+                    id: task._id,
+                    title: task.title,
+                    description: task.description,
+                    status: taskStatus,
+                    priority: task.priority || 'Medium',
+                    projectId: projectId,
+                    dueDate: task.dueDate || '',
+                    attachments: task.attachments || [],
+                    subtasks: task.subtasks || [],
+                    assignee: (task.assignee && Array.isArray(task.assignee))
+                      ? task.assignee.map((id: any) => String(id))
+                      : (task.assignee ? [String(task.assignee)] : []),
+                  };
+                  handleOpenDialog(convertedTask);
+                }}
+                onDeleteTask={async (taskId) => {
+                  try {
+                    const token = safeLocalStorageGet(accessTokenKey);
+                    if (!token) {
+                      router.push('/login');
+                      return;
+                    }
+
+                    // Delete the task directly
+                    const response = await axios.delete(
+                      `/api/projects/${projectId}/tasks?taskId=${taskId}`,
+                      { headers: { Authorization: `Bearer ${token}` } }
+                    );
+
+                    if (response.data.success) {
+                      enqueueSnackbar({ message: 'Task deleted successfully', variant: 'success' });
+                      // Refresh tasks list
+                      fetchTasks();
+                    }
+                  } catch (error: any) {
+                    console.error('Error deleting task:', error);
+                    enqueueSnackbar({
+                      message: error.response?.data?.error || 'Failed to delete task',
+                      variant: 'error',
+                    });
+                  }
+                }}
+                onAddTask={(sectionId) => {
+                  setSelectedSectionId(sectionId);
+                  handleOpenDialog({
+                    id: '0',
+                    title: '',
+                    description: '',
+                    status: 'Todo',
+                    priority: 'Medium',
+                    projectId: projectId,
+                    dueDate: '',
+                    sectionId: sectionId,
+                    assignee: [],
+                  });
+                }}
+              />
+            ) : (
+              <TaskListView
+                projectId={projectId}
+                onEditTask={(task) => {
+                  // Convert task to proper format
+                  handleOpenDialog(task);
+                }}
+                onDeleteTask={handleDeleteTask}
+                refreshBoard={fetchTasks}
+              />
+            )}
+          </Paper>
         )}
       </Box>
 
-      {/* Create/Edit Task Dialog */}
-      <Dialog
+      <TaskDialog
         open={taskDialogOpen}
-        onClose={() => setTaskDialogOpen(false)}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle>{selectedTask ? 'Edit Task' : 'Create Task'}</DialogTitle>
-        <DialogContent>
-          <Stack spacing={3} sx={{ pt: 2 }}>
-            <TextField
-              name="title"
-              label="Title"
-              value={formData.title}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, title: e.target.value }))
-              }
-              required
-              fullWidth
-              variant="outlined"
-            />
+        onClose={handleCloseTaskDialog}
+        onSave={handleSaveTask}
+        task={currentTask}
+        projects={projects}
+        saving={savingTask}
+      />
 
-            <TextField
-              name="description"
-              label="Description"
-              value={formData.description}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, description: e.target.value }))
-              }
-              required
-              fullWidth
-              multiline
-              rows={4}
-              variant="outlined"
-            />
-
-            <FormControl fullWidth>
-              <InputLabel>Assignee</InputLabel>
-              <Select
-                name="assignee"
-                value={formData.assignee}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, assignee: e.target.value }))
-                }
-                label="Assignee"
-                disabled={usersLoading}
-              >
-                <MenuItem value="">Unassigned</MenuItem>
-                {users.map((user) => (
-                  <MenuItem key={user._id} value={user._id}>
-                    {user.firstName} {user.lastName} ({user.email})
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-
-            <FormControl fullWidth>
-              <InputLabel>Status</InputLabel>
-              <Select
-                name="status"
-                value={formData.status}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, status: e.target.value }))
-                }
-                label="Status"
-                disabled={statusesLoading}
-              >
-                {selectedTask ? (
-                  getAvailableStatuses(selectedTask.status).map((statusConfig) => (
-                    <MenuItem key={statusConfig.value} value={statusConfig.value}>
-                      {statusConfig.label}
-                    </MenuItem>
-                  ))
-                ) : (
-                  taskStatuses.map((statusConfig) => (
-                    <MenuItem key={statusConfig.value} value={statusConfig.value}>
-                      {statusConfig.label}
-                    </MenuItem>
-                  ))
-                )}
-              </Select>
-            </FormControl>
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setTaskDialogOpen(false)} disabled={saving}>
-            Cancel
-          </Button>
-          <Button
-            onClick={handleSaveTask}
-            variant="contained"
-            disabled={saving || !formData.title || !formData.description}
-            startIcon={saving && <CircularProgress size={15} color="inherit" />}
-          >
-            {selectedTask ? 'Update' : 'Create'}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
-        <DialogTitle>Delete Task</DialogTitle>
-        <DialogContent>
-          {selectedTask && (
-            <Typography>
-              Are you sure you want to delete <strong>{selectedTask.title}</strong>? This action
-              cannot be undone.
-            </Typography>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDeleteDialogOpen(false)} disabled={saving}>
-            Cancel
-          </Button>
-          <Button
-            onClick={handleDeleteTask}
-            variant="contained"
-            color="error"
-            disabled={saving}
-            startIcon={saving && <CircularProgress size={15} color="inherit" />}
-          >
-            Delete
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Status History Dialog */}
-      <Dialog
-        open={historyDialogOpen}
-        onClose={() => setHistoryDialogOpen(false)}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle>Status History</DialogTitle>
-        <DialogContent>
-          {selectedTask?.statusHistory && selectedTask.statusHistory.length > 0 ? (
-            <Stack spacing={2} sx={{ pt: 2 }}>
-              {selectedTask.statusHistory
-                .slice()
-                .reverse()
-                .map((entry, index) => (
-                  <Box key={index}>
-                    <Stack direction="row" spacing={2} alignItems="center">
-                      <Chip
-                        label={taskStatuses.find((s) => s.value === entry.status)?.label || entry.status}
-                        color={getStatusColor(entry.status) as any}
-                        size="small"
-                      />
-                      <Typography variant="body2" color="text.secondary">
-                        {formatDate(entry.timestamp)}
-                      </Typography>
-                    </Stack>
-                  </Box>
-                ))}
-            </Stack>
-          ) : (
-            <Typography variant="body2" color="text.secondary">
-              No status history available
-            </Typography>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setHistoryDialogOpen(false)}>Close</Button>
-        </DialogActions>
-      </Dialog>
+      <DeleteDialog
+        open={taskDeleteOpen}
+        onClose={() => setTaskDeleteOpen(false)}
+        onDelete={() => {
+          if (currentTask) {
+            handleDeleteTask(currentTask.id);
+            setTaskDeleteOpen(false);
+          }
+        }}
+      />
     </>
   );
-};
-
-export default ProjectTasksPage;
-
-
+}

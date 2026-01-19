@@ -193,8 +193,8 @@ export default function Dashboard() {
             <CardHeader
               title="Tasks"
               action={
-                <Link href={'/dashboard/tasks'}>
-                  <Button>View Tasks</Button>
+                <Link href={'/dashboard/projects'}>
+                  <Button>View Projects</Button>
                 </Link>
               }
             />

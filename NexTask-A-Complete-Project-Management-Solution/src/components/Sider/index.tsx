@@ -131,7 +131,7 @@ const Sider: React.FC<SiderProps> = ({ collapsed, setCollapsed, isSuperUser, use
     
     // Auto-expand parent menu if child is selected
     siderItems.forEach((item) => {
-      if (item.children) {
+      if ('children' in item && item.children) {
         const hasSelectedChild = item.children.some((child) => child.key === key);
         if (hasSelectedChild) {
           setOpenMenus((prev) => {

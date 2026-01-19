@@ -1,5 +1,11 @@
 'use client';
+
 import React, { useState, useEffect } from 'react';
+import dynamicImport from 'next/dynamic';
+
+// Prevent static generation since this page uses browser APIs
+export const dynamic = 'force-dynamic';
+
 import {
   Box,
   useTheme,
@@ -10,8 +16,13 @@ import {
   Paper,
 } from '@mui/material';
 
-import TaskBoard from './components/TaskBoard';
-import TaskListView from './components/TaskListView';
+// Dynamically import components that use browser APIs (@dnd-kit) to prevent SSR issues
+const TaskBoard = dynamicImport(() => import('./components/TaskBoard'), {
+  ssr: false,
+});
+const TaskListView = dynamicImport(() => import('./components/TaskListView'), {
+  ssr: false,
+});
 import PageHeader from '@/components/PageHeader';
 import DeleteDialog from './components/DeleteTask';
 import TaskDialog from './components/TaskModal';
@@ -40,6 +51,12 @@ interface ApiTask {
 export default function TaskManagement() {
   const router = useRouter();
   const theme = useTheme();
+  
+  // Redirect to projects page if accessed directly
+  useEffect(() => {
+    router.replace('/dashboard/projects');
+  }, [router]);
+  
   const [tasks, setTasks] = useState<Task[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);

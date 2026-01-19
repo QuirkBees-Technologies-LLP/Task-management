@@ -219,7 +219,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
 
       // Try to get project members from various possible structures
       let memberEmails: string[] = [];
-      let memberNames: Record<string, string> = {};
+      const memberNames: Record<string, string> = {};
 
       if (existingProject.members && Array.isArray(existingProject.members)) {
         // If members array contains user IDs

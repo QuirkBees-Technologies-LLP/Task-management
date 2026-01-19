@@ -132,11 +132,6 @@ const Header: React.FC<HeaderProps> = ({ isAuthHeader = false }) => {
                   <Link href={'/login'}>
                     <Button variant="contained">Login</Button>
                   </Link>
-                  <Link href={'/signup'}>
-                    <Button sx={{ ml: 1 }} variant="outlined">
-                      Signup
-                    </Button>
-                  </Link>
                 </Box>
 
                 {/* Mobile Menu Icon */}
@@ -184,11 +179,6 @@ const Header: React.FC<HeaderProps> = ({ isAuthHeader = false }) => {
           <Link href={'/login'}>
             <Button variant="contained" fullWidth>
               Login
-            </Button>
-          </Link>
-          <Link href={'/signup'}>
-            <Button sx={{ mt: 1 }} variant="outlined" fullWidth>
-              Signup
             </Button>
           </Link>
         </Box>

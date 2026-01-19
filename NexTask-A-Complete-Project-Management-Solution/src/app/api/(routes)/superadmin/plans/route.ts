@@ -14,12 +14,49 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1', 10);
     const limit = parseInt(searchParams.get('limit') || '10', 10);
+    const search = searchParams.get('search') || '';
+    const statusFilter = searchParams.get('status') || '';
+    const billingPeriodFilter = searchParams.get('billingPeriod') || '';
 
     const client = await clientPromise;
     const db = client.db(DATABASE_NAME);
     const plansCollection = db.collection('plans');
 
+    // Build query
     const query: any = { deletedAt: null };
+
+    // Global search: search across plan fields
+    if (search) {
+      const searchConditions: any[] = [
+        { plan_name: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } },
+        { status: { $regex: search, $options: 'i' } },
+        { billing_period: { $regex: search, $options: 'i' } },
+      ];
+
+      // Also search in features array (for string arrays, MongoDB will match any element)
+      // For arrays of strings, this will work automatically
+      searchConditions.push({
+        'features': { $regex: search, $options: 'i' },
+      });
+
+      // Try to parse as number for price search
+      const searchNumber = parseFloat(search);
+      if (!isNaN(searchNumber)) {
+        searchConditions.push({ price: searchNumber });
+      }
+
+      query.$or = searchConditions;
+    }
+
+    // Scope-based filters
+    if (statusFilter) {
+      query.status = statusFilter;
+    }
+
+    if (billingPeriodFilter) {
+      query.billing_period = billingPeriodFilter;
+    }
 
     const total = await plansCollection.countDocuments(query);
     const skip = (page - 1) * limit;

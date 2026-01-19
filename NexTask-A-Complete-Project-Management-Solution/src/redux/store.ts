@@ -2,6 +2,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import createSagaMiddleware from 'redux-saga';
 import rootSaga from './sagas';
 import appReducer from './slices';
+import type { AppState } from './slices';
 
 // Create the saga middleware
 const sagaMiddleware = createSagaMiddleware();
@@ -29,5 +30,8 @@ export const store = makeStore();
 
 // Infer the type of makeStore
 export type AppStore = ReturnType<typeof makeStore>;
-export type RootState = ReturnType<AppStore['getState']>;
+// Explicitly define RootState using the AppState interface
+export type RootState = {
+  app: AppState;
+};
 export type AppDispatch = AppStore['dispatch'];

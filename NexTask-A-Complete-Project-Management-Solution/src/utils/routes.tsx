@@ -21,11 +21,6 @@ import {
 export const superUserItems = [
   { title: 'Dashboard', icon: <DashboardOutlined fontSize="small" />, key: '' },
   {
-    title: 'Tasks',
-    icon: <ChecklistOutlined fontSize="small" />,
-    key: 'tasks',
-  },
-  {
     title: 'Staff Management',
     icon: <PeopleOutline fontSize="small" />,
     key: 'team',
@@ -88,8 +83,9 @@ export const superUserItems = [
 ];
 
 export const adminItems = (() => {
+  // Filter out Dashboard and other restricted items, but keep Dashboard in code structure
   const filteredItems = superUserItems.filter(
-    (item) => !['manage-apis', 'email-templates', 'permissions'].includes(item.key)
+    (item) => !['', 'manage-apis', 'email-templates', 'permissions'].includes(item.key)
   );
 
   // Find the index of Staff Management
@@ -141,6 +137,9 @@ export const superUserItemsWithAdmin = (() => {
 export const regularItems = adminItems.filter(
   (item) =>
     ![
+      '', // Dashboard
+      'admin', // Admin module
+      'admin/departments', // Department management
       'manage-apis',
       'plans',
       'permissions',
@@ -149,6 +148,6 @@ export const regularItems = adminItems.filter(
       'reports',
       'email-templates',
       'invoices',
-      'team',
+      'team', // Staff Management
     ].includes(item.key)
 );
