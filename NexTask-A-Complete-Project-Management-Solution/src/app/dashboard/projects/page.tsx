@@ -20,7 +20,7 @@ import {
   CardContent,
   CardActionArea,
 } from '@mui/material';
-import { AddOutlined, DeleteOutline, EditOutlined, MoreVert } from '@mui/icons-material';
+import { AddOutlined, DeleteOutline, EditOutlined, InfoOutlined, MoreVert } from '@mui/icons-material';
 import ProjectModal from './components/ProjectModal';
 import PageHeader from '@/components/PageHeader';
 import ProjectDeleteDialog from './components/DeleteProject';
@@ -190,6 +190,15 @@ export default function Projects() {
     }
   };
 
+  const handleDetailsClick = (projectId: string | number | undefined, event?: React.MouseEvent) => {
+    if (event) {
+      event.stopPropagation();
+    }
+    if (!projectId) return;
+    router.push(`/projects/${projectId}/full-details`);
+    handleCloseMenu();
+  };
+
   const handleCardClick = (projectId: string | number | undefined) => {
     if (projectId) {
       router.push(`/projects/${projectId}/tasks`);
@@ -287,7 +296,7 @@ export default function Projects() {
                 setProjectModalVisible(true);
               }}
             >
-              Add New
+              Add Project
             </Button>
           ) : null
         }
@@ -490,6 +499,17 @@ export default function Projects() {
           horizontal: 'right',
         }}
       >
+        <MenuItem
+          onClick={(e) => {
+            const project = dataSource.find((p) => String(p.id) === menuProjectId);
+            if (project) handleDetailsClick(project.id, e);
+          }}
+        >
+          <ListItemIcon>
+            <InfoOutlined fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>Project Details</ListItemText>
+        </MenuItem>
         <MenuItem
           onClick={(e) => {
             const project = dataSource.find((p) => String(p.id) === menuProjectId);

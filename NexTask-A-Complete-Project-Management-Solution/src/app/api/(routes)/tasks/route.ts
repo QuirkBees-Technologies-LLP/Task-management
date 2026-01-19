@@ -117,6 +117,7 @@ export async function GET(request: Request) {
     const search = searchParams.get('search') || '';
     const sortBy = searchParams.get('sortBy') || 'createdAt';
     const sortOrder = searchParams.get('sortOrder') || 'desc';
+    const projectId = searchParams.get('projectId');
 
     // Get org_id from token - required for organization scoping
     const org_id = requireOrgIdFromToken(decoded);
@@ -125,8 +126,17 @@ export async function GET(request: Request) {
     const db = client.db(DATABASE_NAME);
     const tasksCollection = db.collection('tasks');
 
-    // Build query for search with org_id filter
-    const query: any = addOrgIdToQuery({}, org_id);
+    // Build query for search with org_id filter and optional project filter
+    const baseQuery: any = addOrgIdToQuery({}, org_id);
+    const query: any = { ...baseQuery };
+
+    if (projectId) {
+      try {
+        query.projectId = new ObjectId(projectId);
+      } catch (error) {
+        return NextResponse.json({ error: 'Invalid projectId' }, { status: 400 });
+      }
+    }
     if (search) {
       query.$or = [
         { title: { $regex: search, $options: 'i' } },
