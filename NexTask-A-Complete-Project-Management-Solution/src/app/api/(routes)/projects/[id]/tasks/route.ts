@@ -249,13 +249,16 @@ export async function POST(
 
     // For regular users only, enforce assignee-based access
     if (decoded.role !== 'Admin') {
+      // Check if user is assigned to this project - projects are only accessible to assigned users
       if (!project.assignee || !Array.isArray(project.assignee) || project.assignee.length === 0) {
+        // Project has no assignees - deny access
         return NextResponse.json(
           { error: 'Access denied. You are not assigned to this project.' },
           { status: 403 }
         );
       }
 
+      // Check if user's ObjectId is in the assignee array
       const isAssigned = project.assignee.some((assigneeId: any) => {
         const assigneeObjectId = assigneeId instanceof ObjectId ? assigneeId : new ObjectId(assigneeId);
         return assigneeObjectId.equals(userObjectId);
@@ -267,28 +270,6 @@ export async function POST(
           { status: 403 }
         );
       }
-    }
-
-    // Check if user is assigned to this project - projects are only accessible to assigned users
-    if (!project.assignee || !Array.isArray(project.assignee) || project.assignee.length === 0) {
-      // Project has no assignees - deny access
-      return NextResponse.json(
-        { error: 'Access denied. You are not assigned to this project.' },
-        { status: 403 }
-      );
-    }
-
-    // Check if user's ObjectId is in the assignee array
-    const isAssigned = project.assignee.some((assigneeId: any) => {
-      const assigneeObjectId = assigneeId instanceof ObjectId ? assigneeId : new ObjectId(assigneeId);
-      return assigneeObjectId.equals(userObjectId);
-    });
-
-    if (!isAssigned) {
-      return NextResponse.json(
-        { error: 'Access denied. You are not assigned to this project.' },
-        { status: 403 }
-      );
     }
 
     // Validate section if provided
@@ -520,32 +501,35 @@ export async function PATCH(
     const projectsCollection = db.collection('projects');
     const tasksCollection = db.collection('tasks');
 
-    // Verify user has access to this project (must be assigned)
+    // Verify user has access to this project (must be assigned) - regular users only
     const project = await projectsCollection.findOne({ _id: new ObjectId(projectId) });
     if (!project) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
-    // Check if user is assigned to this project
-    if (!project.assignee || !Array.isArray(project.assignee) || project.assignee.length === 0) {
-      // Project has no assignees - deny access
-      return NextResponse.json(
-        { error: 'Access denied. You are not assigned to this project.' },
-        { status: 403 }
-      );
-    }
+    // For regular users only, enforce that they must be assigned to the project
+    if (decoded.role !== 'Admin') {
+      // Check if user is assigned to this project
+      if (!project.assignee || !Array.isArray(project.assignee) || project.assignee.length === 0) {
+        // Project has no assignees - deny access
+        return NextResponse.json(
+          { error: 'Access denied. You are not assigned to this project.' },
+          { status: 403 }
+        );
+      }
 
-    // Check if user's ObjectId is in the assignee array
-    const isAssigned = project.assignee.some((assigneeId: any) => {
-      const assigneeObjectId = assigneeId instanceof ObjectId ? assigneeId : new ObjectId(assigneeId);
-      return assigneeObjectId.equals(userObjectId);
-    });
+      // Check if user's ObjectId is in the assignee array
+      const isAssigned = project.assignee.some((assigneeId: any) => {
+        const assigneeObjectId = assigneeId instanceof ObjectId ? assigneeId : new ObjectId(assigneeId);
+        return assigneeObjectId.equals(userObjectId);
+      });
 
-    if (!isAssigned) {
-      return NextResponse.json(
-        { error: 'Access denied. You are not assigned to this project.' },
-        { status: 403 }
-      );
+      if (!isAssigned) {
+        return NextResponse.json(
+          { error: 'Access denied. You are not assigned to this project.' },
+          { status: 403 }
+        );
+      }
     }
 
     // Get existing task
