@@ -34,7 +34,6 @@ import axios from 'axios';
 import { safeLocalStorageGet } from '@/utils/helpers';
 import { accessTokenKey } from '@/utils/constants';
 import { enqueueSnackbar } from 'notistack';
-import html2pdf from 'html2pdf.js';
 
 export default function InvoicesFeature() {
   const theme = useTheme();
@@ -275,6 +274,8 @@ export default function InvoicesFeature() {
 
     setPdfGenerating(true);
     try {
+      // Dynamic import so that Next.js export/prerender does not fail on server side
+      const html2pdf = (await import('html2pdf.js')).default;
       const element = invoiceRef.current;
       const options = {
         margin: [10, 10, 10, 10],
