@@ -1,7 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Box,
   Typography,
@@ -25,18 +24,19 @@ import {
   Skeleton,
   Pagination,
 } from '@mui/material';
-import { Close as CloseIcon, Add as AddIcon, DeleteOutline } from '@mui/icons-material';
+import { Close as CloseIcon, Add as AddIcon, DeleteOutline, ArrowBack, Print, PictureAsPdf } from '@mui/icons-material';
 import InvoiceModal from './components/InvoiceModal';
 import InvoiceItem from './components/InvoiceItem';
 import PageHeader from '@/components/PageHeader';
 import { Invoice } from './types';
+import InvoiceTemplate from '@/components/invoices/InvoiceTemplate';
 import axios from 'axios';
 import { safeLocalStorageGet } from '@/utils/helpers';
 import { accessTokenKey } from '@/utils/constants';
 import { enqueueSnackbar } from 'notistack';
+import html2pdf from 'html2pdf.js';
 
 export default function InvoicesFeature() {
-  const router = useRouter();
   const theme = useTheme();
   const isSmallScreen = useMediaQuery(theme.breakpoints.down('md'));
 
@@ -45,10 +45,15 @@ export default function InvoicesFeature() {
   const [saving, setSaving] = useState<boolean>(false);
   const [filter, setFilter] = useState<string>('');
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+  const [selectedCompany, setSelectedCompany] = useState<any | null>(null);
+  const [selectedBanking, setSelectedBanking] = useState<any | null>(null);
+  const [viewLoading, setViewLoading] = useState<boolean>(false);
+  const [pdfGenerating, setPdfGenerating] = useState<boolean>(false);
   const [isDialogOpen, setDialogOpen] = useState<boolean>(false);
   const [isEdit, setIsEdit] = useState<boolean>(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState<boolean>(false);
   const [invoiceToDelete, setInvoiceToDelete] = useState<Invoice | null>(null);
+  const invoiceRef = useRef<HTMLDivElement | null>(null);
   
   // Pagination state
   const [page, setPage] = useState<number>(1);
@@ -115,16 +120,42 @@ export default function InvoicesFeature() {
     setPage(1); // Reset to first page when filter changes
   };
 
-  const handleViewDetails = (invoice: Invoice) => {
+  const handleViewDetails = async (invoice: Invoice) => {
     const invoiceId = invoice._id || invoice.id;
-    if (invoiceId) {
-      // Navigate to standalone invoice page (outside dashboard layout)
-      router.push(`/invoices/${invoiceId}`);
+    if (!invoiceId) return;
+
+    try {
+      setViewLoading(true);
+      const token = safeLocalStorageGet(accessTokenKey);
+      if (!token) return;
+
+      const response = await axios.get(`/api/invoices/${invoiceId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (response.data?.success && response.data?.invoice) {
+        const fullInvoice = response.data.invoice;
+        setSelectedInvoice(fullInvoice);
+        setSelectedCompany(fullInvoice.companyDetails || null);
+        setSelectedBanking(fullInvoice.bankingDetails || null);
+      } else {
+        enqueueSnackbar({ message: 'Failed to load invoice', variant: 'error' });
+      }
+    } catch (error: any) {
+      console.error('Error fetching invoice data:', error);
+      enqueueSnackbar({
+        message: error.response?.data?.error || 'Failed to load invoice',
+        variant: 'error',
+      });
+      setSelectedInvoice(null);
+      setSelectedCompany(null);
+      setSelectedBanking(null);
+    } finally {
+      setViewLoading(false);
     }
   };
 
   const handleCloseDialog = () => {
-    setSelectedInvoice(null);
     setDialogOpen(false);
     setInvoiceForm({
       invoiceNumber: '',
@@ -213,11 +244,12 @@ export default function InvoicesFeature() {
           variant: 'success',
         });
 
-        // Open invoice in new tab after creation
-        if (response.data?.success && response.data?.invoice?._id) {
-          const invoiceId = response.data.invoice._id;
-          const invoiceUrl = `${window.location.origin}/invoices/${invoiceId}`;
-          window.open(invoiceUrl, '_blank');
+        // Immediately open the created invoice inside THIS page (no new tab / no navigation)
+        if (response.data?.success && response.data?.invoice) {
+          const created = response.data.invoice;
+          setSelectedInvoice(created);
+          setSelectedCompany(created.companyDetails || null);
+          setSelectedBanking(created.bankingDetails || null);
         }
       }
 
@@ -231,6 +263,42 @@ export default function InvoicesFeature() {
       });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const handleDownloadPDF = async () => {
+    if (!invoiceRef.current || !selectedInvoice) return;
+
+    setPdfGenerating(true);
+    try {
+      const element = invoiceRef.current;
+      const options = {
+        margin: [10, 10, 10, 10],
+        filename: `Invoice_${selectedInvoice.invoiceNumber || 'invoice'}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: {
+          scale: 2,
+          useCORS: true,
+          logging: false,
+        },
+        jsPDF: {
+          unit: 'mm',
+          format: 'a4',
+          orientation: 'portrait',
+        },
+      };
+
+      await html2pdf().set(options).from(element).save();
+      enqueueSnackbar({ message: 'PDF downloaded successfully!', variant: 'success' });
+    } catch (error: any) {
+      console.error('Error generating PDF:', error);
+      enqueueSnackbar({ message: 'Failed to generate PDF', variant: 'error' });
+    } finally {
+      setPdfGenerating(false);
     }
   };
 
@@ -434,45 +502,101 @@ export default function InvoicesFeature() {
         saving={saving}
       />
 
-      {/* View Invoice Details Dialog */}
-      <Dialog open={!!selectedInvoice} onClose={() => setSelectedInvoice(null)} fullWidth>
-        <DialogTitle>
-          Invoice Details
-          <IconButton
-            aria-label="close"
-            onClick={() => setSelectedInvoice(null)}
-            sx={{ position: 'absolute', right: 8, top: 8 }}
+      {/* In-app Invoice Viewer (NO navigation, NO new tab) */}
+      <Dialog
+        open={!!selectedInvoice}
+        onClose={() => setSelectedInvoice(null)}
+        fullScreen
+        PaperProps={{
+          sx: {
+            // Match standalone invoice page background so no dark dashboard strip shows through
+            backgroundColor: '#f5f5f5',
+            boxShadow: 'none',
+            borderRadius: 0,
+            m: 0,
+          },
+        }}
+      >
+        <Box sx={{ minHeight: '100vh', p: 2 }}>
+          {/* Action bar */}
+          <Box
+            sx={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              mb: 3,
+              p: 2,
+              bgcolor: '#fff',
+              borderRadius: 2,
+              boxShadow: 1,
+              maxWidth: 1160,
+              mx: 'auto',
+            }}
           >
-            <CloseIcon />
-          </IconButton>
-        </DialogTitle>
-        <DialogContent dividers>
-          {selectedInvoice && (
-            <Box>
-              <Typography variant="h6" gutterBottom>
-                {(selectedInvoice.clientName || selectedInvoice.project) || 'N/A'} (#{selectedInvoice.invoiceNumber})
-              </Typography>
-              <Typography variant="body1">
-                Amount: ${selectedInvoice.amount.toLocaleString()}
-              </Typography>
-              <Typography variant="body1">Status: {selectedInvoice.status}</Typography>
-              <Typography variant="body1">
-                Due Date: {selectedInvoice.dueDate || 'N/A'}
-              </Typography>
-              {selectedInvoice.clientEmail && (
-                <Typography variant="body1">Client Email: {selectedInvoice.clientEmail}</Typography>
-              )}
-              {selectedInvoice.notes && (
-                <Typography variant="body2" sx={{ mt: 2 }}>
-                  Notes: {selectedInvoice.notes}
-                </Typography>
+            <Button startIcon={<ArrowBack />} onClick={() => setSelectedInvoice(null)} variant="outlined">
+              Back
+            </Button>
+            <Stack direction="row" spacing={1}>
+              <Button startIcon={<Print />} onClick={handlePrint} variant="outlined">
+                Print
+              </Button>
+              <Button
+                startIcon={pdfGenerating ? <Skeleton variant="circular" width={20} height={20} /> : <PictureAsPdf />}
+                onClick={handleDownloadPDF}
+                variant="contained"
+                disabled={pdfGenerating}
+              >
+                {pdfGenerating ? 'Generating PDF...' : 'Download PDF'}
+              </Button>
+            </Stack>
+          </Box>
+
+          {/* Invoice content */}
+          {viewLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+              <Skeleton variant="rectangular" width={900} height={300} />
+            </Box>
+          ) : (
+            <Box
+              ref={invoiceRef}
+              id="invoice-content"
+              sx={{
+                maxWidth: 1160,
+                mx: 'auto',
+                bgcolor: '#fff',
+                borderRadius: 2,
+                overflow: 'hidden',
+                border: '1px solid rgba(0,0,0,0.04)',
+                boxShadow: '0px 4px 12px rgba(0,0,0,0.02)',
+              }}
+            >
+              {selectedInvoice && (
+                <InvoiceTemplate
+                  company={
+                    selectedCompany || {
+                      companyName: '',
+                      logoUrl: '',
+                      address: '',
+                      email: '',
+                      phone: '',
+                      taxNumber: '',
+                      website: '',
+                    }
+                  }
+                  invoice={selectedInvoice as any}
+                  banking={
+                    selectedBanking || {
+                      accountHolder: '',
+                      accountNumber: '',
+                      bankName: '',
+                      accountType: '',
+                    }
+                  }
+                />
               )}
             </Box>
           )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setSelectedInvoice(null)}>Close</Button>
-        </DialogActions>
+        </Box>
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
