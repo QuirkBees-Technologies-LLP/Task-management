@@ -261,7 +261,7 @@ const FeedbackForm = ({
       >
         <Box>
           {/* Header */}
-          <Box display="flex" justifyContent="space-between" alignItems="center">
+          <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={2}>
             <Box display="flex" gap={2} alignItems="center">
               <Avatar src={avatar} sx={{ width: 44, height: 44, borderRadius: 1 }} />
               <Typography fontWeight={600}>{name}</Typography>
@@ -309,12 +309,15 @@ const FeedbackForm = ({
 
         {/* Tags */}
         <Box display="flex" gap={1} mt={2}>
-          {status && <StatusChip label={status} bg="#EBF2FE" color="#3B82F6" />}
-          {priority && <StatusChip label={priority} bg="#FFE5E5" color="#FF0000" />}
+          {newticket && <StatusChip label={newticket} bg="rgba(34, 197, 94, 0.2)" color="#22C55E" />}
+          {status && <StatusChip label={status} bg="rgba(59, 130, 246, 0.2)" color="#3B82F6" />}
+          {priority && <StatusChip label={priority} bg="rgba(255, 0, 0, 0.2)" color="#FF0000" />}
+          {mediumpriority && <StatusChip label={mediumpriority} bg="rgba(129, 8, 234, 0.2)" color="#8108EA" />}
+          {lowpriority && <StatusChip label={lowpriority} bg="rgba(67, 185, 178, 0.2)" color="#43B9B2" />}
         </Box>
 
         {/* User Info */}
-        <Box display="flex" alignItems="center" justifyContent="space-between" gap={2} mt={3}>
+        <Box display="flex" alignItems="center" justifyContent="space-between" flexWrap="wrap" gap={2} mt={3}>
           <Box display="flex" gap={2}>
             <Avatar src={avatar} sx={{ width: 44, height: 44, borderRadius: 1 }} />
             <Box>

@@ -8,7 +8,7 @@ const Feedback = () => {
       <PageHeader title="Contact Support" />
       <Box>
         <Grid container spacing={2}>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid item xs={12} sm={6} lg={4} xl={3}>
             <FeedbackForm
               name="Emayila Sidorshina"
               time="5 mins ago"
@@ -19,7 +19,7 @@ const Feedback = () => {
               department="Sales Department"
             />
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid item xs={12} sm={6} lg={4} xl={3}>
             <FeedbackForm
               name="Emayila Sidorshina"
               time="5 mins ago"
@@ -30,7 +30,7 @@ const Feedback = () => {
               department="Sales Department"
             />
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid item xs={12} sm={6} lg={4} xl={3}>
             <FeedbackForm
               name="Emayila Sidorshina"
               time="5 mins ago"
@@ -41,7 +41,7 @@ const Feedback = () => {
               department="Sales Department"
             />
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid item xs={12} sm={6} lg={4} xl={3}>
             <FeedbackForm
               name="Emayila Sidorshina"
               time="5 mins ago"
