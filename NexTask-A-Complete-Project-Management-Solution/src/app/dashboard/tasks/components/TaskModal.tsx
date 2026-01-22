@@ -90,9 +90,30 @@ function TaskDialog({ open, onClose, onSave, task, projects, saving = false }: T
       }
       // If it's already in frontend format or custom status, use as is
 
+      // Format dueDate to YYYY-MM-DD for HTML date input
+      let formattedDueDate = '';
+      if (task.dueDate) {
+        try {
+          // Check if it's already in YYYY-MM-DD format
+          if (typeof task.dueDate === 'string' && task.dueDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            formattedDueDate = task.dueDate;
+          } else {
+            // Try to parse as Date and format
+            const date = new Date(task.dueDate);
+            if (!isNaN(date.getTime())) {
+              formattedDueDate = date.toISOString().split('T')[0];
+            }
+          }
+        } catch (e) {
+          // If parsing fails, leave as empty string
+          formattedDueDate = '';
+        }
+      }
+
       setEditedTask({
         ...task,
         status: taskStatus,
+        dueDate: formattedDueDate,
         attachments: task.attachments || [],
         subtasks: task.subtasks || [],
         assignee: task.assignee || [], // Initialize assignee array

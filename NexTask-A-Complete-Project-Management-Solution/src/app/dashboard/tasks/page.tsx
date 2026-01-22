@@ -91,20 +91,38 @@ export default function TaskManagement() {
         const allTasks = response.data.tasks || [];
 
         // Convert API tasks to Task format
-        const convertedTasks: Task[] = allTasks.map((t: ApiTask) => ({
-          id: typeof t._id === 'string' ? t._id : String(t._id || ''),
-          title: t.title,
-          description: t.description,
-          status: t.status === 'pending' ? 'Todo' : t.status === 'in-progress' ? 'In Progress' : t.status === 'completed' ? 'Done' : t.status,
-          priority: t.priority || 'Medium',
-          projectId: typeof t.projectId === 'string' ? t.projectId : String(t.projectId || ''),
-          dueDate: t.dueDate || '',
-          attachments: [],
-          subtasks: [],
-          assignee: (t.assignee && Array.isArray(t.assignee)) 
-            ? t.assignee.map((id: any) => String(id))
-            : (t.assignee ? [String(t.assignee)] : []), // Convert to array format (handle legacy single ID)
-        }));
+        const convertedTasks: Task[] = allTasks.map((t: ApiTask) => {
+          // Format dueDate to YYYY-MM-DD for HTML date input
+          let formattedDueDate = '';
+          if (t.dueDate) {
+            try {
+              const date = new Date(t.dueDate);
+              if (!isNaN(date.getTime())) {
+                formattedDueDate = date.toISOString().split('T')[0];
+              }
+            } catch (e) {
+              // If it's already in YYYY-MM-DD format, use it as is
+              if (typeof t.dueDate === 'string' && t.dueDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                formattedDueDate = t.dueDate;
+              }
+            }
+          }
+          
+          return {
+            id: typeof t._id === 'string' ? t._id : String(t._id || ''),
+            title: t.title,
+            description: t.description,
+            status: t.status === 'pending' ? 'Todo' : t.status === 'in-progress' ? 'In Progress' : t.status === 'completed' ? 'Done' : t.status,
+            priority: t.priority || 'Medium',
+            projectId: typeof t.projectId === 'string' ? t.projectId : String(t.projectId || ''),
+            dueDate: formattedDueDate,
+            attachments: [],
+            subtasks: [],
+            assignee: (t.assignee && Array.isArray(t.assignee)) 
+              ? t.assignee.map((id: any) => String(id))
+              : (t.assignee ? [String(t.assignee)] : []), // Convert to array format (handle legacy single ID)
+          };
+        });
 
         setTasks(convertedTasks);
       }
@@ -225,12 +243,32 @@ export default function TaskManagement() {
         console.log('Updating task:', { taskId: task.id, projectId: task.projectId });
 
         // Build update payload - only include status if it's different from current
+        // Ensure dueDate is properly formatted (YYYY-MM-DD) or undefined if empty
+        let formattedDueDate: string | undefined = undefined;
+        if (task.dueDate && task.dueDate.trim() !== '') {
+          // If it's already in YYYY-MM-DD format, use it
+          if (task.dueDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            formattedDueDate = task.dueDate;
+          } else {
+            // Try to parse and format
+            try {
+              const date = new Date(task.dueDate);
+              if (!isNaN(date.getTime())) {
+                formattedDueDate = date.toISOString().split('T')[0];
+              }
+            } catch (e) {
+              // If parsing fails, set to undefined
+              formattedDueDate = undefined;
+            }
+          }
+        }
+        
         const updatePayload: any = {
           taskId: String(task.id),
           title: task.title,
           description: task.description,
           priority: task.priority,
-          dueDate: task.dueDate || undefined,
+          dueDate: formattedDueDate,
           attachments: task.attachments || [],
           subtasks: task.subtasks || [],
           assignee: task.assignee || [], // Include assignee array

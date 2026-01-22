@@ -373,6 +373,26 @@ const TaskDetailsPage: React.FC = () => {
       // Convert status to API format
       const apiStatus = editedTask.status === 'Todo' ? 'pending' : editedTask.status === 'In Progress' ? 'in-progress' : editedTask.status === 'Done' ? 'completed' : editedTask.status;
 
+      // Ensure dueDate is properly formatted (YYYY-MM-DD) or undefined if empty
+      let formattedDueDate: string | undefined = undefined;
+      if (editedTask.dueDate && editedTask.dueDate.trim() !== '') {
+        // If it's already in YYYY-MM-DD format, use it
+        if (editedTask.dueDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+          formattedDueDate = editedTask.dueDate;
+        } else {
+          // Try to parse and format
+          try {
+            const date = new Date(editedTask.dueDate);
+            if (!isNaN(date.getTime())) {
+              formattedDueDate = date.toISOString().split('T')[0];
+            }
+          } catch (e) {
+            // If parsing fails, set to undefined
+            formattedDueDate = undefined;
+          }
+        }
+      }
+
       await axios.patch(
         `/api/projects/${editedTask.projectId}/tasks`,
         {
@@ -381,7 +401,7 @@ const TaskDetailsPage: React.FC = () => {
           description: editedTask.description,
           status: apiStatus,
           priority: editedTask.priority,
-          dueDate: editedTask.dueDate || undefined,
+          dueDate: formattedDueDate,
           attachments: editedTask.attachments || [],
           subtasks: editedTask.subtasks || [],
         },
