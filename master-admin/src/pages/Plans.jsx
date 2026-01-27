@@ -75,8 +75,23 @@ const Plans = () => {
       try {
         setSubmitLoading(true);
 
+        // Construct payload according to new API structure
         const payload = {
-          ...values,
+          plan_name: values.plan_name,
+          description: values.description || "",
+          plan_type: Array.isArray(values.plan_type) ? values.plan_type : [],
+          trial_type: Array.isArray(values.trial_type) ? values.trial_type : [],
+          price: {
+            monthly: values.price_monthly || 0,
+            yearly: values.price_yearly || 0,
+          },
+          billing_period: Array.isArray(values.billing_period) ? values.billing_period : [],
+          users_allowed: values.users_allowed || 0,
+          organizations_allowed: values.organizations_allowed || 0,
+          best_for: values.best_for || "",
+          access_level: Array.isArray(values.access_level) ? values.access_level : [],
+          features: Array.isArray(values.features) ? values.features : [],
+          mark_as_popular: Boolean(values.mark_as_popular),
           status: values.status || "active",
         };
 
