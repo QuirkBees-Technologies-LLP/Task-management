@@ -34,10 +34,15 @@ import axios from 'axios';
 import { safeLocalStorageGet } from '@/utils/helpers';
 import { accessTokenKey } from '@/utils/constants';
 import { enqueueSnackbar } from 'notistack';
+import { useSelector } from 'react-redux';
+import { selectCurrentUser, selectSuperuser } from '@/redux/selectors';
 
 export default function InvoicesFeature() {
   const theme = useTheme();
   const isSmallScreen = useMediaQuery(theme.breakpoints.down('md'));
+  const { data: currentUser } = useSelector(selectCurrentUser);
+  const isSuperUser = useSelector(selectSuperuser);
+  const isAdmin = currentUser?.role === 'Admin' || isSuperUser;
 
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -378,6 +383,21 @@ export default function InvoicesFeature() {
 
   return (
     <>
+      <PageHeader
+        title="Invoices"
+        action={
+          isAdmin ? (
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={handleAddClick}
+            >
+              Add Invoice
+            </Button>
+          ) : null
+        }
+      />
+
       {isSmallScreen && (
         <Box>
           <TextField

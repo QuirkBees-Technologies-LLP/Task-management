@@ -41,6 +41,8 @@ import { safeLocalStorageGet } from '@/utils/helpers';
 import { accessTokenKey } from '@/utils/constants';
 import { enqueueSnackbar } from 'notistack';
 import { useRouter } from 'next/navigation';
+import { useSelector } from 'react-redux';
+import { selectCurrentUser, selectSuperuser } from '@/redux/selectors';
 
 interface Staff {
   _id: string;
@@ -64,6 +66,9 @@ interface Department {
 
 const StaffManagementPage: React.FC = () => {
   const router = useRouter();
+  const { data: currentUser } = useSelector(selectCurrentUser);
+  const isSuperUser = useSelector(selectSuperuser);
+  const isAdmin = currentUser?.role === 'Admin' || isSuperUser;
   const [staff, setStaff] = useState<Staff[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -305,6 +310,21 @@ const StaffManagementPage: React.FC = () => {
 
   return (
     <>
+      <PageHeader
+        title="Team"
+        action={
+          isAdmin ? (
+            <Button
+              variant="contained"
+              startIcon={<AddOutlined />}
+              onClick={handleOpenCreate}
+            >
+              Add Staff
+            </Button>
+          ) : null
+        }
+      />
+
       <Box sx={{ mt: 3 }}>
         <Paper sx={{ p: 2, mb: 3 }}>
           <TextField
