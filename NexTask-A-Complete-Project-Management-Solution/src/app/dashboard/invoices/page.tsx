@@ -378,33 +378,6 @@ export default function InvoicesFeature() {
 
   return (
     <>
-      <PageHeader
-        title="Invoices"
-        action={
-          <Stack direction={'row'} spacing={2} alignItems={'center'} justifyContent={'center'}>
-            {!isSmallScreen && (
-              <TextField
-                label="Filter by project or status"
-                variant="outlined"
-                margin="none"
-                value={filter}
-                onChange={handleFilterChange}
-                size="small"
-              />
-            )}
-            <Button
-              variant="contained"
-              color="primary"
-              startIcon={<AddIcon />}
-              onClick={handleAddClick}
-              sx={{ mb: 2 }}
-            >
-              Add Invoice
-            </Button>
-          </Stack>
-        }
-      />
-
       {isSmallScreen && (
         <Box>
           <TextField

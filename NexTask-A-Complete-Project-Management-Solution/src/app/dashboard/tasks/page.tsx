@@ -23,7 +23,7 @@ const TaskBoard = dynamicImport(() => import('./components/TaskBoard'), {
 const TaskListView = dynamicImport(() => import('./components/TaskListView'), {
   ssr: false,
 });
-import PageHeader from '@/components/PageHeader';
+
 import DeleteDialog from './components/DeleteTask';
 import TaskDialog from './components/TaskModal';
 import { ViewModule, ViewList } from '@mui/icons-material';
@@ -36,6 +36,7 @@ import { useRouter } from 'next/navigation';
 
 import { Task } from './types';
 import { Project } from '../projects/types';
+import PageHeader from '@/components/PageHeader';
 
 interface ApiTask {
   _id: string;

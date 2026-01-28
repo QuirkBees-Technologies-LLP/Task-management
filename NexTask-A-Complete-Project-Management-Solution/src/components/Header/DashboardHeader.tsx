@@ -14,6 +14,7 @@ import {
   ListItemText,
   Divider,
   Button,
+  Typography,
   useTheme,
   useMediaQuery,
   useColorScheme,
@@ -32,7 +33,7 @@ import { useRouter } from 'next/navigation';
 
 import Notifications from '@/app/dashboard/notifications/components/NotificationList';
 import SettingsDrawer from './SettingsDrawer';
-import { appbarHeight } from '@/utils/constants';
+import { appbarHeight, drawerWidth } from '@/utils/constants';
 import { logout } from '@/redux/slices';
 import { useDispatch } from 'react-redux';
 import { selectCurrentUser, selectNotifications, selectSuperuser } from '@/redux/selectors';
@@ -42,9 +43,18 @@ import { useSelector } from 'react-redux';
 interface DashboardAppbarProps {
   collapsed: boolean;
   setCollapsed: (collapsed: boolean) => void;
+  pageTitle?: string;
+  breadcrumbs?: React.ReactNode;
+  breadcrumbsPlacement?: 'below' | 'inline';
 }
 
-const DashboardAppbar: React.FC<DashboardAppbarProps> = ({ collapsed, setCollapsed }) => {
+const DashboardAppbar: React.FC<DashboardAppbarProps> = ({
+  collapsed,
+  setCollapsed,
+  pageTitle,
+  breadcrumbs,
+  breadcrumbsPlacement = 'below',
+}) => {
   const dispatch = useDispatch();
   const theme = useTheme();
   const { mode, setMode } = useColorScheme();
@@ -103,27 +113,71 @@ const DashboardAppbar: React.FC<DashboardAppbarProps> = ({ collapsed, setCollaps
         <Toolbar
           sx={{
             height: appbarHeight,
+            position: 'relative',
           }}
         >
-          {/* <Stack direction={"row"} spacing={2}> */}
-          <Tooltip title={collapsed ? 'Open Menu' : 'Collapse Menu'}>
-            <IconButton sx={{ mt: 1 }} onClick={() => setCollapsed(!collapsed)}>
-              <MenuOpen
-                sx={{
-                  transform: collapsed ? 'rotate(180deg)' : 'rotate(0deg)',
-                  transition: (theme) =>
-                    theme.transitions.create('transform', {
-                      duration: theme.transitions.duration.short,
-                      easing: theme.transitions.easing.easeIn,
-                    }),
-                }}
-              />
-            </IconButton>
-          </Tooltip>
-          <Box ml={1}>
-            <Logo />
+          {/* Left: align with sidebar width on desktop so title starts at content edge */}
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              width: isSmallScreen
+                ? 'auto'
+                : collapsed
+                  ? (theme) => `calc(${theme.spacing(8)} + 20px)`
+                  : `${drawerWidth}px`,
+            }}
+          >
+            <Tooltip title={collapsed ? 'Open Menu' : 'Collapse Menu'}>
+              <IconButton sx={{ mt: 1 }} onClick={() => setCollapsed(!collapsed)}>
+                <MenuOpen
+                  sx={{
+                    transform: collapsed ? 'rotate(180deg)' : 'rotate(0deg)',
+                    transition: (theme) =>
+                      theme.transitions.create('transform', {
+                        duration: theme.transitions.duration.short,
+                        easing: theme.transitions.easing.easeIn,
+                      }),
+                  }}
+                />
+              </IconButton>
+            </Tooltip>
+            <Box ml={1}>
+              <Logo />
+            </Box>
           </Box>
-          {/* </Stack> */}
+          {(pageTitle || breadcrumbs) && (
+            <Box
+              sx={{
+                flexGrow: 1,
+                minWidth: 0,
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+              }}
+            >
+              {pageTitle && breadcrumbs && breadcrumbsPlacement === 'inline' ? (
+                <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 2, minWidth: 0 }}>
+                  <Typography
+                    variant="h6"
+                    sx={{ fontWeight: 600, color: 'text.primary', lineHeight: 1.1, flexShrink: 0 }}
+                  >
+                    {pageTitle}
+                  </Typography>
+                  <Box sx={{ minWidth: 0 }}>{breadcrumbs}</Box>
+                </Box>
+              ) : (
+                <>
+                  {pageTitle && (
+                    <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary', lineHeight: 1.1 }}>
+                      {pageTitle}
+                    </Typography>
+                  )}
+                  {breadcrumbs && <Box sx={{ mt: pageTitle ? 0.25 : 0 }}>{breadcrumbs}</Box>}
+                </>
+              )}
+            </Box>
+          )}
           <Box sx={{ marginLeft: 'auto' }}>
             {!isXsScreen && (
               <Tooltip title="Dark mode">

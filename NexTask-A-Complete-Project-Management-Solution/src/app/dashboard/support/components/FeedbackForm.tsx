@@ -200,6 +200,19 @@ import {
 import CloseIcon from "@mui/icons-material/Close";
 import { useState } from "react";
 
+interface FeedbackFormProps {
+  name: string;
+  time: string;
+  message: string;
+  avatar: string;
+  status?: string;
+  newticket?: string;
+  priority?: string;
+  lowpriority?: string;
+  mediumpriority?: string;
+  department?: string;
+}
+
 const FeedbackForm = ({
   name,
   time,
@@ -211,7 +224,7 @@ const FeedbackForm = ({
   lowpriority,
   mediumpriority,
   department,
-}) => {
+}: FeedbackFormProps) => {
   const [active, setActive] = useState(false);
   const [openModal, setOpenModal] = useState(false);
 

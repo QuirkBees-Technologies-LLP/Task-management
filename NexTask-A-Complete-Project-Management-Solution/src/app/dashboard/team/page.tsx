@@ -305,15 +305,6 @@ const StaffManagementPage: React.FC = () => {
 
   return (
     <>
-      <PageHeader
-        title="Staff Management"
-        action={
-          <Button variant="contained" startIcon={<AddOutlined />} onClick={handleOpenCreate}>
-            Add Staff
-          </Button>
-        }
-      />
-
       <Box sx={{ mt: 3 }}>
         <Paper sx={{ p: 2, mb: 3 }}>
           <TextField

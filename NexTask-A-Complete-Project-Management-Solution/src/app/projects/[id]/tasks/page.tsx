@@ -10,7 +10,7 @@ import {
   Box,
   useTheme,
   CircularProgress,
-  Typography,
+          Typography,
   Paper,
 } from '@mui/material';
 
@@ -21,7 +21,6 @@ const TaskBoard = dynamicImport(() => import('@/app/dashboard/tasks/components/T
 const TaskListView = dynamicImport(() => import('@/app/dashboard/tasks/components/TaskListView'), {
   ssr: false,
 });
-import PageHeader from '@/components/PageHeader';
 import DeleteDialog from '@/app/dashboard/tasks/components/DeleteTask';
 import TaskDialog from '@/app/dashboard/tasks/components/TaskModal';
 import { ViewModule, ViewList } from '@mui/icons-material';
@@ -482,39 +481,36 @@ export default function ProjectTasksPage() {
 
   return (
     <>
-      <PageHeader
-        title={projectName || 'Project Tasks'}
-        action={
-          <ToggleButtonGroup
-            value={view}
-            exclusive
-            onChange={(_, newView) => {
-              if (newView !== null) {
-                setView(newView);
-              }
-            }}
-            size="small"
-            sx={{
-              '& .MuiToggleButton-root': {
-                border: `1px solid ${theme.palette.divider}`,
-                px: 1.5,
-                py: 0.5,
-              },
-            }}
-          >
-            <ToggleButton value="board" aria-label="Board view">
-              <Tooltip title="Board View">
-                <ViewModule fontSize="small" />
-              </Tooltip>
-            </ToggleButton>
-            <ToggleButton value="list" aria-label="List view">
-              <Tooltip title="List View">
-                <ViewList fontSize="small" />
-              </Tooltip>
-            </ToggleButton>
-          </ToggleButtonGroup>
-        }
-      />
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+        <ToggleButtonGroup
+          value={view}
+          exclusive
+          onChange={(_, newView) => {
+            if (newView !== null) {
+              setView(newView);
+            }
+          }}
+          size="small"
+          sx={{
+            '& .MuiToggleButton-root': {
+              border: `1px solid ${theme.palette.divider}`,
+              px: 1.5,
+              py: 0.5,
+            },
+          }}
+        >
+          <ToggleButton value="board" aria-label="Board view">
+            <Tooltip title="Board View">
+              <ViewModule fontSize="small" />
+            </Tooltip>
+          </ToggleButton>
+          <ToggleButton value="list" aria-label="List view">
+            <Tooltip title="List View">
+              <ViewList fontSize="small" />
+            </Tooltip>
+          </ToggleButton>
+        </ToggleButtonGroup>
+      </Box>
       <Box sx={{ width: '100%' }}>
         {loading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 400 }}>

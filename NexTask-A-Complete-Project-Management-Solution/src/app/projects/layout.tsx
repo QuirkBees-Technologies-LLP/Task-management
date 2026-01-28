@@ -14,6 +14,7 @@ import { useSelector } from 'react-redux';
 import { fetchUserInfo } from '@/redux/slices';
 import { useDispatch } from 'react-redux';
 import { adminItems, regularItems, superUserItems } from '@/utils/routes';
+import axios from 'axios';
 
 interface LayoutProps {
   children: ReactNode;
@@ -84,6 +85,53 @@ export default function ProjectsLayout({ children }: LayoutProps) {
     return isSuperUser ? userRoutes.Superuser : userRoutes[userInfo.role];
   }, [userInfo?.role, isSuperUser, userRoutes]);
 
+  const [projectTitle, setProjectTitle] = useState<string | null>(null);
+
+  // For /projects/[id]/tasks (and similar), show the project name as the header title.
+  useEffect(() => {
+    const parts = pathname.replace(/^\/projects\/?/, '').split('/').filter(Boolean);
+    const projectId = parts[0] || '';
+    const isProjectTasks = parts.length >= 2 && parts[1] === 'tasks';
+
+    // Only need page title for non-task project routes; for tasks we show breadcrumbs only.
+    if (!isProjectTasks) {
+      if (!token || !projectId) {
+        setProjectTitle(null);
+        return;
+      }
+
+      // Avoid fetching for non-ObjectId ids (safety)
+      if (!/^[a-f0-9]{24}$/i.test(projectId)) {
+        setProjectTitle(projectId);
+        return;
+      }
+
+      let cancelled = false;
+      (async () => {
+        try {
+          const response = await axios.get(`/api/projects/${projectId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (cancelled) return;
+          if (response.data?.success && response.data?.project?.name) {
+            setProjectTitle(response.data.project.name);
+          } else {
+            setProjectTitle(projectId);
+          }
+        } catch {
+          if (!cancelled) setProjectTitle(projectId);
+        }
+      })();
+
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    // For project tasks page, hide title (breadcrumbs will show project name)
+    setProjectTitle(null);
+  }, [pathname, token]);
+
   if (!loaded || !token) {
     return null;
   }
@@ -91,7 +139,13 @@ export default function ProjectsLayout({ children }: LayoutProps) {
   // Render UI immediately, don't block on userInfo loading
   return (
     <Box sx={{ display: 'flex' }}>
-      <DashboardAppbar collapsed={collapsed} setCollapsed={setCollapsed} />
+      <DashboardAppbar
+        collapsed={collapsed}
+        setCollapsed={setCollapsed}
+        pageTitle={projectTitle || (pathname.includes('/projects') ? 'Projects' : undefined)}
+        breadcrumbs={<BreadCrumbs mb={0} inDashboard={false} />}
+        breadcrumbsPlacement={projectTitle ? 'inline' : 'below'}
+      />
       <Sider
         collapsed={collapsed}
         setCollapsed={setCollapsed}
@@ -108,7 +162,6 @@ export default function ProjectsLayout({ children }: LayoutProps) {
           maxWidth: '100%',
         }}
       >
-        <BreadCrumbs />
         <Box sx={{ width: '100%', maxWidth: '100%' }}>{children}</Box>
       </Box>
     </Box>

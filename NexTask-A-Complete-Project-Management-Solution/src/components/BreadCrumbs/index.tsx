@@ -1,4 +1,4 @@
-'use client';
+ 'use client';
 import React, { useCallback, useEffect, useState } from 'react';
 import NextLink from 'next/link';
 import { Breadcrumbs, Typography, Link, capitalize } from '@mui/material';
@@ -12,10 +12,17 @@ interface Breadcrumb {
   href: string;
 }
 
-const DynamicBreadcrumbs = ({ inDashboard = true }) => {
+interface DynamicBreadcrumbsProps {
+  inDashboard?: boolean;
+  mb?: number;
+  omitLabels?: string[];
+}
+
+const DynamicBreadcrumbs = ({ inDashboard = true, mb = 2, omitLabels = [] }: DynamicBreadcrumbsProps) => {
   const pathname = usePathname();
   const [breadcrumbs, setBreadcrumbs] = useState<Breadcrumb[]>([]);
   const [projectName, setProjectName] = useState<string | null>(null);
+  const isAdminPath = pathname?.startsWith('/dashboard/admin');
 
   // Check if we're on a project tasks page and fetch project name
   useEffect(() => {
@@ -70,8 +77,8 @@ const DynamicBreadcrumbs = ({ inDashboard = true }) => {
     }
     
     const breadcrumbPaths: Breadcrumb[] = filteredSegments.map((segment, index) => {
-      // Reconstruct href - need to include /dashboard prefix for proper routing
-      const hrefSegments = ['dashboard', ...filteredSegments.slice(0, index + 1)];
+      // Reconstruct href. For dashboard pages we want /dashboard/..., for external sections like /projects we don't.
+      const hrefSegments = inDashboard ? ['dashboard', ...filteredSegments.slice(0, index + 1)] : filteredSegments.slice(0, index + 1);
       const href = '/' + hrefSegments.join('/');
       
       // Replace project ID with project name if available
@@ -124,28 +131,27 @@ const DynamicBreadcrumbs = ({ inDashboard = true }) => {
   }, [pathname, projectName, generateBreadcrumbs]);
 
   // Filter out any breadcrumbs that might have 'dashboard' as label (final safety check)
-  const safeBreadcrumbs = breadcrumbs.filter(
-    (crumb) => crumb.label.toLowerCase() !== 'dashboard' && crumb.label !== ''
-  );
+  const safeBreadcrumbs = breadcrumbs.filter((crumb) => {
+    if (crumb.label.toLowerCase() === 'dashboard' || crumb.label === '') return false;
+    if (omitLabels.includes(crumb.label)) return false;
+    return true;
+  });
 
-  // Only show breadcrumbs if there's at least one valid breadcrumb
-  // and it's not just a single "Dashboard" breadcrumb
-  if (safeBreadcrumbs.length === 0) {
+  // For now, keep breadcrumbs hidden on admin pages to match current UI expectation.
+  if (isAdminPath) {
     return null;
   }
 
-  // If there's only one breadcrumb, show it (but never if it's Dashboard)
-  if (safeBreadcrumbs.length === 1) {
-    return (
-      <Breadcrumbs aria-label="breadcrumbs" sx={{ '&& > *': { fontSize: 14 }, mb: 2 }}>
-        <Typography fontWeight={700}>{safeBreadcrumbs[0].label}</Typography>
-      </Breadcrumbs>
-    );
+  // Only show breadcrumbs when they add context.
+  // If there's 0 crumbs, or only 1 crumb (usually equal to page title like "Settings"),
+  // hide them to avoid duplicating the header title.
+  if (safeBreadcrumbs.length <= 1) {
+    return null;
   }
 
   // Multiple breadcrumbs
   return (
-    <Breadcrumbs aria-label="breadcrumbs" sx={{ '&& > *': { fontSize: 14 }, mb: 2 }}>
+    <Breadcrumbs aria-label="breadcrumbs" sx={{ '&& > *': { fontSize: 14 }, mb }}>
       {safeBreadcrumbs[0] && (
         <Link component={NextLink} href={safeBreadcrumbs[0].href} key="home" color="inherit">
           {safeBreadcrumbs[0].label}

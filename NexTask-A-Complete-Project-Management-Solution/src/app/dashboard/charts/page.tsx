@@ -10,7 +10,7 @@ import CardHeader from "@/components/CardHeader";
 export default function ChartsPage() {
   return (
     <>
-      <PageHeader title="Charts" />
+
 
       <Grid container spacing={3}>
         <Grid item xs={12}>
