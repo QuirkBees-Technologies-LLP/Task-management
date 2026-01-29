@@ -31,19 +31,29 @@ export async function GET(request: Request) {
         { plan_name: { $regex: search, $options: 'i' } },
         { description: { $regex: search, $options: 'i' } },
         { status: { $regex: search, $options: 'i' } },
-        { billing_period: { $regex: search, $options: 'i' } },
+        { best_for: { $regex: search, $options: 'i' } },
+        { 'billing_period': { $regex: search, $options: 'i' } },
+        { 'plan_type': { $regex: search, $options: 'i' } },
+        { 'trial_type': { $regex: search, $options: 'i' } },
+        { 'access_level': { $regex: search, $options: 'i' } },
+        { 'features': { $regex: search, $options: 'i' } },
       ];
 
-      // Also search in features array (for string arrays, MongoDB will match any element)
-      // For arrays of strings, this will work automatically
-      searchConditions.push({
-        'features': { $regex: search, $options: 'i' },
-      });
-
-      // Try to parse as number for price search
+      // Try to parse as number for price search (search in price.monthly and price.yearly)
       const searchNumber = parseFloat(search);
       if (!isNaN(searchNumber)) {
-        searchConditions.push({ price: searchNumber });
+        searchConditions.push(
+          { 'price.monthly': searchNumber },
+          { 'price.yearly': searchNumber }
+        );
+      }
+
+      // Try to parse as number for users_allowed and organizations_allowed
+      if (!isNaN(searchNumber)) {
+        searchConditions.push(
+          { users_allowed: searchNumber },
+          { organizations_allowed: searchNumber }
+        );
       }
 
       query.$or = searchConditions;
@@ -55,7 +65,7 @@ export async function GET(request: Request) {
     }
 
     if (billingPeriodFilter) {
-      query.billing_period = billingPeriodFilter;
+      query.billing_period = { $in: [billingPeriodFilter] };
     }
 
     const total = await plansCollection.countDocuments(query);
@@ -102,8 +112,14 @@ export async function POST(request: Request) {
     const {
       plan_name,
       description,
-      price,
-      billing_period,
+      plan_type = [],
+      trial_type = [],
+      price = {},
+      billing_period = [],
+      users_allowed,
+      organizations_allowed,
+      best_for = '',
+      access_level = [],
       features = [],
       mark_as_popular = false,
       status = 'active',
@@ -113,12 +129,29 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: 'Plan name is required' }, { status: 400 });
     }
 
-    if (price === undefined || price === null || Number.isNaN(Number(price))) {
-      return NextResponse.json({ message: 'Price is required' }, { status: 400 });
+    // Validate price object structure
+    if (!price || typeof price !== 'object' || Array.isArray(price)) {
+      return NextResponse.json({ message: 'Price must be an object with monthly and/or yearly properties' }, { status: 400 });
     }
 
-    if (!billing_period || !['monthly', 'yearly'].includes(billing_period)) {
-      return NextResponse.json({ message: 'Billing period must be monthly or yearly' }, { status: 400 });
+    // Validate plan_type array
+    if (!Array.isArray(plan_type)) {
+      return NextResponse.json({ message: 'plan_type must be an array' }, { status: 400 });
+    }
+
+    // Validate trial_type array
+    if (!Array.isArray(trial_type)) {
+      return NextResponse.json({ message: 'trial_type must be an array' }, { status: 400 });
+    }
+
+    // Validate billing_period array
+    if (!Array.isArray(billing_period)) {
+      return NextResponse.json({ message: 'billing_period must be an array' }, { status: 400 });
+    }
+
+    // Validate access_level array
+    if (!Array.isArray(access_level)) {
+      return NextResponse.json({ message: 'access_level must be an array' }, { status: 400 });
     }
 
     const client = await clientPromise;
@@ -129,8 +162,17 @@ export async function POST(request: Request) {
     const newPlan = {
       plan_name,
       description: description || '',
-      price: Number(price),
-      billing_period,
+      plan_type: Array.isArray(plan_type) ? plan_type : [],
+      trial_type: Array.isArray(trial_type) ? trial_type : [],
+      price: {
+        monthly: price.monthly !== undefined ? Number(price.monthly) : null,
+        yearly: price.yearly !== undefined ? Number(price.yearly) : null,
+      },
+      billing_period: Array.isArray(billing_period) ? billing_period : [],
+      users_allowed: users_allowed !== undefined ? Number(users_allowed) : null,
+      organizations_allowed: organizations_allowed !== undefined ? Number(organizations_allowed) : null,
+      best_for: best_for || '',
+      access_level: Array.isArray(access_level) ? access_level : [],
       features: Array.isArray(features) ? features : [],
       mark_as_popular: Boolean(mark_as_popular),
       status: status || 'active',

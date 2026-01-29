@@ -81,11 +81,34 @@ export async function PATCH(
     if (body.description !== undefined) {
       updateData.description = body.description || '';
     }
+    if (body.plan_type !== undefined) {
+      updateData.plan_type = Array.isArray(body.plan_type) ? body.plan_type : [];
+    }
+    if (body.trial_type !== undefined) {
+      updateData.trial_type = Array.isArray(body.trial_type) ? body.trial_type : [];
+    }
     if (body.price !== undefined) {
-      updateData.price = Number(body.price);
+      if (typeof body.price === 'object' && !Array.isArray(body.price)) {
+        updateData.price = {
+          monthly: body.price.monthly !== undefined ? Number(body.price.monthly) : null,
+          yearly: body.price.yearly !== undefined ? Number(body.price.yearly) : null,
+        };
+      }
     }
     if (body.billing_period !== undefined) {
-      updateData.billing_period = body.billing_period;
+      updateData.billing_period = Array.isArray(body.billing_period) ? body.billing_period : [];
+    }
+    if (body.users_allowed !== undefined) {
+      updateData.users_allowed = body.users_allowed !== null ? Number(body.users_allowed) : null;
+    }
+    if (body.organizations_allowed !== undefined) {
+      updateData.organizations_allowed = body.organizations_allowed !== null ? Number(body.organizations_allowed) : null;
+    }
+    if (body.best_for !== undefined) {
+      updateData.best_for = body.best_for || '';
+    }
+    if (body.access_level !== undefined) {
+      updateData.access_level = Array.isArray(body.access_level) ? body.access_level : [];
     }
     if (body.features !== undefined) {
       updateData.features = Array.isArray(body.features) ? body.features : [];
