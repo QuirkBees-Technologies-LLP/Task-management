@@ -81,7 +81,7 @@ export async function POST(request: Request) {
     const org_id = requireOrgIdFromToken(decoded);
 
     const body = await request.json();
-    const { name, email, phone, company, address, city, country, notes, projectName } = body;
+    const { name, email, phone, company, address, city, country, notes, projectName, photoUrl } = body;
 
     if (!name || !email) {
       return NextResponse.json(
@@ -113,6 +113,7 @@ export async function POST(request: Request) {
       country: country || '',
       notes: notes || '',
       projectName: projectName || '',
+      photoUrl: photoUrl || '',
       createdAt: new Date(),
       updatedAt: new Date(),
       createdBy: decoded.id,
@@ -143,7 +144,7 @@ export async function PATCH(request: Request) {
     const org_id = requireOrgIdFromToken(decoded);
 
     const body = await request.json();
-    const { clientId, name, email, phone, company, address, city, country, notes, projectName } = body;
+    const { clientId, name, email, phone, company, address, city, country, notes, projectName, photoUrl } = body;
 
     if (!clientId) {
       return NextResponse.json({ error: 'Client ID is required' }, { status: 400 });
@@ -171,6 +172,7 @@ export async function PATCH(request: Request) {
     if (country !== undefined) updateData.country = country;
     if (notes !== undefined) updateData.notes = notes;
     if (projectName !== undefined) updateData.projectName = projectName;
+    if (photoUrl !== undefined) updateData.photoUrl = photoUrl;
 
     const result = await clientsCollection.updateOne(
       addOrgIdToQuery({ _id: new ObjectId(clientId) }, org_id),

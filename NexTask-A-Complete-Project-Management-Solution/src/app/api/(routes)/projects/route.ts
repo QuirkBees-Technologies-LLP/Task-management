@@ -95,7 +95,7 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const { name, clientName, description, dueDate, status: projectStatus, assignee, attachments } = body;
+    const { name, clientName, description, dueDate, status: projectStatus, assignee, attachments, priority } = body;
 
     // Validation
     if (!name || !description) {
@@ -174,6 +174,7 @@ export async function POST(request: Request) {
       description,
       status: projectStatus || 'Pending',
       dueDate: dueDate ? new Date(dueDate) : null,
+      priority: priority || 'High',
       assignee: assigneeIds,
       attachments: Array.isArray(attachments) ? attachments : [],
       createdAt: new Date(),

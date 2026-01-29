@@ -34,6 +34,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
     city: '',
     country: '',
     notes: '',
+    photoUrl: '',
   });
   const [projects, setProjects] = useState<Array<{ _id: string; name: string }>>([]);
   const [loadingProjects, setLoadingProjects] = useState<boolean>(false);
@@ -57,6 +58,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
         city: client.city || '',
         country: client.country || '',
         notes: client.notes || '',
+        photoUrl: client.photoUrl || '',
       });
     } else if (!client && open) {
       // Reset form for new client
@@ -71,6 +73,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
         city: '',
         country: '',
         notes: '',
+        photoUrl: '',
       });
     }
   }, [client, open]);
@@ -118,11 +121,64 @@ export const ClientModal: React.FC<ClientModalProps> = ({
     setOpen(false);
   };
 
+  const handlePhotoFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+    if (!allowedTypes.includes(file.type)) {
+      // Silently ignore unsupported types to avoid breaking UX
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const result = reader.result;
+      if (typeof result === 'string') {
+        setFormValues((prev) => ({
+          ...prev,
+          photoUrl: result,
+        }));
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
   return (
     <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
       <DialogTitle>{client ? 'Edit Client' : 'Add Client'}</DialogTitle>
       <DialogContent dividers>
         <Stack spacing={2} sx={{ mt: 1 }}>
+          {/* Add Photo field (single combined field at top) */}
+          <TextField
+            label="Add Photo (optional)"
+            fullWidth
+            margin="normal"
+            type="url"
+            value={formValues.photoUrl || ''}
+            onChange={(e) => handleChange('photoUrl', e.target.value)}
+            placeholder="Paste image URL or use the upload icon"
+            helperText="Optional. Supports any image; click the icon to upload JPG/PNG."
+            InputProps={{
+              endAdornment: (
+                <Button
+                  component="label"
+                  variant="text"
+                  size="small"
+                  sx={{ whiteSpace: 'nowrap', fontSize: 12 }}
+                >
+                  Upload
+                  <input
+                    type="file"
+                    hidden
+                    accept="image/*"
+                    onChange={handlePhotoFileChange}
+                  />
+                </Button>
+              ),
+            }}
+          />
+
           <TextField
             label="Client Name"
             fullWidth

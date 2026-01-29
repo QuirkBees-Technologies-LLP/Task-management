@@ -120,7 +120,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     }
 
     const body = await request.json();
-    const { name, clientName, description, dueDate, status: projectStatus, assignee, attachments } = body;
+    const { name, clientName, description, dueDate, status: projectStatus, assignee, attachments, priority } = body;
 
     const client = await clientPromise;
     const db = client.db(DATABASE_NAME);
@@ -152,6 +152,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     if (clientName !== undefined) updateData.clientName = clientName;
     if (description) updateData.description = description;
     if (projectStatus) updateData.status = projectStatus;
+    if (priority) updateData.priority = priority;
     if (dueDate) updateData.dueDate = new Date(dueDate);
 
     // Validate and map assignee IDs if provided

@@ -31,6 +31,7 @@ import axios from 'axios';
 import { safeLocalStorageGet } from '@/utils/helpers';
 import { accessTokenKey } from '@/utils/constants';
 import { useRouter } from 'next/navigation';
+import PrioritySelect from '@/app/dashboard/tasks/components/PrioritySelect';
 
 // Custom validation function for end date
 const validateEndDate = (value: string) => {
@@ -94,6 +95,7 @@ const validationSchema = Yup.object().shape({
       return endDate >= start;
     }),
   status: Yup.string().required('Status is required'),
+  priority: Yup.string().oneOf(['Low', 'Medium', 'High']).optional(),
   assignee: Yup.array().of(Yup.string()).optional(),
   attachments: Yup.array().of(
     Yup.object().shape({
@@ -228,6 +230,7 @@ export default function ProjectModal({
       status: '',
       startDate: '',
       endDate: '',
+      priority: 'High',
       assignee: [],
       attachments: [],
     });
@@ -251,6 +254,7 @@ export default function ProjectModal({
             description: values.description,
             status: values.status,
             dueDate: values.endDate,
+            priority: values.priority || 'High',
             assignee: values.assignee || [],
             attachments: values.attachments || [],
           },
@@ -267,6 +271,7 @@ export default function ProjectModal({
             description: values.description,
             status: values.status,
             dueDate: values.endDate,
+            priority: values.priority || 'High',
             assignee: values.assignee || [],
             attachments: values.attachments || [],
           },
@@ -417,6 +422,15 @@ export default function ProjectModal({
                       </Field>
                       <ErrorMessage name="status" component={Typography} />
                     </FormControl>
+                  </Grid2>
+                  <Grid2 size={6}>
+                    <PrioritySelect
+                      value={values.priority || 'High'}
+                      onChange={(value) => setFieldValue('priority', value)}
+                      fullWidth
+                      margin="dense"
+                      projectId={values.id}
+                    />
                   </Grid2>
                   <Grid2 size={6}>
                     <Field

@@ -105,6 +105,7 @@ const ClientManagement: React.FC = () => {
         country: client.country || '',
         notes: client.notes || '',
         projectName: client.projectName || '',
+        photoUrl: client.photoUrl || '',
       };
 
       if (selectedClient?._id || selectedClient?.id) {
