@@ -1,6 +1,15 @@
-import { Modal, Form, Input, Select, Switch, Button, InputNumber ,Row,
-  Col,} from "antd";
-import { useEffect } from "react";
+import {
+  Modal,
+  Form,
+  Input,
+  Select,
+  Switch,
+  Button,
+  InputNumber,
+  Row,
+  Col,
+} from "antd";
+import { useEffect, useState } from "react";
 import {
   DeleteOutlined,
   PlusOutlined,
@@ -17,6 +26,7 @@ const PlansFormModal = ({
   onSubmit,
 }) => {
   const [form] = Form.useForm();
+  const [isSubmitDisabled, setIsSubmitDisabled] = useState(true);
 
   /* ---------------- Validation Rules ---------------- */
   const nameRule = {
@@ -54,6 +64,15 @@ const PlansFormModal = ({
       });
     }
   }, [open, initialValues, form]);
+  /* ---------------- Check form validity ---------------- */
+  const checkFormValid = async () => {
+    try {
+      await form.validateFields(); // validate all fields
+      setIsSubmitDisabled(false); // no errors, enable submit
+    } catch (error) {
+      setIsSubmitDisabled(true); // errors exist, disable submit
+    }
+  };
 
   return (
     <Modal
@@ -69,6 +88,7 @@ const PlansFormModal = ({
         layout="vertical"
         initialValues={{ features: [] }}
         onFinish={(values) => onSubmit(values, form)}
+        onFieldsChange={checkFormValid}
       >
         {/* Plan Name */}
         <Form.Item
@@ -170,7 +190,6 @@ const PlansFormModal = ({
             ]}
           />
         </Form.Item>
-
 
         {/* Users Allowed */}
         <Form.Item
@@ -302,7 +321,7 @@ const PlansFormModal = ({
           type="primary"
           htmlType="submit"
           loading={loading}
-          disabled={loading}
+          disabled={isSubmitDisabled || loading} // <-- changed here
           block
         >
           {initialValues ? "Update Plan" : "Create Plan"}
