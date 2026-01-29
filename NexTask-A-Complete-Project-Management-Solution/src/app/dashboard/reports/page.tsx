@@ -198,10 +198,7 @@ export default function Reports() {
   return (
     <>
       {/* Page Header with Export Options */}
-      <PageHeader
-        title="Reports"
-        action={<ExportOptions title={title} data={dataSource} columns={columns} />}
-      />
+
 
       {/* Filters Section */}
       <ReportFilters onApplyFilter={handleApplyFilters} />

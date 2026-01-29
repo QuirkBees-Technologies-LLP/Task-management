@@ -17,9 +17,9 @@ export default function AuthLayout({
   useEffect(() => {
     const token = safeLocalStorageGet(accessTokenKey);
 
-    // Redirect to dashboard if the user is logged in and not on the change-password route
+    // Redirect to projects if the user is logged in and not on the change-password route
     if (token && !isTokenExpired(token) && pathname !== '/change-password') {
-      router.push('/dashboard');
+      router.push('/dashboard/projects'); // Redirect to projects instead of dashboard
     }
   }, [router, pathname]);
 

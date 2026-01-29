@@ -13,6 +13,7 @@ export interface Client {
   city?: string;
   country?: string;
   notes?: string;
+  photoUrl?: string;
   projectsCount?: number;
   createdAt?: string;
   updatedAt?: string;

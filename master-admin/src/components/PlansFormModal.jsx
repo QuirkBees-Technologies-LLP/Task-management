@@ -50,6 +50,7 @@ const PlansFormModal = ({
         },
         features: initialValues?.features ?? [],
         mark_as_popular: Boolean(initialValues.mark_as_popular),
+        status: initialValues.status ?? "active",
       });
     }
   }, [open, initialValues, form]);

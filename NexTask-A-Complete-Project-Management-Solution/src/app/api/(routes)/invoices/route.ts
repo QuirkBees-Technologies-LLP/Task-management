@@ -126,9 +126,12 @@ export async function POST(request: Request) {
     const companySettingsCollection = db.collection('companySettings');
     const bankingDetailsCollection = db.collection('bankingDetails');
 
+    // IMPORTANT: Company and banking settings are organization-scoped.
+    // Never query without org_id, otherwise data from a different organization
+    // (e.g. legacy Infoloop data) could be used for this invoice.
     const [companySettings, bankingDetails] = await Promise.all([
-      companySettingsCollection.findOne({}),
-      bankingDetailsCollection.findOne({}),
+      companySettingsCollection.findOne(addOrgIdToQuery({}, org_id)),
+      bankingDetailsCollection.findOne(addOrgIdToQuery({}, org_id)),
     ]);
 
     // Prepare company details to store - ALWAYS store, even if empty

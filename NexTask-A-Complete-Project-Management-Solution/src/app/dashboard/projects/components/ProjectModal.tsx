@@ -15,7 +15,15 @@ import {
   Typography,
   CircularProgress,
   Box,
+  Autocomplete,
+  Divider,
+  Stack,
+  IconButton,
 } from '@mui/material';
+import { AttachFile, Delete } from '@mui/icons-material';
+import RichTextEditor from '@/app/dashboard/tasks/components/RichTextEditor';
+import FileAttachmentDialog from '@/app/dashboard/tasks/components/FileAttachmentDialog';
+import type { TaskAttachment } from '@/app/dashboard/tasks/types';
 import { ErrorMessage, Field, Form, Formik, useFormikContext } from 'formik';
 import * as Yup from 'yup';
 import { enqueueSnackbar } from 'notistack';
@@ -23,6 +31,7 @@ import axios from 'axios';
 import { safeLocalStorageGet } from '@/utils/helpers';
 import { accessTokenKey } from '@/utils/constants';
 import { useRouter } from 'next/navigation';
+import PrioritySelect from '@/app/dashboard/tasks/components/PrioritySelect';
 
 // Custom validation function for end date
 const validateEndDate = (value: string) => {
@@ -86,6 +95,14 @@ const validationSchema = Yup.object().shape({
       return endDate >= start;
     }),
   status: Yup.string().required('Status is required'),
+  priority: Yup.string().oneOf(['Low', 'Medium', 'High']).optional(),
+  assignee: Yup.array().of(Yup.string()).optional(),
+  attachments: Yup.array().of(
+    Yup.object().shape({
+      fileName: Yup.string().required(),
+      fileUrl: Yup.string().required(),
+    })
+  ).optional(),
 });
 
 function ProjectModalWithFields({ content, mode, visible, onClose }) {
@@ -116,6 +133,9 @@ export default function ProjectModal({
   const router = useRouter();
   const [clients, setClients] = useState<Array<{ _id: string; name: string; clientName?: string }>>([]);
   const [loadingClients, setLoadingClients] = useState<boolean>(false);
+  const [users, setUsers] = useState<Array<{ _id: string; firstName: string; lastName: string; email: string }>>([]);
+  const [loadingUsers, setLoadingUsers] = useState<boolean>(false);
+  const [attachmentDialogOpen, setAttachmentDialogOpen] = useState<boolean>(false);
 
   useEffect(() => {
     if (visible) {
@@ -148,6 +168,58 @@ export default function ProjectModal({
     }
   };
 
+  // Fetch users for Assignee field (same logic as Tasks page)
+  useEffect(() => {
+    const fetchUsers = async () => {
+      setLoadingUsers(true);
+      try {
+        const token = safeLocalStorageGet(accessTokenKey);
+        if (!token) return;
+
+        // Try staff API first, fallback to users API
+        try {
+          const response = await axios.get('/api/staff?limit=1000', {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+
+          if (response.data.success) {
+            const staffUsers = (response.data.staff || []).map((s: any) => ({
+              _id: s._id.toString(),
+              firstName: s.firstName || '',
+              lastName: s.lastName || '',
+              email: s.email || '',
+            }));
+            setUsers(staffUsers);
+            return;
+          }
+        } catch (e) {
+          // Fallback to users API
+        }
+
+        const usersResponse = await axios.get('/api/users', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (Array.isArray(usersResponse.data)) {
+          const usersList = usersResponse.data.map((u: any) => ({
+            _id: typeof u._id === 'string' ? u._id : (u._id?.toString() || ''),
+            firstName: u.firstName || '',
+            lastName: u.lastName || '',
+            email: u.email || '',
+          }));
+          setUsers(usersList);
+        }
+      } catch (error) {
+        console.error('Error fetching users for project assignee:', error);
+      } finally {
+        setLoadingUsers(false);
+      }
+    };
+
+    if (visible) {
+      fetchUsers();
+    }
+  }, [visible]);
+
   const handleClose = () => {
     setVisible(false);
     setInitialValues({
@@ -158,6 +230,9 @@ export default function ProjectModal({
       status: '',
       startDate: '',
       endDate: '',
+      priority: 'High',
+      assignee: [],
+      attachments: [],
     });
   };
 
@@ -179,6 +254,9 @@ export default function ProjectModal({
             description: values.description,
             status: values.status,
             dueDate: values.endDate,
+            priority: values.priority || 'High',
+            assignee: values.assignee || [],
+            attachments: values.attachments || [],
           },
           { headers: { Authorization: `Bearer ${token}` } }
         );
@@ -193,6 +271,9 @@ export default function ProjectModal({
             description: values.description,
             status: values.status,
             dueDate: values.endDate,
+            priority: values.priority || 'High',
+            assignee: values.assignee || [],
+            attachments: values.attachments || [],
           },
           { headers: { Authorization: `Bearer ${token}` } }
         );
@@ -247,13 +328,39 @@ export default function ProjectModal({
           }
         };
 
+        const handleAddAttachment = (attachment: {
+          fileName: string;
+          fileUrl: string;
+          fileType: string;
+          fileSize?: number;
+          attachmentType: 'file' | 'url' | 'google_drive' | 'onedrive' | 'box' | 'dropbox';
+        }) => {
+          const newAttachment: TaskAttachment = {
+            fileName: attachment.fileName,
+            fileUrl: attachment.fileUrl,
+            fileType: attachment.fileType,
+            fileSize: attachment.fileSize,
+            attachmentType: attachment.attachmentType,
+            uploadedAt: new Date().toISOString(),
+          };
+          const current = (values.attachments as TaskAttachment[] | undefined) || [];
+          setFieldValue('attachments', [...current, newAttachment]);
+        };
+
+        const handleDeleteAttachment = (index: number) => {
+          const current = (values.attachments as TaskAttachment[] | undefined) || [];
+          const updated = current.filter((_, i) => i !== index);
+          setFieldValue('attachments', updated);
+        };
+
         return (
-          <ProjectModalWithFields
-            mode={mode}
-            visible={visible}
-            onClose={handleClose}
-            content={
-              <Form>
+          <>
+            <ProjectModalWithFields
+              mode={mode}
+              visible={visible}
+              onClose={handleClose}
+              content={
+                <Form>
                 <Grid2 container spacing={2}>
                   <Grid2 size={6}>
                     <Field
@@ -317,6 +424,15 @@ export default function ProjectModal({
                     </FormControl>
                   </Grid2>
                   <Grid2 size={6}>
+                    <PrioritySelect
+                      value={values.priority || 'High'}
+                      onChange={(value) => setFieldValue('priority', value)}
+                      fullWidth
+                      margin="dense"
+                      projectId={values.id}
+                    />
+                  </Grid2>
+                  <Grid2 size={6}>
                     <Field
                       as={TextField}
                       name="startDate"
@@ -344,23 +460,135 @@ export default function ProjectModal({
                       helperText={errors.endDate || ''}
                     />
                   </Grid2>
-                <Grid2 size={12}>
-                  <Field
-                    as={TextField}
-                    name="description"
-                    label="Description"
-                    variant="outlined"
-                    multiline
-                    rows={4}
-                    fullWidth
-                    error={touched.description && errors.description}
-                    helperText={<ErrorMessage name="description" />}
-                  />
+                  <Grid2 size={12}>
+                    <Box sx={{ mt: 1 }}>
+                      <Typography variant="subtitle2" sx={{ mb: 0.75, fontWeight: 600, fontSize: '13px' }}>
+                        Description
+                      </Typography>
+                      <RichTextEditor
+                        value={values.description || ''}
+                        onChange={(value) => {
+                          setFieldValue('description', value);
+                        }}
+                        placeholder="Type / for menu"
+                      />
+                      {touched.description && errors.description && (
+                        <Typography variant="caption" color="error">
+                          {errors.description as string}
+                        </Typography>
+                      )}
+                    </Box>
+                  </Grid2>
+
+                  <Grid2 size={12}>
+                    <Autocomplete
+                      multiple
+                      options={users}
+                      getOptionLabel={(option) =>
+                        `${option.firstName} ${option.lastName}`.trim() || option.email
+                      }
+                      isOptionEqualToValue={(option, value) => option._id === value._id}
+                      value={users.filter((user) =>
+                        (values.assignee || []).includes(user._id)
+                      )}
+                      onChange={(event, newValue) => {
+                        const assigneeIds = newValue.map((user) => user._id);
+                        setFieldValue('assignee', assigneeIds);
+                      }}
+                      filterSelectedOptions
+                      loading={loadingUsers}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          margin="dense"
+                          label="Assignee"
+                          placeholder="Search users..."
+                          InputProps={{
+                            ...params.InputProps,
+                            endAdornment: (
+                              <>
+                                {loadingUsers ? <CircularProgress size={20} /> : null}
+                                {params.InputProps.endAdornment}
+                              </>
+                            ),
+                          }}
+                        />
+                      )}
+                    />
+                  </Grid2>
+
+                  <Grid2 size={12}>
+                    <Divider sx={{ my: 2 }} />
+                    <Box sx={{ mb: 2 }}>
+                      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                          Attachments {(values.attachments && (values.attachments as TaskAttachment[]).length)
+                            ? `(${(values.attachments as TaskAttachment[]).length})`
+                            : '(0)'}
+                        </Typography>
+                        <Button
+                          startIcon={<AttachFile />}
+                          onClick={() => setAttachmentDialogOpen(true)}
+                          size="small"
+                          variant="outlined"
+                        >
+                          Attach
+                        </Button>
+                      </Stack>
+                      {values.attachments && (values.attachments as TaskAttachment[]).length > 0 ? (
+                        <Stack spacing={0.5}>
+                          {(values.attachments as TaskAttachment[]).map((attachment, index) => (
+                            <Stack
+                              key={index}
+                              direction="row"
+                              alignItems="center"
+                              spacing={1}
+                              sx={{
+                                p: 1,
+                                borderRadius: 1,
+                                bgcolor: 'action.hover',
+                              }}
+                            >
+                              <AttachFile fontSize="small" sx={{ color: 'text.secondary' }} />
+                              <Typography
+                                variant="body2"
+                                sx={{
+                                  flex: 1,
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
+                                }}
+                              >
+                                {attachment.fileName}
+                              </Typography>
+                              <IconButton
+                                size="small"
+                                onClick={() => handleDeleteAttachment(index)}
+                                color="error"
+                              >
+                                <Delete fontSize="small" />
+                              </IconButton>
+                            </Stack>
+                          ))}
+                        </Stack>
+                      ) : (
+                        <Typography variant="body2" sx={{ color: 'text.secondary', fontStyle: 'italic' }}>
+                          No attachments
+                        </Typography>
+                      )}
+                    </Box>
+                  </Grid2>
                 </Grid2>
-              </Grid2>
-            </Form>
-          }
-        />
+              </Form>
+            }
+          />
+
+          <FileAttachmentDialog
+            open={attachmentDialogOpen}
+            onClose={() => setAttachmentDialogOpen(false)}
+            onAddAttachment={handleAddAttachment}
+          />
+        </>
         );
       }}
     </Formik>

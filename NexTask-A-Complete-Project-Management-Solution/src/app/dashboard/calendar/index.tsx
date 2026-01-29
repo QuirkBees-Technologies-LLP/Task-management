@@ -282,6 +282,26 @@ const Calendar = () => {
               ? 'completed'
               : task.status;
 
+      // Ensure dueDate is properly formatted (YYYY-MM-DD) or undefined if empty
+      let formattedDueDate: string | undefined = undefined;
+      if (task.dueDate && task.dueDate.trim() !== '') {
+        // If it's already in YYYY-MM-DD format, use it
+        if (task.dueDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+          formattedDueDate = task.dueDate;
+        } else {
+          // Try to parse and format
+          try {
+            const date = new Date(task.dueDate);
+            if (!isNaN(date.getTime())) {
+              formattedDueDate = date.toISOString().split('T')[0];
+            }
+          } catch (e) {
+            // If parsing fails, set to undefined
+            formattedDueDate = undefined;
+          }
+        }
+      }
+
       if (task.id && task.id !== '0' && task.id !== 0) {
         // Update existing task
         await axios.patch(
@@ -292,7 +312,7 @@ const Calendar = () => {
             description: task.description,
             status: apiStatus,
             priority: task.priority,
-            dueDate: task.dueDate || undefined,
+            dueDate: formattedDueDate,
             attachments: task.attachments || [],
             subtasks: task.subtasks || [],
           },
@@ -308,7 +328,7 @@ const Calendar = () => {
             description: task.description,
             status: apiStatus,
             priority: task.priority,
-            dueDate: task.dueDate || undefined,
+            dueDate: formattedDueDate,
             attachments: task.attachments || [],
             subtasks: task.subtasks || [],
           },

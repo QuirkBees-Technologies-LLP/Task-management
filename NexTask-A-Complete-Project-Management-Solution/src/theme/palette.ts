@@ -6,7 +6,7 @@ export const getLightPalette = (primaryColor) => ({
   },
 
   background: {
-    default: '#f9f9f9',
+    default: '#F9FAFC',
     paper: '#ffffff',
   },
   text: {

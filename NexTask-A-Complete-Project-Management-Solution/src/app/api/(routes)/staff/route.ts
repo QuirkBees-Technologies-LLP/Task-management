@@ -41,8 +41,9 @@ export async function GET(request: Request) {
     const total = await usersCollection.countDocuments(query);
     const skip = (page - 1) * limit;
 
+    // Fetch staff - explicitly include plainTextPassword field
     const staff = await usersCollection
-      .find(query)
+      .find(query, { projection: { password: 0 } }) // Exclude hashed password from response
       .skip(skip)
       .limit(limit)
       .sort({ createdAt: -1 })
@@ -66,9 +67,14 @@ export async function GET(request: Request) {
       {
         success: true,
         staff: staff.map((s) => {
+          // Get plainTextPassword - this is what admin sees
+          // Note: password field is already excluded from projection above
+          const plainTextPassword = (s as any).plainTextPassword || '';
           const staffData: any = {
             ...s,
             _id: s._id.toString(),
+            // Include plainTextPassword for admin viewing (password is visible to admin)
+            password: plainTextPassword, // Return plain text password for admin - this is what admin sees
           };
 
           // Include departmentId and positionId for form pre-selection
@@ -158,14 +164,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'User with this email already exists in your organization' }, { status: 400 });
     }
 
-    // Hash the password
+    // Hash the password for authentication
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const newStaff: any = addOrgIdToDocument({
       firstName,
       lastName,
       email,
-      password: hashedPassword,
+      password: hashedPassword, // Hashed password for authentication
+      plainTextPassword: password, // Store plain text password for admin viewing
       role: role || 'Regular',
       phone: phone || '',
       createdAt: new Date(),
@@ -235,9 +242,13 @@ export async function PATCH(request: Request) {
     if (phone !== undefined) setData.phone = phone;
     
     // Handle password update - only if provided
-    if (password && password.trim() !== '') {
-      const hashedPassword = await bcrypt.hash(password, 10);
-      setData.password = hashedPassword;
+    if (password !== undefined && password !== null) {
+      if (password.trim() !== '') {
+        const hashedPassword = await bcrypt.hash(password, 10);
+        setData.password = hashedPassword; // Hashed password for authentication
+        setData.plainTextPassword = password; // Store plain text password for admin viewing
+      }
+      // If password is empty string, we keep the existing password (don't update)
     }
 
     // Handle departmentId and positionId as ObjectIds

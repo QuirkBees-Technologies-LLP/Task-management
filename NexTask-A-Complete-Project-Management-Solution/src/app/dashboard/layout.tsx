@@ -18,6 +18,7 @@ import Loader from '@/components/Loader';
 
 interface LayoutProps {
   children: ReactNode;
+  pageTitle?: string;
 }
 
 export default function Layout({ children }: LayoutProps) {
@@ -86,10 +87,23 @@ export default function Layout({ children }: LayoutProps) {
     return isSuperUser ? userRoutes.Superuser : userRoutes[userInfo.role];
   }, [userInfo?.role, isSuperUser, userRoutes]);
 
+  // Immediate redirect for /dashboard - don't wait for userInfo
+  useEffect(() => {
+    if (token && pathname === '/dashboard') {
+      router.push('/dashboard/projects');
+    }
+  }, [token, pathname, router]);
+
   useEffect(() => {
     // Use a timeout to debounce route validation and prevent blocking navigation
     const timeoutId = setTimeout(() => {
       if (token && userInfo?.role && currentUserRoutes) {
+        // Redirect /dashboard to /dashboard/projects (backup check)
+        if (pathname === '/dashboard') {
+          router.push('/dashboard/projects');
+          return;
+        }
+
         // Check if user is trying to access admin routes
         if (pathname.startsWith('/dashboard/admin') || pathname.startsWith('/admin')) {
           // Only allow Admin or Superuser to access admin routes
@@ -98,7 +112,7 @@ export default function Layout({ children }: LayoutProps) {
               message: 'Access denied. Admin privileges required.',
               variant: 'error',
             });
-            router.push('/dashboard');
+            router.push('/dashboard/projects'); // Redirect to projects instead of dashboard
             return;
           }
         }
@@ -125,7 +139,7 @@ export default function Layout({ children }: LayoutProps) {
           const isSubRoute = pathParts.length > 1 && currentUserRoutes.includes(baseRoute);
           
           if (!isDynamicRoute && !isSubRoute) {
-            router.push('/dashboard');
+            router.push('/dashboard/projects'); // Redirect to projects instead of dashboard
           }
         }
       }
@@ -138,11 +152,54 @@ export default function Layout({ children }: LayoutProps) {
     return null;
   }
 
+  // Determine page title based on pathname
+  const getPageTitle = (path: string) => {
+    const pathParts = path.replace(/^\/dashboard\/?/, '').split('/').filter(Boolean);
+    const baseRoute = pathParts[0] || '';
+    const subRoute = pathParts[1] || '';
+
+    const titleMap: Record<string, string> = {
+      projects: 'Projects',
+      tasks: 'Tasks',
+      invoices: 'Invoices',
+      team: 'Staff Management',
+      reports: 'Reports',
+      settings: 'Settings',
+      notifications: 'Notifications',
+      calendar: 'Calendar',
+      contracts: 'Contracts',
+      clients: 'Client Management',
+      'email-templates': 'Email Templates',
+      permissions: 'Roles & Permissions',
+      support: 'Support',
+      feedback: 'Feedback',
+      charts: 'Charts',
+    };
+
+    // Handle nested admin routes like /dashboard/admin/departments
+    if (baseRoute === 'admin') {
+      const adminTitleMap: Record<string, string> = {
+        departments: 'Department',
+        users: 'Users',
+      };
+      return adminTitleMap[subRoute] || 'Admin';
+    }
+
+    return titleMap[baseRoute] || 'Dashboard';
+  };
+
+  const currentPageTitle = getPageTitle(pathname);
+
   // Render UI immediately, don't block on userInfo loading
   // User info will populate when ready (non-blocking)
   return (
     <Box sx={{ display: 'flex' }}>
-      <DashboardAppbar collapsed={collapsed} setCollapsed={setCollapsed} />
+      <DashboardAppbar
+        collapsed={collapsed}
+        setCollapsed={setCollapsed}
+        pageTitle={currentPageTitle}
+        breadcrumbs={<BreadCrumbs mb={0} />}
+      />
       <Sider
         collapsed={collapsed}
         setCollapsed={setCollapsed}
@@ -159,7 +216,6 @@ export default function Layout({ children }: LayoutProps) {
           maxWidth: '100%',
         }}
       >
-        <BreadCrumbs />
         <Box sx={{ width: '100%', maxWidth: '100%' }}>{children}</Box>
       </Box>
     </Box>

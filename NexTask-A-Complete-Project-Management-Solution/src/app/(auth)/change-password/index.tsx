@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, ChangeEvent, FormEvent, useEffect } from 'react';
-import { TextField, Button, Typography, Box, Skeleton, Grid2 } from '@mui/material';
-import { LockOutlined } from '@mui/icons-material';
+import { TextField, Button, Typography, Box, Skeleton, Grid2, InputAdornment, IconButton } from '@mui/material';
+import { LockOutlined, Visibility, VisibilityOff } from '@mui/icons-material';
 import { useDispatch } from 'react-redux';
 import { useSelector } from 'react-redux';
 import { selectChangePassword, selectCurrentUser } from '@/redux/selectors';
@@ -47,6 +47,11 @@ const ChangePasswordPage: React.FC = () => {
   // Initializing error messages for the form fields
   const [errors, setErrors] = useState<Errors>(initialFormDataChangePassword);
 
+  // Password visibility states
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
   useEffect(() => {
     if (token) {
       if (!currentUser) {
@@ -76,15 +81,29 @@ const ChangePasswordPage: React.FC = () => {
     const tempErrors: Partial<Errors> = initialFormDataChangePassword;
     let isValid = true;
 
+    // Validate current password
+    if (!formData.currentPassword) {
+      tempErrors.currentPassword = 'Current password is required';
+      isValid = false;
+    }
+
+    // Validate new password
     if (!formData.newPassword) {
       tempErrors.newPassword = 'New password is required';
       isValid = false;
     } else if (formData.newPassword.length < 6) {
       tempErrors.newPassword = 'Password must be at least 6 characters';
       isValid = false;
+    } else if (formData.currentPassword && formData.currentPassword === formData.newPassword) {
+      tempErrors.newPassword = 'New password must be different from current password';
+      isValid = false;
     }
 
-    if (formData.confirmPassword !== formData.newPassword) {
+    // Validate confirm password
+    if (!formData.confirmPassword) {
+      tempErrors.confirmPassword = 'Please confirm your password';
+      isValid = false;
+    } else if (formData.confirmPassword !== formData.newPassword) {
       tempErrors.confirmPassword = 'Passwords do not match';
       isValid = false;
     }
@@ -100,6 +119,7 @@ const ChangePasswordPage: React.FC = () => {
       dispatch(
         // Assuming you have an action to change the password
         changePasswordStart({
+          oldPassword: formData.currentPassword, // Send current password as oldPassword
           newPassword: formData.newPassword,
           setFormData,
           token,
@@ -150,30 +170,87 @@ const ChangePasswordPage: React.FC = () => {
           <TextField
             required
             fullWidth
+            name="currentPassword"
+            label="Current Password"
+            type={showCurrentPassword ? 'text' : 'password'}
+            id="currentPassword"
+            autoComplete="current-password"
+            onChange={handleChange}
+            error={Boolean(errors.currentPassword)}
+            helperText={errors.currentPassword}
+            value={formData.currentPassword}
+            disabled={changingPassword}
+            sx={{ mb: 2 }}
+            InputProps={{
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton
+                    aria-label="toggle current password visibility"
+                    onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                    edge="end"
+                  >
+                    {showCurrentPassword ? <VisibilityOff /> : <Visibility />}
+                  </IconButton>
+                </InputAdornment>
+              ),
+            }}
+          />
+
+          <TextField
+            required
+            fullWidth
             name="newPassword"
             label="New Password"
-            type="password"
+            type={showNewPassword ? 'text' : 'password'}
             id="newPassword"
+            autoComplete="new-password"
             onChange={handleChange}
             error={Boolean(errors.newPassword)}
             helperText={errors.newPassword}
             value={formData.newPassword}
             disabled={changingPassword}
             sx={{ mb: 2 }}
+            InputProps={{
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton
+                    aria-label="toggle new password visibility"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    edge="end"
+                  >
+                    {showNewPassword ? <VisibilityOff /> : <Visibility />}
+                  </IconButton>
+                </InputAdornment>
+              ),
+            }}
           />
           <TextField
             required
             fullWidth
             name="confirmPassword"
             label="Confirm Password"
-            type="password"
+            type={showConfirmPassword ? 'text' : 'password'}
             id="confirmPassword"
+            autoComplete="new-password"
             onChange={handleChange}
             error={Boolean(errors.confirmPassword)}
             helperText={errors.confirmPassword}
             value={formData.confirmPassword}
             sx={{ mb: 2 }}
             disabled={changingPassword}
+            InputProps={{
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton
+                    aria-label="toggle confirm password visibility"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    edge="end"
+                  >
+                    {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
+                  </IconButton>
+                </InputAdornment>
+              ),
+            }}
           />
 
           <Button

@@ -105,7 +105,7 @@ const Login = () => {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "#f9f9f9",
+          background: "#F9FAFC",
         }}
       >
         <Card className="login_card" style={{ width: "400px" }}>
