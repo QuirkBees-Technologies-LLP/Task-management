@@ -78,7 +78,13 @@ const DynamicBreadcrumbs = ({ inDashboard = true, mb = 2, omitLabels = [] }: Dyn
     
     const breadcrumbPaths: Breadcrumb[] = filteredSegments.map((segment, index) => {
       // Reconstruct href. For dashboard pages we want /dashboard/..., for external sections like /projects we don't.
-      const hrefSegments = inDashboard ? ['dashboard', ...filteredSegments.slice(0, index + 1)] : filteredSegments.slice(0, index + 1);
+      let hrefSegments = inDashboard ? ['dashboard', ...filteredSegments.slice(0, index + 1)] : filteredSegments.slice(0, index + 1);
+
+      // Special case: when in projects section (not dashboard), use /dashboard/projects for the Projects breadcrumb
+      if (!inDashboard && filteredSegments[0] === 'projects' && index === 0) {
+        hrefSegments = ['dashboard', 'projects'];
+      }
+
       const href = '/' + hrefSegments.join('/');
       
       // Replace project ID with project name if available
