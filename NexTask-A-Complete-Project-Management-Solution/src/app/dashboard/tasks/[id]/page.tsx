@@ -718,7 +718,6 @@ const TaskDetailsPage: React.FC = () => {
           </Box>
 
           <Divider />
-
           {/* Due Date */}
           <Box>
             <Typography

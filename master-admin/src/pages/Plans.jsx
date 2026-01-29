@@ -59,7 +59,7 @@ const Plans = () => {
         setLoading(false);
       }
     },
-    [search]
+    [search],
   );
 
   useEffect(() => {
@@ -100,7 +100,7 @@ const Plans = () => {
         setSubmitLoading(false);
       }
     },
-    [isEditing, editInitialValues, fetchPlans, paginationState]
+    [isEditing, editInitialValues, fetchPlans, paginationState],
   );
 
   const openCreateModal = () => {
@@ -133,7 +133,7 @@ const Plans = () => {
       message.success(
         `Plan ${
           newStatus === "active" ? "activated" : "deactivated"
-        } successfully`
+        } successfully`,
       );
       fetchPlans(paginationState.current, paginationState.pageSize);
     } catch {
@@ -150,18 +150,48 @@ const Plans = () => {
         dataIndex: "plan_name",
         key: "plan_name",
       },
+
+      {
+        title: "Plan Type",
+        dataIndex: "plan_type",
+        key: "plan_type",
+        render: (v) => <Tag color="purple">{v}</Tag>,
+      },
+
+      {
+        title: "Trial",
+        dataIndex: "trial_type",
+        key: "trial_type",
+        render: (v) => <Tag color={v === "free" ? "green" : "orange"}>{v}</Tag>,
+      },
+
       {
         title: "Price",
-        dataIndex: "price",
         key: "price",
-        render: (v) => <b>${v}</b>,
+        render: (_, record) => {
+          const amount = record?.price?.[record.billing_period];
+          return (
+            <b>
+              ${amount} / {record.billing_period}
+            </b>
+          );
+        },
       },
+
       {
-        title: "Billing",
-        dataIndex: "billing_period",
-        key: "billing_period",
+        title: "Users",
+        dataIndex: "users_allowed",
+        key: "users_allowed",
+        render: (v) => <Tag>{v}</Tag>,
+      },
+
+      {
+        title: "Access",
+        dataIndex: "access_level",
+        key: "access_level",
         render: (v) => <Tag color="blue">{v}</Tag>,
       },
+
       {
         title: "Popular",
         dataIndex: "mark_as_popular",
@@ -172,11 +202,10 @@ const Plans = () => {
               YES
             </Tag>
           ) : (
-            <Tag color="default" style={{ fontWeight: 600 }}>
-              No
-            </Tag>
+            <Tag>NO</Tag>
           ),
       },
+
       {
         title: "Status",
         dataIndex: "status",
@@ -191,6 +220,7 @@ const Plans = () => {
           />
         ),
       },
+
       {
         title: "Action",
         key: "action",
@@ -216,7 +246,7 @@ const Plans = () => {
         ),
       },
     ],
-    [togglingId]
+    [togglingId],
   );
 
   return (
