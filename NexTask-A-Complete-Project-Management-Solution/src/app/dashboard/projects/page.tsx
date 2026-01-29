@@ -23,6 +23,7 @@ import {
   AvatarGroup,
   Avatar,
   Grid,
+  Tooltip,
 } from '@mui/material';
 import { AddOutlined, CalendarMonthOutlined, DeleteOutline, EditOutlined, InfoOutlined, MoreVert, TaskOutlined } from '@mui/icons-material';
 import ProjectModal from './components/ProjectModal';
@@ -41,6 +42,13 @@ interface ProjectWithStats extends Project {
   taskCount?: number;
   completedTasks?: number;
   pendingTasks?: number;
+}
+
+interface ProjectAssigneeInfo {
+  _id: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
 }
 
 export default function Projects() {
@@ -62,6 +70,7 @@ export default function Projects() {
   const isMenuOpen = Boolean(menuAnchorEl);
 
   const [projectModalVisible, setProjectModalVisible] = useState<boolean>(false);
+  const [assigneeInfoMap, setAssigneeInfoMap] = useState<Record<string, ProjectAssigneeInfo>>({});
 
   const [selectedProject, setSelectedProject] = useState<Project>({
     id: undefined,
@@ -93,7 +102,9 @@ export default function Projects() {
       });
 
       if (response.data.success) {
-        const projects: ProjectWithStats[] = (response.data.projects || []).map((p: any) => ({
+        const rawProjects = response.data.projects || [];
+
+        const projects: ProjectWithStats[] = rawProjects.map((p: any) => ({
           id: p._id,
           name: p.name,
           clientName: p.clientName || '',
@@ -101,11 +112,61 @@ export default function Projects() {
           status: p.status || 'Pending',
           startDate: p.createdAt ? new Date(p.createdAt).toISOString().split('T')[0] : '',
           endDate: p.dueDate ? new Date(p.dueDate).toISOString().split('T')[0] : '',
+          priority: p.priority || 'High',
           assignee: Array.isArray(p.assignee)
             ? p.assignee.map((id: any) => (typeof id === 'string' ? id : id?.toString() || ''))
             : [],
           attachments: Array.isArray(p.attachments) ? p.attachments : [],
         }));
+
+        // Build a map of unique assignee IDs across all projects
+        const assigneeIds = new Set<string>();
+        rawProjects.forEach((p: any) => {
+          if (Array.isArray(p.assignee)) {
+            p.assignee.forEach((id: any) => {
+              const strId =
+                typeof id === 'string'
+                  ? id
+                  : id?._id?.toString?.() || id?.toString?.() || '';
+              if (strId) {
+                assigneeIds.add(strId);
+              }
+            });
+          }
+        });
+
+        // If we have assignees, fetch user info in a single request
+        if (assigneeIds.size > 0) {
+          try {
+            const usersResponse = await axios.get('/api/users', {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+
+            if (Array.isArray(usersResponse.data)) {
+              const map: Record<string, ProjectAssigneeInfo> = {};
+              usersResponse.data.forEach((u: any) => {
+                const userId =
+                  typeof u._id === 'string'
+                    ? u._id
+                    : u._id?.toString?.() || '';
+                if (userId && assigneeIds.has(userId)) {
+                  map[userId] = {
+                    _id: userId,
+                    firstName: u.firstName,
+                    lastName: u.lastName,
+                    email: u.email,
+                  };
+                }
+              });
+
+              setAssigneeInfoMap(map);
+            }
+          } catch (error) {
+            console.error('Error fetching project assignee info:', error);
+          }
+        } else {
+          setAssigneeInfoMap({});
+        }
 
         // Fetch task counts for each project
         const projectsWithStats = await Promise.all(
@@ -461,7 +522,7 @@ export default function Projects() {
                     </Stack>
                     {/* Deadline */}
                     <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1} mt={2}>
-                      <Box direction="row" alignItems="center" display="flex" gap={1}>
+                      <Box flexDirection="row" alignItems="center" display="flex" gap={1}>
                         <CalendarMonthOutlined fontSize="small" color="action" />
                         <Typography variant="body2" color="text.secondary">
                           Deadline: {formatDate(project.endDate)}
@@ -481,9 +542,28 @@ export default function Projects() {
                     {/* Members + Tasks */}
                     <Stack direction="row" justifyContent="space-between" alignItems="center" mt={2}>
                       <AvatarGroup max={3}>
-                        <Avatar src="/avatar1.png" sx={{ width: 24, height: 24 }} />
-                        <Avatar src="/avatar2.png" sx={{ width: 24, height: 24 }} />
-                        <Avatar src="/avatar3.png" sx={{ width: 24, height: 24 }} />
+                        {Array.isArray(project.assignee) && project.assignee.length > 0 ? (
+                          project.assignee.slice(0, 3).map((assigneeId) => {
+                            const user = assigneeInfoMap[String(assigneeId)];
+                            const initials = `${user?.firstName?.[0] || ''}${user?.lastName?.[0] || ''}`.trim();
+                            const label =
+                              `${user?.firstName || ''} ${user?.lastName || ''}`.trim() ||
+                              user?.email ||
+                              'Assigned user';
+
+                            return (
+                              <Tooltip key={String(assigneeId)} title={label}>
+                                <Avatar sx={{ width: 24, height: 24, fontSize: '10px' }}>
+                                  {initials || label[0] || '?'}
+                                </Avatar>
+                              </Tooltip>
+                            );
+                          })
+                        ) : (
+                          <Avatar sx={{ width: 24, height: 24, fontSize: '10px' }}>
+                            ?
+                          </Avatar>
+                        )}
                       </AvatarGroup>
 
                       <Stack direction="row" spacing={1} alignItems="center">

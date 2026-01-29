@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import axios from 'axios';
 import {
   Drawer,
   ListItemButton,
@@ -24,12 +25,13 @@ import {
 } from '@mui/icons-material';
 import ArrowRightAltIcon from "@mui/icons-material/ArrowRightAlt";
 import { usePathname, useRouter } from 'next/navigation';
-import { appbarHeight, drawerWidth, userRoles } from '@/utils/constants';
+import { accessTokenKey, appbarHeight, drawerWidth, userRoles } from '@/utils/constants';
 import { Scrollbar } from '../Scrollbar';
 import { selectCurrentUser } from '@/redux/selectors';
 import Spinner from '../Spinner';
 import { useSelector } from 'react-redux';
 import { adminItems, regularItems, superUserItems, superUserItemsWithAdmin } from '@/utils/routes';
+import { safeLocalStorageGet } from '@/utils/helpers';
 
 // Define types for the props
 interface SiderProps {
@@ -38,77 +40,45 @@ interface SiderProps {
   isSuperUser?: boolean;
   userRole?: string;
 }
-const projects = [
-  {
-    name: "Figma Design System",
-    status: "Progress",
-    color: "rgba(139, 92, 246, 1)",
-    bg: "rgba(139, 92, 246, 0.08)",
-  },
-  {
-    name: "Keep React",
-    status: "Planning",
-    color: "rgba(59, 130, 246, 1)",
-    bg: "rgba(59, 130, 246, 0.06)",
-  },
-  {
-    name: "StaticMania",
-    status: "Progress",
-    color: "rgba(34, 197, 94, 1)",
-    bg: "rgba(34, 197, 94, 0.08)",
-  },
-  {
-    name: "PHP Laravel",
-    status: "Progress",
-    color: "rgba(139, 92, 246, 1)",
-    bg: "rgba(139, 92, 246, 0.08)",
-  },
-  {
-    name: "React Native",
-    status: "Planning",
-    color: "rgba(59, 130, 246, 1)",
-    bg: "rgba(59, 130, 246, 0.06)",
-  },
-  {
-    name: "Task Management",
-    status: "Completed",
-    color: "rgba(245, 158, 11, 1)",
-    bg: "rgba(245, 158, 11, 0.10)",
-  },
-  {
-    name: "Social Media",
-    status: "Progress",
-    color: "rgba(34, 197, 94, 1)",
-    bg: "rgba(34, 197, 94, 0.08)",
-  },
-  {
-    name: "Mobile App",
-    status: "Completed",
-    color: "rgba(245, 158, 11, 1)",
-    bg: "rgba(245, 158, 11, 0.10)",
-  },
-];
 
+interface SidebarProject {
+  id: string;
+  name: string;
+  status: string;
+}
 
-const statusChip = (status) => {
+const getStatusStyles = (status: string) => {
   switch (status) {
+    case "In Progress":
     case "Progress":
       return {
-        bg: "rgba(251, 140, 0, 0.15)",
-        color: "rgba(251, 140, 0, 1)",
+        chipBg: "rgba(251, 140, 0, 0.15)",
+        chipColor: "rgba(251, 140, 0, 1)",
+        cardBg: "rgba(251, 140, 0, 0.06)",
+        barColor: "rgba(251, 140, 0, 1)",
       };
     case "Planning":
       return {
-        bg: "rgba(124, 77, 255, 0.15)",
-        color: "rgba(124, 77, 255, 1)",
+        chipBg: "rgba(124, 77, 255, 0.15)",
+        chipColor: "rgba(124, 77, 255, 1)",
+        cardBg: "rgba(124, 77, 255, 0.06)",
+        barColor: "rgba(124, 77, 255, 1)",
       };
     case "Completed":
       return {
-        bg: "rgba(34, 197, 94, 0.15)",
-        color: "rgba(34, 197, 94, 1)",
+        chipBg: "rgba(34, 197, 94, 0.15)",
+        chipColor: "rgba(34, 197, 94, 1)",
+        cardBg: "rgba(34, 197, 94, 0.06)",
+        barColor: "rgba(34, 197, 94, 1)",
       };
+    case "Pending":
     default:
-      return {};
+      return {
+        chipBg: "rgba(148, 163, 184, 0.15)",
+        chipColor: "rgba(148, 163, 184, 1)",
+        cardBg: "rgba(148, 163, 184, 0.06)",
+        barColor: "rgba(148, 163, 184, 1)",
+      };
   }
 };
 
@@ -240,6 +210,8 @@ const Sider: React.FC<SiderProps> = ({ collapsed, setCollapsed, isSuperUser, use
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
   const [navigating, setNavigating] = useState(false);
   const isSmallScreen = useMediaQuery(theme.breakpoints.down('md'));
+  const [latestProjects, setLatestProjects] = useState<SidebarProject[]>([]);
+  const [latestProjectsLoading, setLatestProjectsLoading] = useState<boolean>(false);
 
   const { loading: userInfoLoading } = useSelector(selectCurrentUser);
 
@@ -247,6 +219,42 @@ const Sider: React.FC<SiderProps> = ({ collapsed, setCollapsed, isSuperUser, use
   const siderItems = useMemo(() => {
     return getSiderItems(isSuperUser, userRole);
   }, [isSuperUser, userRole]);
+
+  useEffect(() => {
+    const fetchLatestProjects = async () => {
+      setLatestProjectsLoading(true);
+      try {
+        const token = safeLocalStorageGet(accessTokenKey);
+        if (!token) {
+          setLatestProjects([]);
+          return;
+        }
+
+        const response = await axios.get('/api/projects?limit=6&sortBy=createdAt&sortOrder=desc', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (response.data?.success && Array.isArray(response.data.projects)) {
+          const mapped: SidebarProject[] = response.data.projects.map((p: any) => ({
+            id: String(p._id),
+            name: p.name || 'Untitled Project',
+            status: p.status || 'Pending',
+          }));
+
+          setLatestProjects(mapped);
+        } else {
+          setLatestProjects([]);
+        }
+      } catch (error) {
+        console.error('Error fetching latest projects for sidebar:', error);
+        setLatestProjects([]);
+      } finally {
+        setLatestProjectsLoading(false);
+      }
+    };
+
+    fetchLatestProjects();
+  }, []);
 
   // Update selected item based on the current path
   useEffect(() => {
@@ -397,145 +405,160 @@ const Sider: React.FC<SiderProps> = ({ collapsed, setCollapsed, isSuperUser, use
             siderItems.map((item) => renderMenuItem(item))
           )}
         </List>
-        <Box sx={{
-          px: '14px',
-          my: '20px',
-        }}>
-          {/* Title */}
-          <Typography
-            variant="subtitle2"
+        {!collapsed && (
+          <Box
             sx={{
-              letterSpacing: "0.12em",
-              color: "text.secondary",
-              mb: 2,
+              px: '14px',
+              my: '20px',
             }}
           >
-            LATEST PROJECTS
-          </Typography>
-
-          {/* List */}
-          <Stack spacing={1}>
-            {projects.map((item, index) => {
-              const chip = statusChip(item.status);
-
-              return (
-                <Box
-                  key={index}
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    px: '8px',
-                    py: '8px',
-                    borderRadius: '5px',
-                    backgroundColor: item.bg,
-                    position: "relative",
-                    cursor: "pointer",
-                  }}
-                >
-                  {/* Left Color Bar */}
-                  <Box
-                    sx={{
-                      position: "absolute",
-                      left: 0,
-                      top: 8,
-                      bottom: 8,
-                      height: 25,
-                      width: 2,
-                      borderRadius: 1,
-                      backgroundColor: item.color,
-                    }}
-                  />
-
-                  {/* Project Name */}
-                  <Typography
-                    fontWeight={500}
-                    fontSize={13}
-                    noWrap
-                    sx={{
-                      maxWidth: 120,
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    {item.name}
-                  </Typography>
-
-
-                  {/* Status */}
-                  <Chip
-                    label={item.status}
-                    size="small"
-                    sx={{
-                      backgroundColor: chip.bg,
-                      color: chip.color,
-                      fontWeight: 500,
-                      minWidth: 'fit-content !important',
-                      borderRadius: '4px',
-                      fontSize: '12px',
-                    }}
-                  />
-                </Box>
-              );
-            })}
-          </Stack>
-
-          {/* Footer */}
-          <Box
-            sx={(theme) => ({
-              mt: 1,
-              px: "8px",
-              py: "8px",
-              borderRadius: "5px",
-              border: "1px solid",
-              borderColor:
-                theme.palette.mode === "dark"
-                  ? "rgba(255,255,255,0.08)"
-                  : "#EEF0F4",
-              backgroundColor:
-                theme.palette.mode === "dark"
-                  ? "rgba(255,255,255,0.03)"
-                  : "#FAFAFA",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              cursor: "pointer",
-              transition: "all 0.2s ease",
-
-              "&:hover": {
-                backgroundColor:
-                  theme.palette.mode === "dark"
-                    ? "rgba(255,255,255,0.06)"
-                    : "#F5F7FB",
-              },
-            })}
-          >
+            {/* Title */}
             <Typography
-              fontWeight={500}
-              fontSize={13}
-              sx={(theme) => ({
-                color:
-                  theme.palette.mode === "dark"
-                    ? "rgba(255,255,255,0.7)"
-                    : theme.palette.text.secondary,
-              })}
+              variant="subtitle2"
+              sx={{
+                letterSpacing: "0.12em",
+                color: "text.secondary",
+                mb: 2,
+              }}
             >
-              View all Project
+              LATEST PROJECTS
             </Typography>
 
-            <ArrowRightAltIcon
-              sx={(theme) => ({
-                color:
-                  theme.palette.mode === "dark"
-                    ? "rgba(255,255,255,0.7)"
-                    : theme.palette.text.secondary,
-                transition: "transform 0.2s ease",
-              })}
-            />
-          </Box>
+            {/* List */}
+            <Stack spacing={1}>
+              {latestProjectsLoading ? (
+                <Typography variant="body2" color="text.secondary">
+                  Loading...
+                </Typography>
+              ) : latestProjects.length === 0 ? (
+                <Typography variant="body2" color="text.secondary">
+                  No recent projects
+                </Typography>
+              ) : (
+                latestProjects.map((item) => {
+                  const styles = getStatusStyles(item.status || "Pending");
 
-        </Box>
+                  return (
+                    <Box
+                      key={item.id}
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        px: '8px',
+                        py: '8px',
+                        borderRadius: '5px',
+                        backgroundColor: styles.cardBg,
+                        position: "relative",
+                        cursor: "pointer",
+                      }}
+                      onClick={() => router.push(`/projects/${item.id}/tasks`)}
+                    >
+                      {/* Left Color Bar */}
+                      <Box
+                        sx={{
+                          position: "absolute",
+                          left: 0,
+                          top: 8,
+                          bottom: 8,
+                          height: 25,
+                          width: 2,
+                          borderRadius: 1,
+                          backgroundColor: styles.barColor,
+                        }}
+                      />
+
+                      {/* Project Name */}
+                      <Typography
+                        fontWeight={500}
+                        fontSize={13}
+                        noWrap
+                        sx={{
+                          maxWidth: 120,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {item.name}
+                      </Typography>
+
+                      {/* Status */}
+                      <Chip
+                        label={item.status}
+                        size="small"
+                        sx={{
+                          backgroundColor: styles.chipBg,
+                          color: styles.chipColor,
+                          fontWeight: 500,
+                          minWidth: 'fit-content !important',
+                          borderRadius: '4px',
+                          fontSize: '12px',
+                        }}
+                      />
+                    </Box>
+                  );
+                })
+              )}
+            </Stack>
+
+            {/* Footer */}
+            <Box
+              sx={(theme) => ({
+                mt: 1,
+                px: "8px",
+                py: "8px",
+                borderRadius: "5px",
+                border: "1px solid",
+                borderColor:
+                  theme.palette.mode === "dark"
+                    ? "rgba(255,255,255,0.08)"
+                    : "#EEF0F4",
+                backgroundColor:
+                  theme.palette.mode === "dark"
+                    ? "rgba(255,255,255,0.03)"
+                    : "#FAFAFA",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                cursor: "pointer",
+                transition: "all 0.2s ease",
+
+                "&:hover": {
+                  backgroundColor:
+                    theme.palette.mode === "dark"
+                      ? "rgba(255,255,255,0.06)"
+                      : "#F5F7FB",
+                },
+              })}
+              onClick={() => router.push('/dashboard/projects')}
+            >
+              <Typography
+                fontWeight={500}
+                fontSize={13}
+                sx={(theme) => ({
+                  color:
+                    theme.palette.mode === "dark"
+                      ? "rgba(255,255,255,0.7)"
+                      : theme.palette.text.secondary,
+                })}
+              >
+                View all Project
+              </Typography>
+
+              <ArrowRightAltIcon
+                sx={(theme) => ({
+                  color:
+                    theme.palette.mode === "dark"
+                      ? "rgba(255,255,255,0.7)"
+                      : theme.palette.text.secondary,
+                  transition: "transform 0.2s ease",
+                })}
+              />
+            </Box>
+
+          </Box>
+        )}
       </Scrollbar>
     </StyledDrawer>
   );

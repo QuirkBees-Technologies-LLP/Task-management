@@ -13,6 +13,7 @@ export interface Project {
   startDate?: string;
   endDate?: string;
   dueDate?: string; // Added for task-related project usage
+  priority?: string;
   assignee?: string[]; // Array of user IDs assigned to the project
   attachments?: TaskAttachment[]; // Reuse task attachment structure for projects
 }
