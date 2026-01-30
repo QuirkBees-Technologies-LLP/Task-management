@@ -79,3 +79,12 @@ input[type='number']::-webkit-inner-spin-button {
   height: 2px; /* Adjust the height of the bar */
   z-index: 999999 !important;
 }
+td.MuiTableCell-root {
+  border-bottom: 1px solid #EEF0F4;
+  font-size: 13px;
+}
+
+/* Dark mode */
+.dark td.MuiTableCell-root  {
+  border-bottom: 1px solid #1F2937 !important;
+}

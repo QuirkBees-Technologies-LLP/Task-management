@@ -25,6 +25,8 @@ import {
   DialogContentText,
   Divider,
   Chip,
+  Menu,
+  MenuItem,
 } from '@mui/material';
 import {
   AddOutlined,
@@ -33,6 +35,9 @@ import {
   Search as SearchIcon,
   Close as CloseIcon,
   Search,
+  MoreVert,
+  Edit,
+  Delete,
 } from '@mui/icons-material';
 import PageHeader from '@/components/PageHeader';
 import axios from 'axios';
@@ -55,6 +60,104 @@ interface Department {
   createdAt?: string;
   updatedAt?: string;
 }
+const getPositionStyles = (name = '') => {
+  const text = name.toLowerCase();
+
+  /* ================= PURPLE ================= */
+  if (
+    text.includes('digital marketing') ||
+    text.includes('technical lead') ||
+    text.includes('full stack')
+  ) {
+    return {
+      bg: 'rgba(168,85,247,0.14)',
+      color: '#9333EA',
+    };
+  }
+
+  /* ================= GREEN ================= */
+  if (
+    text.includes('seo') ||
+    text.includes('ui') ||
+    text.includes('ux')
+  ) {
+    return {
+      bg: 'rgba(34,197,94,0.14)',
+      color: '#16A34A',
+    };
+  }
+
+  /* ================= BLUE ================= */
+  if (
+    text.includes('devops') ||
+    text.includes('security') ||
+    text.includes('qa') ||
+    text.includes('customer success') ||
+    text.includes('operations')
+  ) {
+    return {
+      bg: 'rgba(59,130,246,0.14)',
+      color: '#2563EB',
+    };
+  }
+
+  /* ================= ORANGE ================= */
+  if (
+    text.includes('data') ||
+    text.includes('process') ||
+    text.includes('site reliability') ||
+    text.includes('l&d') ||
+    text.includes('r&d')
+  ) {
+    return {
+      bg: 'rgba(251,146,60,0.16)',
+      color: '#EA580C',
+    };
+  }
+
+  /* ================= PINK ================= */
+  if (
+    text.includes('marketing') ||
+    text.includes('branding')
+  ) {
+    return {
+      bg: 'rgba(236,72,153,0.14)',
+      color: '#DB2777',
+    };
+  }
+
+  /* ================= YELLOW ================= */
+  if (
+    text.includes('analyst') ||
+    text.includes('amount')
+  ) {
+    return {
+      bg: 'rgba(234,179,8,0.18)',
+      color: '#CA8A04',
+    };
+  }
+
+  /* ================= BLACK / GRAY ================= */
+  if (
+    text.includes('cloud') ||
+    text.includes('compliance') ||
+    text.includes('contract') ||
+    text.includes('procurement') ||
+    text.includes('corporate') ||
+    text.includes('status')
+  ) {
+    return {
+      bg: 'rgba(0,0,0,0.08)',
+      color: '#111827',
+    };
+  }
+
+  /* ================= DEFAULT ================= */
+  return {
+    bg: 'rgba(0,152,226,0.15)',
+    color: '#0698E2',
+  };
+};
 
 const DepartmentsPage: React.FC = () => {
   const router = useRouter();
@@ -72,6 +175,20 @@ const DepartmentsPage: React.FC = () => {
   const [limit] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
   const [search, setSearch] = useState('');
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [selectedStaff, setSelectedStaff] = useState<any>(null);
+
+  const open = Boolean(anchorEl);
+
+  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, staff: any) => {
+    setAnchorEl(event.currentTarget);
+    setSelectedStaff(staff);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+    setSelectedStaff(null);
+  };
 
   // Form state
   const [departmentName, setDepartmentName] = useState('');
@@ -282,7 +399,7 @@ const DepartmentsPage: React.FC = () => {
           backgroundColor: (theme) => theme.palette.background.paper,
           border: (theme) => `1px solid ${theme.palette.divider}`,
           padding: "16px 24px",
-          borderRadius: "12px",
+          borderRadius: "8px",
           mb: 3,
         }}
       >
@@ -372,21 +489,52 @@ const DepartmentsPage: React.FC = () => {
           }
         />
       </Box>
-      <Paper sx={{ p: 3, mt: 3 }}>
+      <Paper
+        elevation={0}
+        sx={(theme) => ({
+          mt: 3,
+          borderRadius: '8px',
+          border: `1px solid ${theme.palette.divider}`,
+          overflow: 'hidden',
+          backgroundColor: theme.palette.background.paper,
+        })}
+      >
         <TableContainer>
           <Table>
+            {/* ================= TABLE HEAD ================= */}
             <TableHead>
-              <TableRow>
+              <TableRow
+                sx={(theme) => ({
+                  backgroundColor:
+                    theme.palette.mode === 'dark'
+                      ? '#111827'
+                      : '#FAFBFD',
+                  '& th': {
+                    fontSize: 13,
+                    fontWeight: 500,
+                    color:
+                      theme.palette.mode === 'dark'
+                        ? '#9CA3AF'
+                        : 'text.secondary',
+                    borderBottom:
+                      theme.palette.mode === 'dark'
+                        ? '1px solid #1F2937'
+                        : '1px solid #EDEFF3',
+                  },
+                })}
+              >
                 <TableCell>Department Name</TableCell>
                 <TableCell>Positions</TableCell>
-                <TableCell align="right">Actions</TableCell>
+                <TableCell align="left">Actions</TableCell>
               </TableRow>
             </TableHead>
+
+            {/* ================= TABLE BODY ================= */}
             <TableBody>
               {loading ? (
                 <TableRow>
                   <TableCell colSpan={3} align="center">
-                    <CircularProgress />
+                    <CircularProgress size={22} />
                   </TableCell>
                 </TableRow>
               ) : departments.length === 0 ? (
@@ -398,24 +546,68 @@ const DepartmentsPage: React.FC = () => {
                   </TableCell>
                 </TableRow>
               ) : (
-                departments.map((department) => (
-                  <TableRow key={department._id} hover>
+                departments.map((department, index) => (
+                  <TableRow
+                    key={department._id}
+                    hover
+                    sx={(theme) => ({
+                      '& td': {
+                        fontSize: 13,
+                        borderBottom: `1px solid ${theme.palette.divider}`,
+                      },
+                      '&:hover': {
+                        backgroundColor:
+                          theme.palette.mode === 'dark'
+                            ? '#020617'
+                            : '#FAFBFF',
+                      },
+                    })}
+                  >
+                    {/* ===== Department Name ===== */}
                     <TableCell>
-                      <Typography variant="body1" fontWeight={500}>
-                        {department.name}
-                      </Typography>
+                      <Stack direction="row" spacing={1.5} alignItems="center">
+                        <Box
+                          sx={{
+                            width: 3,
+                            height: 22,
+                            borderRadius: 1,
+                            backgroundColor: [
+                              '#A855F7',
+                              '#3B82F6',
+                              '#F59E0B',
+                              '#EC4899',
+                              '#22C55E',
+                            ][index % 5],
+                          }}
+                        />
+                        <Typography fontWeight={500}>
+                          {department.name}
+                        </Typography>
+                      </Stack>
                     </TableCell>
+
+                    {/* ===== Positions ===== */}
                     <TableCell>
-                      <Stack direction="row" spacing={1} flexWrap="wrap" gap={1}>
-                        {department.positions && department.positions.length > 0 ? (
-                          department.positions.map((position, index) => (
-                            <Chip
-                              key={position._id || index}
-                              label={position.name}
-                              size="small"
-                              variant="outlined"
-                            />
-                          ))
+                      <Stack direction="row" gap={1} flexWrap="wrap">
+                        {department.positions?.length ? (
+                          department.positions.map((position) => {
+                            const style = getPositionStyles(position.name);
+                            return (
+                              <Chip
+                                key={position._id}
+                                label={position.name}
+                                size="small"
+                                sx={{
+                                  fontWeight: 500,
+                                  minWidth: 'fit-content',
+                                  borderRadius: '4px',
+                                  fontSize: '12px',
+                                  backgroundColor: style.bg,
+                                  color: style.color,
+                                }}
+                              />
+                            );
+                          })
                         ) : (
                           <Typography variant="body2" color="text.secondary">
                             No positions
@@ -423,26 +615,19 @@ const DepartmentsPage: React.FC = () => {
                         )}
                       </Stack>
                     </TableCell>
-                    <TableCell align="right">
-                      <Stack direction="row" spacing={1} justifyContent="flex-end">
-                        <IconButton
-                          size="small"
-                          onClick={() => handleOpenEdit(department)}
-                          color="primary"
-                        >
-                          <EditOutlined fontSize="small" />
-                        </IconButton>
-                        <IconButton
-                          size="small"
-                          onClick={() => {
-                            setSelectedDepartment(department);
-                            setDeleteDialogOpen(true);
-                          }}
-                          color="error"
-                        >
-                          <DeleteOutline fontSize="small" />
-                        </IconButton>
-                      </Stack>
+
+                    {/* ===== Actions ===== */}
+                    <TableCell align="left">
+                      <IconButton
+                        size="small"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedDepartment(department);
+                          setAnchorEl(e.currentTarget);
+                        }}
+                      >
+                        <MoreVert fontSize="small" />
+                      </IconButton>
                     </TableCell>
                   </TableRow>
                 ))
@@ -451,8 +636,51 @@ const DepartmentsPage: React.FC = () => {
           </Table>
         </TableContainer>
 
+        {/* ================= ACTION MENU ================= */}
+        <Menu
+          anchorEl={anchorEl}
+          open={Boolean(anchorEl)}
+          onClose={() => setAnchorEl(null)}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+          transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+          PaperProps={{
+            sx: (theme) => ({
+              borderRadius: '8px',
+              minWidth: 140,
+              border: `1px solid ${theme.palette.divider}`,
+              backgroundColor: theme.palette.background.paper,
+              '& .MuiMenuItem-root': {
+                fontSize: 13,
+                gap: 1,
+              },
+            }),
+          }}
+        >
+          <MenuItem
+            onClick={() => {
+              handleOpenEdit(selectedDepartment);
+              setAnchorEl(null);
+            }}
+          >
+            <Edit fontSize="small" />
+            Edit
+          </MenuItem>
+
+          <MenuItem
+            onClick={() => {
+              setDeleteDialogOpen(true);
+              setAnchorEl(null);
+            }}
+            sx={{ color: 'error.main' }}
+          >
+            <Delete fontSize="small" />
+            Delete
+          </MenuItem>
+        </Menu>
+
+        {/* ================= PAGINATION ================= */}
         {totalPages > 1 && (
-          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
             <Pagination
               count={totalPages}
               page={page}

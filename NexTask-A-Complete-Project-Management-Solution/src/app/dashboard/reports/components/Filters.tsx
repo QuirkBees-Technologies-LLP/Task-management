@@ -78,7 +78,7 @@ const ReportFilters: React.FC<ReportFiltersProps> = ({ onApplyFilter }) => {
         backgroundColor: (theme) => theme.palette.background.paper,
         border: (theme) => `1px solid ${theme.palette.divider}`,
         padding: "16px 24px",
-        borderRadius: "12px",
+        borderRadius: "8px",
         mb: 3,
       }}
     >

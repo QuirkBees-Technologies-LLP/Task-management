@@ -28,6 +28,7 @@ import {
   Avatar,
   Pagination,
   InputAdornment,
+  Menu,
 } from '@mui/material';
 import {
   AddOutlined,
@@ -35,6 +36,9 @@ import {
   DeleteOutline,
   Search as SearchIcon,
   Search,
+  MoreVert,
+  Edit,
+  Delete,
 } from '@mui/icons-material';
 import PageHeader from '@/components/PageHeader';
 import axios from 'axios';
@@ -64,6 +68,33 @@ interface Department {
   name: string;
   positions: Array<{ _id: string; name: string }>;
 }
+const getPositionStyles = (position?: string, mode?: 'light' | 'dark') => {
+  const darkBoost = mode === 'dark' ? 0.25 : 0.15;
+
+  if (!position) {
+    return { bg: `rgba(107,114,128,${darkBoost})`, color: '#9CA3AF' };
+  }
+
+  const v = position.toLowerCase();
+
+  if (v.includes('full stack'))
+    return { bg: `rgba(168,85,247,${darkBoost})`, color: '#A855F7' };
+
+  if (v.includes('ui') || v.includes('ux'))
+    return { bg: `rgba(34,197,94,${darkBoost})`, color: '#22C55E' };
+
+  if (v.includes('backend'))
+    return { bg: `rgba(59,130,246,${darkBoost})`, color: '#3B82F6' };
+
+  if (v.includes('qa'))
+    return { bg: `rgba(14,165,233,${darkBoost})`, color: '#0EA5E9' };
+
+  if (v.includes('lead'))
+    return { bg: `rgba(56,189,248,${darkBoost})`, color: '#38BDF8' };
+
+  return { bg: `rgba(59,130,246,${darkBoost})`, color: '#3B82F6' };
+};
+
 
 const StaffManagementPage: React.FC = () => {
   const router = useRouter();
@@ -75,6 +106,7 @@ const StaffManagementPage: React.FC = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null);
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [saving, setSaving] = useState(false);
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
@@ -97,6 +129,18 @@ const StaffManagementPage: React.FC = () => {
     fetchStaff();
     fetchDepartments();
   }, [page, search]);
+
+  const open = Boolean(anchorEl);
+
+  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, staff: any) => {
+    setAnchorEl(event.currentTarget);
+    setSelectedStaff(staff);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+    setSelectedStaff(null);
+  };
 
   useEffect(() => {
     // Update available positions when department changes
@@ -316,7 +360,7 @@ const StaffManagementPage: React.FC = () => {
           backgroundColor: (theme) => theme.palette.background.paper,
           border: (theme) => `1px solid ${theme.palette.divider}`,
           padding: "16px 24px",
-          borderRadius: "12px",
+          borderRadius: "8px",
           mb: 3,
         }}
       >
@@ -411,95 +455,278 @@ const StaffManagementPage: React.FC = () => {
       </Box>
 
       <Box sx={{ mt: 3 }}>
-        {/* <Paper sx={{ p: 2, mb: 3 }}>
-          <TextField
-            placeholder="Search staff..."
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(1);
-            }}
-            size="small"
-            fullWidth
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon />
-                </InputAdornment>
-              ),
-            }}
-          />
-        </Paper> */}
-
-        <Paper>
+        <Paper
+          elevation={0}
+          sx={(theme) => ({
+            borderRadius: '8px',
+            overflow: 'hidden',
+            border: theme.palette.mode === 'dark'
+              ? '1px solid #2A2F3A'
+              : '1px solid #EDEFF3',
+            backgroundColor: theme.palette.mode === 'dark'
+              ? '#0F172A'
+              : '#FFFFFF',
+          })}
+        >
           <TableContainer>
             <Table>
+              {/* ================= TABLE HEAD ================= */}
               <TableHead>
-                <TableRow>
+                <TableRow
+                  sx={(theme) => ({
+                    backgroundColor:
+                      theme.palette.mode === 'dark'
+                        ? '#111827'
+                        : '#FAFBFD',
+                    '& th': {
+                      fontSize: 13,
+                      fontWeight: 500,
+                      color:
+                        theme.palette.mode === 'dark'
+                          ? '#9CA3AF'
+                          : 'text.secondary',
+                      borderBottom:
+                        theme.palette.mode === 'dark'
+                          ? '1px solid #1F2937'
+                          : '1px solid #EDEFF3',
+                    },
+                  })}
+                >
                   <TableCell>Staff</TableCell>
                   <TableCell>Email</TableCell>
                   <TableCell>Role</TableCell>
                   <TableCell>Department</TableCell>
                   <TableCell>Position</TableCell>
-                  <TableCell align="right">Actions</TableCell>
+                  <TableCell align="left">Actions</TableCell>
                 </TableRow>
               </TableHead>
+
+              {/* ================= TABLE BODY ================= */}
               <TableBody>
                 {staff.length === 0 ? (
-                  <TableRow>
+                  <TableRow
+                    key={item._id}
+                    hover
+                    sx={(theme) => ({
+                      '& td': {
+                        fontSize: 13,
+                        borderBottom:
+                          theme.palette.mode === 'dark'
+                            ? '1px solid #1F2937'
+                            : '1px solid #EEF0F4',
+                        color:
+                          theme.palette.mode === 'dark'
+                            ? '#E5E7EB'
+                            : '#111827',
+                      },
+                      '&:hover': {
+                        backgroundColor:
+                          theme.palette.mode === 'dark'
+                            ? '#111827'
+                            : '#FAFBFF',
+                      },
+                    })}
+                  >
                     <TableCell colSpan={6} align="center">
-                      <Typography variant="body2" color="text.secondary" sx={{ py: 4 }}>
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{ py: 4 }}
+                      >
                         No staff found
                       </Typography>
                     </TableCell>
                   </TableRow>
                 ) : (
                   staff.map((item) => (
-                    <TableRow key={item._id} hover>
+                    <TableRow
+                      key={item._id}
+                      hover
+                      sx={{
+                        '& td': {
+                          borderBottom: '1px solid #EEF0F4',
+                          fontSize: 13,
+                        },
+                        '&:hover': {
+                          backgroundColor: '#FAFBFF',
+                        },
+                      }}
+                    >
+                      {/* Staff */}
                       <TableCell>
                         <Stack direction="row" spacing={2} alignItems="center">
-                          <Avatar sx={{ width: 40, height: 40, bgcolor: 'primary.main' }}>
+                          <Avatar
+                            sx={(theme) => ({
+                              width: 38,
+                              height: 38,
+                              borderRadius: '8px',
+                              bgcolor:
+                                theme.palette.mode === 'dark'
+                                  ? '#1F2937'
+                                  : '#F3F4F6',
+                              color:
+                                theme.palette.mode === 'dark'
+                                  ? '#E5E7EB'
+                                  : '#111827',
+                              fontWeight: 600,
+                              fontSize: 15,
+                            })}
+                          >
                             {item.firstName?.charAt(0).toUpperCase()}
                           </Avatar>
-                          <Typography variant="body2">
+                          <Typography fontWeight={500}>
                             {item.firstName} {item.lastName}
                           </Typography>
                         </Stack>
                       </TableCell>
-                      <TableCell>{item.email}</TableCell>
-                      <TableCell>
+
+                      {/* Email */}
+                      <TableCell
+                        sx={(theme) => ({
+                          color:
+                            theme.palette.mode === 'dark'
+                              ? '#9CA3AF'
+                              : 'text.secondary',
+                        })}
+                      >
+                        {item.email}
+                      </TableCell>
+
+                      {/* Role */}
+                      < TableCell >
                         <Chip
                           label={item.role}
-                          color={item.role === 'Admin' ? 'primary' : 'default'}
                           size="small"
+                          sx={(theme) => ({
+                            fontWeight: 500,
+                            minWidth: 'fit-content',
+                            borderRadius: '4px',
+                            fontSize: '12px',
+                            backgroundColor:
+                              item.role === 'Admin'
+                                ? theme.palette.mode === 'dark'
+                                  ? 'rgba(255,106,0,0.2)'
+                                  : 'rgba(255,106,0,0.12)'
+                                : theme.palette.mode === 'dark'
+                                  ? 'rgba(124,58,237,0.2)'
+                                  : 'rgba(124,58,237,0.12)',
+                            color:
+                              item.role === 'Admin'
+                                ? '#FF6A00'
+                                : '#7C3AED',
+                          })}
                         />
                       </TableCell>
-                      <TableCell>{item.department || '-'}</TableCell>
-                      <TableCell>{item.position || '-'}</TableCell>
-                      <TableCell align="right">
-                        <Stack direction="row" spacing={1} justifyContent="flex-end">
-                          <IconButton size="small" onClick={() => handleOpenEdit(item)} color="primary">
-                            <EditOutlined fontSize="small" />
-                          </IconButton>
-                          <IconButton
-                            size="small"
-                            onClick={() => {
-                              setSelectedStaff(item);
-                              setDeleteDialogOpen(true);
-                            }}
-                            color="error"
-                          >
-                            <DeleteOutline fontSize="small" />
-                          </IconButton>
-                        </Stack>
+
+                      {/* Department */}
+                      <TableCell>
+                        <Typography fontSize={13}>
+                          {item.department || '-'}
+                        </Typography>
                       </TableCell>
+
+                      {/* Position */}
+                      <TableCell>
+                        {(() => {
+                          const style = getPositionStyles(item.position);
+                          return (
+                            <Chip
+                              label={item.position || '-'}
+                              size="small"
+                              sx={{
+                                fontWeight: 500,
+                                minWidth: 'fit-content',
+                                borderRadius: '4px',
+                                fontSize: '12px',
+                                backgroundColor: style.bg,
+                                color: style.color,
+                              }}
+                            />
+                          );
+                        })()}
+                      </TableCell>
+
+                      {/* Actions */}
+                      <TableCell align="left">
+                        <IconButton
+                          size="small"
+                          onClick={(e) => handleMenuOpen(e, item)}
+                          sx={(theme) => ({
+                            color:
+                              theme.palette.mode === 'dark'
+                                ? '#9CA3AF'
+                                : '#6B7280',
+                          })}
+                        >
+                          <MoreVert fontSize="small" />
+                        </IconButton>
+                      </TableCell>
+                      <Menu
+                        anchorEl={anchorEl}
+                        open={open}
+                        onClose={handleMenuClose}
+                        anchorOrigin={{
+                          vertical: 'bottom',
+                          horizontal: 'right',
+                        }}
+                        transformOrigin={{
+                          vertical: 'top',
+                          horizontal: 'right',
+                        }}
+                        PaperProps={{
+                          sx: (theme) => ({
+                            borderRadius: '8px',
+                            minWidth: 140,
+                            backgroundColor:
+                              theme.palette.mode === 'dark'
+                                ? '#111827'
+                                : '#FFFFFF',
+                            border:
+                              theme.palette.mode === 'dark'
+                                ? '1px solid #1F2937'
+                                : '1px solid #EDEFF3',
+                          }),
+                        }}
+                      >
+                        {/* Edit */}
+                        <MenuItem
+                          onClick={() => {
+                            handleMenuClose();
+                            handleOpenEdit(selectedStaff);
+                          }}
+                          sx={{
+                            fontSize: 14,
+                            gap: 1.5,
+                          }}
+                        >
+                          <Edit fontSize="small" />
+                          Edit
+                        </MenuItem>
+
+                        {/* Delete */}
+                        <MenuItem
+                          onClick={() => {
+                            handleMenuClose();
+                            setSelectedStaff(selectedStaff);
+                            setDeleteDialogOpen(true); // existing delete dialog
+                          }}
+                          sx={{
+                            fontSize: 14,
+                            gap: 1.5,
+                            color: 'error.main',
+                          }}
+                        >
+                          <Delete fontSize="small" />
+                          Delete
+                        </MenuItem>
+                      </Menu>
                     </TableRow>
                   ))
                 )}
               </TableBody>
             </Table>
           </TableContainer>
-        </Paper>
+        </Paper >
 
         {totalPages > 1 && (
           <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
@@ -510,11 +737,12 @@ const StaffManagementPage: React.FC = () => {
               color="primary"
             />
           </Box>
-        )}
-      </Box>
+        )
+        }
+      </Box >
 
       {/* Create/Edit Dialog */}
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>
+      < Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth >
         <DialogTitle>{selectedStaff ? 'Edit Staff' : 'Add Staff'}</DialogTitle>
         <DialogContent>
           <Stack spacing={3} sx={{ pt: 2 }}>
@@ -615,10 +843,10 @@ const StaffManagementPage: React.FC = () => {
             {selectedStaff ? 'Update' : 'Create'}
           </Button>
         </DialogActions>
-      </Dialog>
+      </Dialog >
 
       {/* Delete Dialog */}
-      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
+      < Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
         <DialogTitle>Delete Staff</DialogTitle>
         <DialogContent>
           {selectedStaff && (
@@ -641,7 +869,7 @@ const StaffManagementPage: React.FC = () => {
             Delete
           </Button>
         </DialogActions>
-      </Dialog>
+      </Dialog >
     </>
   );
 };
