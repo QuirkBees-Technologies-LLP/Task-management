@@ -6,7 +6,16 @@ export default function Logo() {
   const theme = useTheme();
   return (
     <Link component={NextLink} href={'/'}>
-      <Box display="flex" alignItems="center">
+      <img
+        src={
+          theme.palette.mode === "dark"
+            ? "/images/logo_white.png"
+            : "/images/logo_dark.png"
+        }
+        height={32}
+        alt="NexTask Logo"
+      />
+      {/* <Box display="flex" alignItems="center">
         <Box
           px={1.5}
           py={0.5}
@@ -22,7 +31,7 @@ export default function Logo() {
         <Typography variant="h6" component="span" color={theme.palette.text.primary}>
           ask
         </Typography>
-      </Box>
+      </Box> */}
     </Link>
   );
 }

@@ -1,7 +1,7 @@
 'use client';
 import React, { useEffect, useState } from 'react';
-import { Button, Chip, Paper, Stack, useMediaQuery, useTheme, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, Typography } from '@mui/material';
-import { Add as AddIcon, Edit, DeleteOutline, Visibility } from '@mui/icons-material';
+import { Button, Chip, Paper, Stack, useMediaQuery, useTheme, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, Typography, Box, TextField } from '@mui/material';
+import { Add as AddIcon, Edit, DeleteOutline, Visibility, Search, AddOutlined } from '@mui/icons-material';
 import ContractDetails from './components/ContractDetails';
 import ContractForm from './components/ContractForm';
 import PageHeader from '@/components/PageHeader';
@@ -178,15 +178,97 @@ export default function Contracts() {
 
   return (
     <>
-      <PageHeader
-        title="Contracts"
-        action={
-          <Button onClick={handleAddContract} variant="contained" color="primary" startIcon={<AddIcon />}>
-            Add Contract
-          </Button>
-        }
-      />
+      <Box
+        sx={{
+          backgroundColor: (theme) => theme.palette.background.paper,
+          border: (theme) => `1px solid ${theme.palette.divider}`,
+          padding: "16px 24px",
+          borderRadius: "12px",
+          mb: 3,
+        }}
+      >
+        <PageHeader
+          title="Projects"
+          className="top_header"
+          sx={{ mb: "0 !important" }}
+          action={
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                flexWrap: "wrap",
+                width: "100%",
+                gap: 2,
+              }}
+            >
+              {/* LEFT SIDE SEARCH BAR */}
+              <TextField
+                size="small"
+                placeholder="Search client.."
+                type="search"
+                InputProps={{
+                  startAdornment: <Search fontSize="small" />,
+                }}
+                sx={{
+                  width: { xs: "unset", lg: "520px" },
+                  maxWidth: "100%",
+                  borderRadius: "6px",
 
+                  backgroundColor: (theme) =>
+                    theme.palette.mode === "dark"
+                      ? theme.palette.background.default
+                      : "#F9FAFC",
+
+                  "& .MuiOutlinedInput-root": {
+                    gap: 1,
+                    color: (theme) => theme.palette.text.primary,
+
+                    "& fieldset": {
+                      border: (theme) => `1px solid ${theme.palette.divider}`,
+                    },
+
+                    "&:hover fieldset": {
+                      borderColor: (theme) =>
+                        theme.palette.mode === "dark"
+                          ? theme.palette.primary.main
+                          : "#CBD5E1",
+                    },
+                  },
+                }}
+              />
+
+              {/* RIGHT SIDE BUTTON */}
+                <Button
+                  variant="outlined"
+                  startIcon={<AddOutlined />}
+                  onClick={handleAddContract}
+                  sx={{
+                    borderRadius: "6px",
+                    fontWeight: 500,
+                    color: (theme) =>
+                      theme.palette.mode === "dark" ? "#fff" : "#000",
+
+                    borderColor: (theme) =>
+                      theme.palette.mode === "dark" ? "#fff" : "#000",
+
+                    "&:hover": {
+                      borderColor: (theme) =>
+                        theme.palette.mode === "dark" ? "#fff" : "#000",
+
+                      backgroundColor: (theme) =>
+                        theme.palette.mode === "dark"
+                          ? "rgba(255, 255, 255, 0.08)"
+                          : "rgba(0, 0, 0, 0.04)",
+                    },
+                  }}
+                >
+                  Add Contracts
+                </Button>
+            </Box>
+          }
+        />
+      </Box>
       <Paper sx={{ p: isSmallScreen ? 2 : 0 }}>
         <ResponsiveTable
           columns={contractColumns}

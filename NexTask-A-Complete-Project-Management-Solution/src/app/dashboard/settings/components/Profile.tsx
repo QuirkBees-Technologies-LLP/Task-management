@@ -29,7 +29,7 @@ const StyledAvatar = styled(Avatar)(({ theme }) => ({
   marginBottom: theme.spacing(2),
 }));
 
-const ProfileSettings: React.FC = ({}) => {
+const ProfileSettings: React.FC = ({ }) => {
   const dispatch = useDispatch();
   const [formData, setFormData] = useState<any>({});
   const [selectedCountry, setSelectedCountry] = React.useState('');
@@ -115,27 +115,37 @@ const ProfileSettings: React.FC = ({}) => {
     </Grid2>
   ) : (
     <form onSubmit={handleSaveChanges}>
-      <PageHeader
-        title="Settings"
-        action={
-          <>
-            <Link href={'/change-password'}>
-              <Button sx={{ mr: 2 }} variant="outlined" startIcon={<KeyOutlined />}>
-                Change Password
+      <Box
+        sx={{
+          backgroundColor: (theme) => theme.palette.background.paper,
+          border: (theme) => `1px solid ${theme.palette.divider}`,
+          padding: "16px 24px",
+          borderRadius: "12px",
+          mb: 3,
+        }}
+      >
+        <PageHeader
+          title="Settings"
+          action={
+            <>
+              <Link href={'/change-password'}>
+                <Button sx={{ mr: 2 }} variant="outlined" startIcon={<KeyOutlined />}>
+                  Change Password
+                </Button>
+              </Link>
+              <Button
+                disabled={saving}
+                startIcon={saving && <CircularProgress color="inherit" size={15} />}
+                variant="contained"
+                sx={{ float: 'right' }}
+                type="submit"
+              >
+                Save Changes
               </Button>
-            </Link>
-            <Button
-              disabled={saving}
-              startIcon={saving && <CircularProgress color="inherit" size={15} />}
-              variant="contained"
-              sx={{ float: 'right' }}
-              type="submit"
-            >
-              Save Changes
-            </Button>
-          </>
-        }
-      />
+            </>
+          }
+        />
+      </Box>
       <Box my={2}>
         <Grid2 container spacing={3}>
           {/* Avatar Section */}

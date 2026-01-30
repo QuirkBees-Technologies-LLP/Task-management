@@ -24,8 +24,9 @@ import {
   Avatar,
   Grid,
   Tooltip,
+  TextField,
 } from '@mui/material';
-import { AddOutlined, CalendarMonthOutlined, DeleteOutline, EditOutlined, InfoOutlined, MoreVert, TaskOutlined } from '@mui/icons-material';
+import { AddOutlined, CalendarMonthOutlined, DeleteOutline, EditOutlined, InfoOutlined, MoreVert, Search, TaskOutlined } from '@mui/icons-material';
 import ProjectModal from './components/ProjectModal';
 import PageHeader from '@/components/PageHeader';
 import ProjectDeleteDialog from './components/DeleteProject';
@@ -394,31 +395,111 @@ export default function Projects() {
 
   return (
     <>
-      <PageHeader
-        title={'Projects'}
-        action={
-          isAdmin ? (
-            <Button
-              variant="contained"
-              startIcon={<AddOutlined />}
-              onClick={() => {
-                setSelectedProject({
-                  id: undefined,
-                  name: '',
-                  clientName: '',
-                  description: '',
-                  status: '',
-                  startDate: '',
-                  endDate: '',
-                });
-                setProjectModalVisible(true);
+      <Box
+        sx={{
+          backgroundColor: (theme) => theme.palette.background.paper,
+          border: (theme) => `1px solid ${theme.palette.divider}`,
+          padding: "16px 24px",
+          borderRadius: "12px",
+          mb: 3,
+        }}
+      >
+        <PageHeader
+          title="Projects"
+          className="top_header"
+          sx={{ mb: "0 !important" }}
+          action={
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                flexWrap: "wrap",
+                width: "100%",
+                gap: 2,
               }}
             >
-              Add Project
-            </Button>
-          ) : null
-        }
-      />
+              {/* LEFT SIDE SEARCH BAR */}
+              <TextField
+                size="small"
+                placeholder="Search project.."
+                type="search"
+                InputProps={{
+                  startAdornment: <Search fontSize="small" />,
+                }}
+                sx={{
+                  width: { xs: "unset", lg: "520px" },
+                  maxWidth: "100%",
+                  borderRadius: "6px",
+
+                  backgroundColor: (theme) =>
+                    theme.palette.mode === "dark"
+                      ? theme.palette.background.default
+                      : "#F9FAFC",
+
+                  "& .MuiOutlinedInput-root": {
+                    gap: 1,
+                    color: (theme) => theme.palette.text.primary,
+
+                    "& fieldset": {
+                      border: (theme) => `1px solid ${theme.palette.divider}`,
+                    },
+
+                    "&:hover fieldset": {
+                      borderColor: (theme) =>
+                        theme.palette.mode === "dark"
+                          ? theme.palette.primary.main
+                          : "#CBD5E1",
+                    },
+                  },
+                }}
+              />
+
+              {/* RIGHT SIDE BUTTON */}
+              {isAdmin && (
+                <Button
+                  variant="outlined"
+                  startIcon={<AddOutlined />}
+                  onClick={() => {
+                    setSelectedProject({
+                      id: undefined,
+                      name: "",
+                      clientName: "",
+                      description: "",
+                      status: "",
+                      startDate: "",
+                      endDate: "",
+                    });
+                    setProjectModalVisible(true);
+                  }}
+                  sx={{
+                    borderRadius: "6px",
+                    fontWeight: 500,
+                    color: (theme) =>
+                      theme.palette.mode === "dark" ? "#fff" : "#000",
+
+                    borderColor: (theme) =>
+                      theme.palette.mode === "dark" ? "#fff" : "#000",
+
+                    "&:hover": {
+                      borderColor: (theme) =>
+                        theme.palette.mode === "dark" ? "#fff" : "#000",
+
+                      backgroundColor: (theme) =>
+                        theme.palette.mode === "dark"
+                          ? "rgba(255, 255, 255, 0.08)"
+                          : "rgba(0, 0, 0, 0.04)",
+                    },
+                  }}
+                >
+                  Add Project
+                </Button>
+              )}
+            </Box>
+          }
+        />
+      </Box>
+
 
       {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 400 }}>
@@ -458,7 +539,7 @@ export default function Projects() {
               <Card
                 sx={{
                   borderRadius: '8px',
-                  border: "1px solid rgba(255,255,255,0.12)",
+                  border: (theme) => `1px solid ${theme.palette.divider}`,
                   position: "relative",
                   overflow: "hidden",
                   transition: "all 0.25s ease",

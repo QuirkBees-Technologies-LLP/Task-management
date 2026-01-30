@@ -34,6 +34,7 @@ import {
   EditOutlined,
   DeleteOutline,
   Search as SearchIcon,
+  Search,
 } from '@mui/icons-material';
 import PageHeader from '@/components/PageHeader';
 import axios from 'axios';
@@ -310,23 +311,107 @@ const StaffManagementPage: React.FC = () => {
 
   return (
     <>
-      <PageHeader
-        title="Team"
-        action={
-          isAdmin ? (
-            <Button
-              variant="contained"
-              startIcon={<AddOutlined />}
-              onClick={handleOpenCreate}
+      <Box
+        sx={{
+          backgroundColor: (theme) => theme.palette.background.paper,
+          border: (theme) => `1px solid ${theme.palette.divider}`,
+          padding: "16px 24px",
+          borderRadius: "12px",
+          mb: 3,
+        }}
+      >
+        <PageHeader
+          title="Projects"
+          className="top_header"
+          sx={{ mb: "0 !important" }}
+          action={
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                flexWrap: "wrap",
+                width: "100%",
+                gap: 2,
+              }}
             >
-              Add Staff
-            </Button>
-          ) : null
-        }
-      />
+              {/* LEFT SIDE SEARCH BAR */}
+              <TextField
+                size="small"
+                placeholder="Search staff.."
+                type="search"
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPage(1);
+                }}
+                InputProps={{
+                  startAdornment: <Search fontSize="small" />,
+                }}
+                sx={{
+                  width: { xs: "unset", lg: "520px" },
+                  maxWidth: "100%",
+                  borderRadius: "6px",
+
+                  backgroundColor: (theme) =>
+                    theme.palette.mode === "dark"
+                      ? theme.palette.background.default
+                      : "#F9FAFC",
+
+                  "& .MuiOutlinedInput-root": {
+                    gap: 1,
+                    color: (theme) => theme.palette.text.primary,
+
+                    "& fieldset": {
+                      border: (theme) => `1px solid ${theme.palette.divider}`,
+                    },
+
+                    "&:hover fieldset": {
+                      borderColor: (theme) =>
+                        theme.palette.mode === "dark"
+                          ? theme.palette.primary.main
+                          : "#CBD5E1",
+                    },
+                  },
+                }}
+              />
+
+              {/* RIGHT SIDE BUTTON */}
+              {isAdmin && (
+                <Button
+                  variant="outlined"
+                  startIcon={<AddOutlined />}
+                  onClick={handleOpenCreate}
+                  sx={{
+                    borderRadius: "6px",
+                    fontWeight: 500,
+                    color: (theme) =>
+                      theme.palette.mode === "dark" ? "#fff" : "#000",
+
+                    borderColor: (theme) =>
+                      theme.palette.mode === "dark" ? "#fff" : "#000",
+
+                    "&:hover": {
+                      borderColor: (theme) =>
+                        theme.palette.mode === "dark" ? "#fff" : "#000",
+
+                      backgroundColor: (theme) =>
+                        theme.palette.mode === "dark"
+                          ? "rgba(255, 255, 255, 0.08)"
+                          : "rgba(0, 0, 0, 0.04)",
+                    },
+                  }}
+                >
+                  Add Staff
+                </Button>
+              )}
+            </Box>
+          }
+        />
+      </Box>
 
       <Box sx={{ mt: 3 }}>
-        <Paper sx={{ p: 2, mb: 3 }}>
+        {/* <Paper sx={{ p: 2, mb: 3 }}>
           <TextField
             placeholder="Search staff..."
             value={search}
@@ -344,7 +429,7 @@ const StaffManagementPage: React.FC = () => {
               ),
             }}
           />
-        </Paper>
+        </Paper> */}
 
         <Paper>
           <TableContainer>

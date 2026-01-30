@@ -24,7 +24,7 @@ import {
   Skeleton,
   Pagination,
 } from '@mui/material';
-import { Close as CloseIcon, Add as AddIcon, DeleteOutline, ArrowBack, Print, PictureAsPdf } from '@mui/icons-material';
+import { Close as CloseIcon, Add as AddIcon, DeleteOutline, ArrowBack, Print, PictureAsPdf, AddOutlined, Search } from '@mui/icons-material';
 import InvoiceModal from './components/InvoiceModal';
 import InvoiceItem from './components/InvoiceItem';
 import PageHeader from '@/components/PageHeader';
@@ -58,7 +58,7 @@ export default function InvoicesFeature() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState<boolean>(false);
   const [invoiceToDelete, setInvoiceToDelete] = useState<Invoice | null>(null);
   const invoiceRef = useRef<HTMLDivElement | null>(null);
-  
+
   // Pagination state
   const [page, setPage] = useState<number>(1);
   const [limit] = useState<number>(5);
@@ -242,7 +242,7 @@ export default function InvoicesFeature() {
         const response = await axios.post('/api/invoices', invoiceData, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        
+
         enqueueSnackbar({
           message: 'Invoice created successfully!',
           variant: 'success',
@@ -383,22 +383,103 @@ export default function InvoicesFeature() {
 
   return (
     <>
-      <PageHeader
-        title="Invoices"
-        action={
-          isAdmin ? (
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={handleAddClick}
+      <Box
+        sx={{
+          backgroundColor: (theme) => theme.palette.background.paper,
+          border: (theme) => `1px solid ${theme.palette.divider}`,
+          padding: "16px 24px",
+          borderRadius: "12px",
+          mb: 3,
+        }}
+      >
+        <PageHeader
+          title="Projects"
+          className="top_header"
+          sx={{ mb: "0 !important" }}
+          action={
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                flexWrap: "wrap",
+                width: "100%",
+                gap: 2,
+              }}
             >
-              Add Invoice
-            </Button>
-          ) : null
-        }
-      />
+              {/* LEFT SIDE SEARCH BAR */}
+              <TextField
+                size="small"
+                placeholder="Filter by project or status.."
+                type="search"
+                value={filter}
+                onChange={handleFilterChange}
+                InputProps={{
+                  startAdornment: <Search fontSize="small" />,
+                }}
+                sx={{
+                  width: { xs: "unset", lg: "520px" },
+                  maxWidth: "100%",
+                  borderRadius: "6px",
 
-      {isSmallScreen && (
+                  backgroundColor: (theme) =>
+                    theme.palette.mode === "dark"
+                      ? theme.palette.background.default
+                      : "#F9FAFC",
+
+                  "& .MuiOutlinedInput-root": {
+                    gap: 1,
+                    color: (theme) => theme.palette.text.primary,
+
+                    "& fieldset": {
+                      border: (theme) => `1px solid ${theme.palette.divider}`,
+                    },
+
+                    "&:hover fieldset": {
+                      borderColor: (theme) =>
+                        theme.palette.mode === "dark"
+                          ? theme.palette.primary.main
+                          : "#CBD5E1",
+                    },
+                  },
+                }}
+              />
+
+              {/* RIGHT SIDE BUTTON */}
+              {isAdmin && (
+                <Button
+                  variant="outlined"
+                  startIcon={<AddOutlined />}
+                  onClick={handleAddClick}
+                  sx={{
+                    borderRadius: "6px",
+                    fontWeight: 500,
+                    color: (theme) =>
+                      theme.palette.mode === "dark" ? "#fff" : "#000",
+
+                    borderColor: (theme) =>
+                      theme.palette.mode === "dark" ? "#fff" : "#000",
+
+                    "&:hover": {
+                      borderColor: (theme) =>
+                        theme.palette.mode === "dark" ? "#fff" : "#000",
+
+                      backgroundColor: (theme) =>
+                        theme.palette.mode === "dark"
+                          ? "rgba(255, 255, 255, 0.08)"
+                          : "rgba(0, 0, 0, 0.04)",
+                    },
+                  }}
+                >
+                  Add Invoice
+                </Button>
+              )}
+            </Box>
+          }
+        />
+      </Box>
+
+      {/* {isSmallScreen && (
         <Box>
           <TextField
             fullWidth
@@ -411,7 +492,7 @@ export default function InvoicesFeature() {
             sx={{ mb: 1.5 }}
           />
         </Box>
-      )}
+      )} */}
 
       <Paper>
         <TableContainer>
@@ -426,8 +507,8 @@ export default function InvoicesFeature() {
               </TableRow>
             </TableHead>
             <TableBody>
-      {loading ? (
-        Array.from({ length: 5 }).map((_, index) => (
+              {loading ? (
+                Array.from({ length: 5 }).map((_, index) => (
                   <TableRow key={index}>
                     <TableCell>
                       <Skeleton variant="text" width="60%" />
@@ -445,27 +526,27 @@ export default function InvoicesFeature() {
                       <Skeleton variant="text" width="30%" />
                     </TableCell>
                   </TableRow>
-        ))
+                ))
               ) : invoices.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} align="center">
                     <Typography variant="body2" color="text.secondary" sx={{ py: 4 }}>
-              No invoices found
-            </Typography>
+                      No invoices found
+                    </Typography>
                   </TableCell>
                 </TableRow>
-          ) : (
-            invoices.map((invoice) => (
-              <InvoiceItem
-                key={invoice._id || invoice.id}
-                invoice={invoice}
-                handleEditClick={handleEditClick}
-                handleViewDetails={handleViewDetails}
-                handleStatusChange={handleStatusChange}
-                handleDeleteClick={handleDeleteClick}
-              />
-            ))
-          )}
+              ) : (
+                invoices.map((invoice) => (
+                  <InvoiceItem
+                    key={invoice._id || invoice.id}
+                    invoice={invoice}
+                    handleEditClick={handleEditClick}
+                    handleViewDetails={handleViewDetails}
+                    handleStatusChange={handleStatusChange}
+                    handleDeleteClick={handleDeleteClick}
+                  />
+                ))
+              )}
             </TableBody>
           </Table>
         </TableContainer>
