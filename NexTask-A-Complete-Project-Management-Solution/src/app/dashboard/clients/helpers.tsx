@@ -27,11 +27,6 @@ const clientsColumns: ResponsiveTableColumn[] = [
             <Typography variant="body2" sx={{ fontWeight: 500 }}>
               {fullName || '—'}
             </Typography>
-            {client.email && (
-              <Typography variant="caption" color="text.secondary">
-                {client.email}
-              </Typography>
-            )}
           </Stack>
         </Stack>
       );

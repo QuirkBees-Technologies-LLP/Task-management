@@ -33,6 +33,7 @@ import { useRouter, useParams } from 'next/navigation';
 
 import { Task, TaskAttachment, Subtask } from '@/app/dashboard/tasks/types';
 import { Project } from '@/app/dashboard/projects/types';
+import PageHeader from '@/components/PageHeader';
 
 interface ApiTask {
   _id: string;
@@ -481,36 +482,38 @@ export default function ProjectTasksPage() {
 
   return (
     <>
-      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-        <ToggleButtonGroup
-          value={view}
-          exclusive
-          onChange={(_, newView) => {
-            if (newView !== null) {
-              setView(newView);
-            }
-          }}
-          size="small"
-          sx={{
-            '& .MuiToggleButton-root': {
-              border: `1px solid ${theme.palette.divider}`,
-              px: 1.5,
-              py: 0.5,
-            },
-          }}
-        >
-          <ToggleButton value="board" aria-label="Board view">
-            <Tooltip title="Board View">
-              <ViewModule fontSize="small" />
-            </Tooltip>
-          </ToggleButton>
-          <ToggleButton value="list" aria-label="List view">
-            <Tooltip title="List View">
-              <ViewList fontSize="small" />
-            </Tooltip>
-          </ToggleButton>
-        </ToggleButtonGroup>
-      </Box>
+      <PageHeader
+        action={
+          <ToggleButtonGroup
+            value={view}
+            exclusive
+            onChange={(_, newView) => {
+              if (newView !== null) {
+                setView(newView);
+              }
+            }}
+            size="small"
+            sx={{
+              '& .MuiToggleButton-root': {
+                border: `1px solid ${theme.palette.divider}`,
+                px: 1.5,
+                py: 0.5,
+              },
+            }}
+          >
+            <ToggleButton value="board" aria-label="Board view">
+              <Tooltip title="Board View">
+                <ViewModule fontSize="small" />
+              </Tooltip>
+            </ToggleButton>
+            <ToggleButton value="list" aria-label="List view">
+              <Tooltip title="List View">
+                <ViewList fontSize="small" />
+              </Tooltip>
+            </ToggleButton>
+          </ToggleButtonGroup>
+        }
+      />
       <Box sx={{ width: '100%' }}>
         {loading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 400 }}>
