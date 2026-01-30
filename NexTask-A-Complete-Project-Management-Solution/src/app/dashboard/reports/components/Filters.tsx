@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Button, Grid2, MenuItem, Paper, TextField } from '@mui/material';
+import { Box, Button, Grid2, MenuItem, Paper, TextField } from '@mui/material';
 import CardHeader from '@/components/CardHeader';
 import { ReportFiltersProps } from '../types';
 
@@ -23,21 +23,104 @@ const ReportFilters: React.FC<ReportFiltersProps> = ({ onApplyFilter }) => {
   };
 
   return (
-    <Paper sx={{ mb: 2 }}>
+    // <Paper sx={{ mb: 2 }}>
+    //   <CardHeader
+    //     title={
+    //       <Grid2 container alignItems="center" spacing={2}>
+    //         {/* Report Type Selector */}
+    //         <Grid2 size={{ xs: 5, md: 4 }}>
+    //           <TextField
+    //             select
+    //             margin="dense"
+    //             name="reportType"
+    //             fullWidth
+    //             size="small"
+    //             label="Report Type"
+    //             value={selectedType}
+    //             onChange={(e) => setSelectedType(e.target.value as FilterState['type'])}
+    //           >
+    //             <MenuItem value="projects">Project</MenuItem>
+    //             <MenuItem value="tasks">Task</MenuItem>
+    //           </TextField>
+    //         </Grid2>
+
+    //         {/* Status Selector */}
+    //         <Grid2 size={{ xs: 5, md: 4 }}>
+    //           <TextField
+    //             select
+    //             margin="dense"
+    //             name="status"
+    //             fullWidth
+    //             size="small"
+    //             label="Status"
+    //             value={selectedStatus}
+    //             onChange={(e) => setSelectedStatus(e.target.value as FilterState['status'])}
+    //           >
+    //             <MenuItem value="all">All</MenuItem>
+    //             <MenuItem value="in_progress">In Progress</MenuItem>
+    //             <MenuItem value="pending">Pending</MenuItem>
+    //             <MenuItem value="completed">Completed</MenuItem>
+    //           </TextField>
+    //         </Grid2>
+
+    //         {/* Apply Button */}
+    //         <Grid2 size={{ xs: 2, md: 4 }}>
+    //           <Button variant="contained" onClick={handleApplyFilters}>
+    //             Apply
+    //           </Button>
+    //         </Grid2>
+    //       </Grid2>
+    //     }
+    //   />
+    // </Paper>
+    <Box
+      sx={{
+        backgroundColor: (theme) => theme.palette.background.paper,
+        border: (theme) => `1px solid ${theme.palette.divider}`,
+        padding: "16px 24px",
+        borderRadius: "12px",
+        mb: 3,
+      }}
+    >
       <CardHeader
         title={
           <Grid2 container alignItems="center" spacing={2}>
             {/* Report Type Selector */}
-            <Grid2 size={{ xs: 5, md: 4 }}>
+            <Grid2 size={{ xs: 5, md: 3 }}>
               <TextField
                 select
                 margin="dense"
                 name="reportType"
                 fullWidth
-                size="small"
                 label="Report Type"
                 value={selectedType}
                 onChange={(e) => setSelectedType(e.target.value as FilterState['type'])}
+                sx={{
+                  width: { xs: "unset", lg: "520px" },
+                  maxWidth: "100%",
+                  borderRadius: "6px",
+
+                  backgroundColor: (theme) =>
+                    theme.palette.mode === "dark"
+                      ? theme.palette.background.default
+                      : "#F9FAFC",
+
+                  "& .MuiOutlinedInput-root": {
+                    gap: 1,
+                    color: (theme) => theme.palette.text.primary,
+
+                    "& fieldset": {
+                      border: (theme) => `1px solid ${theme.palette.divider}`,
+                    },
+
+                    "&:hover fieldset": {
+                      borderColor: (theme) =>
+                        theme.palette.mode === "dark"
+                          ? theme.palette.primary.main
+                          : "#CBD5E1",
+                    },
+                  },
+                }}
               >
                 <MenuItem value="projects">Project</MenuItem>
                 <MenuItem value="tasks">Task</MenuItem>
@@ -45,16 +128,41 @@ const ReportFilters: React.FC<ReportFiltersProps> = ({ onApplyFilter }) => {
             </Grid2>
 
             {/* Status Selector */}
-            <Grid2 size={{ xs: 5, md: 4 }}>
+            <Grid2 size={{ xs: 5, md: 3 }}>
               <TextField
                 select
                 margin="dense"
                 name="status"
                 fullWidth
-                size="small"
                 label="Status"
                 value={selectedStatus}
                 onChange={(e) => setSelectedStatus(e.target.value as FilterState['status'])}
+                sx={{
+                  width: { xs: "unset", lg: "520px" },
+                  maxWidth: "100%",
+                  borderRadius: "6px",
+
+                  backgroundColor: (theme) =>
+                    theme.palette.mode === "dark"
+                      ? theme.palette.background.default
+                      : "#F9FAFC",
+
+                  "& .MuiOutlinedInput-root": {
+                    gap: 1,
+                    color: (theme) => theme.palette.text.primary,
+
+                    "& fieldset": {
+                      border: (theme) => `1px solid ${theme.palette.divider}`,
+                    },
+
+                    "&:hover fieldset": {
+                      borderColor: (theme) =>
+                        theme.palette.mode === "dark"
+                          ? theme.palette.primary.main
+                          : "#CBD5E1",
+                    },
+                  },
+                }}
               >
                 <MenuItem value="all">All</MenuItem>
                 <MenuItem value="in_progress">In Progress</MenuItem>
@@ -65,14 +173,33 @@ const ReportFilters: React.FC<ReportFiltersProps> = ({ onApplyFilter }) => {
 
             {/* Apply Button */}
             <Grid2 size={{ xs: 2, md: 4 }}>
-              <Button variant="contained" onClick={handleApplyFilters}>
+              <Button variant="outlined" onClick={handleApplyFilters}
+                sx={{
+                  borderRadius: "6px",
+                  fontWeight: 500,
+                  color: (theme) =>
+                    theme.palette.mode === "dark" ? "#fff" : "#000",
+
+                  borderColor: (theme) =>
+                    theme.palette.mode === "dark" ? "#fff" : "#000",
+
+                  "&:hover": {
+                    borderColor: (theme) =>
+                      theme.palette.mode === "dark" ? "#fff" : "#000",
+
+                    backgroundColor: (theme) =>
+                      theme.palette.mode === "dark"
+                        ? "rgba(255, 255, 255, 0.08)"
+                        : "rgba(0, 0, 0, 0.04)",
+                  },
+                }}>
                 Apply
               </Button>
             </Grid2>
           </Grid2>
         }
       />
-    </Paper>
+    </Box>
   );
 };
 

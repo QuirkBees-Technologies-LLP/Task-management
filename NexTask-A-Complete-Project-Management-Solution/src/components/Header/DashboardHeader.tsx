@@ -121,15 +121,15 @@ const DashboardAppbar: React.FC<DashboardAppbarProps> = ({
             sx={{
               display: 'flex',
               alignItems: 'center',
-              width: isSmallScreen
-                ? 'auto'
-                : collapsed
-                  ? (theme) => `calc(${theme.spacing(8)} + 20px)`
-                  : `${drawerWidth}px`,
+              // width: isSmallScreen
+              //   ? 'auto'
+              //   : collapsed
+              //     ? (theme) => `calc(${theme.spacing(8)} + 20px)`
+              //     : `${drawerWidth}px`,
             }}
           >
             <Tooltip title={collapsed ? 'Open Menu' : 'Collapse Menu'}>
-              <IconButton sx={{ mt: 1 }} onClick={() => setCollapsed(!collapsed)}>
+              <IconButton onClick={() => setCollapsed(!collapsed)}>
                 <MenuOpen
                   sx={{
                     transform: collapsed ? 'rotate(180deg)' : 'rotate(0deg)',
@@ -154,6 +154,7 @@ const DashboardAppbar: React.FC<DashboardAppbarProps> = ({
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'center',
+                pl: '24px',
               }}
             >
               {pageTitle && breadcrumbs && breadcrumbsPlacement === 'inline' ? (

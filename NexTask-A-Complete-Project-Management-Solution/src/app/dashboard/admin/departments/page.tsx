@@ -32,6 +32,7 @@ import {
   DeleteOutline,
   Search as SearchIcon,
   Close as CloseIcon,
+  Search,
 } from '@mui/icons-material';
 import PageHeader from '@/components/PageHeader';
 import axios from 'axios';
@@ -276,32 +277,102 @@ const DepartmentsPage: React.FC = () => {
 
   return (
     <>
-      <PageHeader
-        title="Department Management"
-        action={
-          <Button variant="contained" startIcon={<AddOutlined />} onClick={handleOpenCreate}>
-            Add New Department
-          </Button>
-        }
-      />
+      <Box
+        sx={{
+          backgroundColor: (theme) => theme.palette.background.paper,
+          border: (theme) => `1px solid ${theme.palette.divider}`,
+          padding: "16px 24px",
+          borderRadius: "12px",
+          mb: 3,
+        }}
+      >
+        <PageHeader
+          title="Projects"
+          className="top_header"
+          sx={{ mb: "0 !important" }}
+          action={
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                flexWrap: "wrap",
+                width: "100%",
+                gap: 2,
+              }}
+            >
+              {/* LEFT SIDE SEARCH BAR */}
+              <TextField
+                size="small"
+                placeholder="Search by department name..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                type="search"
+                InputProps={{
+                  startAdornment: <Search fontSize="small" />,
+                }}
+                sx={{
+                  width: { xs: "unset", lg: "520px" },
+                  maxWidth: "100%",
+                  borderRadius: "6px",
 
+                  backgroundColor: (theme) =>
+                    theme.palette.mode === "dark"
+                      ? theme.palette.background.default
+                      : "#F9FAFC",
+
+                  "& .MuiOutlinedInput-root": {
+                    gap: 1,
+                    color: (theme) => theme.palette.text.primary,
+
+                    "& fieldset": {
+                      border: (theme) => `1px solid ${theme.palette.divider}`,
+                    },
+
+                    "&:hover fieldset": {
+                      borderColor: (theme) =>
+                        theme.palette.mode === "dark"
+                          ? theme.palette.primary.main
+                          : "#CBD5E1",
+                    },
+                  },
+                }}
+              />
+
+              {/* RIGHT SIDE BUTTON */}
+              {isAdmin && (
+                <Button
+                  variant="outlined"
+                  startIcon={<AddOutlined />}
+                  onClick={handleOpenCreate}
+                  sx={{
+                    borderRadius: "6px",
+                    fontWeight: 500,
+                    color: (theme) =>
+                      theme.palette.mode === "dark" ? "#fff" : "#000",
+
+                    borderColor: (theme) =>
+                      theme.palette.mode === "dark" ? "#fff" : "#000",
+
+                    "&:hover": {
+                      borderColor: (theme) =>
+                        theme.palette.mode === "dark" ? "#fff" : "#000",
+
+                      backgroundColor: (theme) =>
+                        theme.palette.mode === "dark"
+                          ? "rgba(255, 255, 255, 0.08)"
+                          : "rgba(0, 0, 0, 0.04)",
+                    },
+                  }}
+                >
+                  Add New Department
+                </Button>
+              )}
+            </Box>
+          }
+        />
+      </Box>
       <Paper sx={{ p: 3, mt: 3 }}>
-        <Box sx={{ mb: 3 }}>
-          <TextField
-            fullWidth
-            placeholder="Search by department name..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon />
-                </InputAdornment>
-              ),
-            }}
-          />
-        </Box>
-
         <TableContainer>
           <Table>
             <TableHead>

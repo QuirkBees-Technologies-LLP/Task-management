@@ -6,7 +6,7 @@ export default function CardHeader(props: CardHeaderPropsWithComponent) {
     <MuiCardHeader
       {...props}
       titleTypographyProps={{ variant: 'h5', fontSize: 18, mt: 0 }}
-      sx={{ pb: 0 }}
+      sx={{ p: 0 }}
     />
   );
 }
