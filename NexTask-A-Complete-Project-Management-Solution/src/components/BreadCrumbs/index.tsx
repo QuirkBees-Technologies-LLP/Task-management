@@ -27,9 +27,16 @@ const DynamicBreadcrumbs = ({ inDashboard = true, mb = 2, omitLabels = [] }: Dyn
   // Check if we're on a project tasks page and fetch project name
   useEffect(() => {
     const pathSegments = pathname.split('/').filter(Boolean);
-    // Check if path is /projects/[id]/tasks
-    if (pathSegments.length >= 3 && pathSegments[0] === 'projects' && pathSegments[2] === 'tasks') {
-      const projectId = pathSegments[1];
+    // Check if path is /projects/[id]/tasks or /dashboard/projects/[id]/tasks
+    const isProjectTasksPath = 
+      (pathSegments.length >= 3 && pathSegments[0] === 'projects' && pathSegments[2] === 'tasks') ||
+      (pathSegments.length >= 4 && pathSegments[0] === 'dashboard' && pathSegments[1] === 'projects' && pathSegments[3] === 'tasks');
+    
+    if (isProjectTasksPath) {
+      // Get project ID - it's at index 1 for /projects/[id]/tasks or index 2 for /dashboard/projects/[id]/tasks
+      const projectIdIndex = pathSegments[0] === 'dashboard' ? 2 : 1;
+      const projectId = pathSegments[projectIdIndex];
+      
       // Check if it looks like a MongoDB ObjectId (24 hex characters)
       if (projectId && /^[a-f0-9]{24}$/i.test(projectId)) {
         const fetchProjectName = async () => {
@@ -88,14 +95,20 @@ const DynamicBreadcrumbs = ({ inDashboard = true, mb = 2, omitLabels = [] }: Dyn
       const href = '/' + hrefSegments.join('/');
       
       // Replace project ID with project name if available
+      // Handle both /projects/[id]/tasks and /dashboard/projects/[id]/tasks
       let label = segment;
+      const isDashboardProjectsPath = filteredSegments[0] === 'dashboard' && filteredSegments[1] === 'projects';
+      const isProjectsPath = filteredSegments[0] === 'projects';
+      
       if (
-        filteredSegments.length >= 3 &&
-        filteredSegments[0] === 'projects' &&
-        filteredSegments[2] === 'tasks' &&
-        index === 1 &&
         projectName &&
-        /^[a-f0-9]{24}$/i.test(segment)
+        /^[a-f0-9]{24}$/i.test(segment) &&
+        (
+          // /projects/[id]/tasks case
+          (isProjectsPath && filteredSegments.length >= 3 && filteredSegments[2] === 'tasks' && index === 1) ||
+          // /dashboard/projects/[id]/tasks case
+          (isDashboardProjectsPath && filteredSegments.length >= 4 && filteredSegments[3] === 'tasks' && index === 2)
+        )
       ) {
         label = projectName;
       } else {

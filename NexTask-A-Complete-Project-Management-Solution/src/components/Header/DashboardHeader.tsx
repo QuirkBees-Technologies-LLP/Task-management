@@ -160,39 +160,37 @@ const DashboardAppbar: React.FC<DashboardAppbarProps> = ({
               </IconButton>
             </Tooltip>
           </Box>
-          {(pageTitle || breadcrumbs) && (
-            <Box
-              sx={{
-                flexGrow: 1,
-                minWidth: 0,
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'center',
-                pl: '24px',
-              }}
-            >
-              {pageTitle && breadcrumbs && breadcrumbsPlacement === 'inline' ? (
-                <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 2, minWidth: 0 }}>
-                  <Typography
-                    variant="h6"
-                    sx={{ fontWeight: 600, color: 'text.primary', lineHeight: 1.1, flexShrink: 0 }}
-                  >
+          <Box
+            sx={{
+              flexGrow: 1,
+              minWidth: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              pl: '24px',
+            }}
+          >
+            {pageTitle && breadcrumbs && breadcrumbsPlacement === 'inline' ? (
+              <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 2, minWidth: 0 }}>
+                <Typography
+                  variant="h6"
+                  sx={{ fontWeight: 600, color: 'text.primary', lineHeight: 1.1, flexShrink: 0 }}
+                >
+                  {pageTitle}
+                </Typography>
+                <Box sx={{ minWidth: 0 }}>{breadcrumbs}</Box>
+              </Box>
+            ) : (
+              <>
+                {pageTitle && (
+                  <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary', lineHeight: 1.1 }}>
                     {pageTitle}
                   </Typography>
-                  <Box sx={{ minWidth: 0 }}>{breadcrumbs}</Box>
-                </Box>
-              ) : (
-                <>
-                  {pageTitle && (
-                    <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary', lineHeight: 1.1 }}>
-                      {pageTitle}
-                    </Typography>
-                  )}
-                  {breadcrumbs && <Box sx={{ mt: pageTitle ? 0.25 : 0 }}>{breadcrumbs}</Box>}
-                </>
-              )}
-            </Box>
-          )}
+                )}
+                {breadcrumbs && <Box sx={{ mt: pageTitle ? 0.25 : 0 }}>{breadcrumbs}</Box>}
+              </>
+            )}
+          </Box>
           <Box sx={{ marginLeft: 'auto' }}>
             {!isXsScreen && (
               <Tooltip title="Dark mode">

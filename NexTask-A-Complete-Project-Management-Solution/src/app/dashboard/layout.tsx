@@ -5,6 +5,7 @@ import { Box, useMediaQuery, useTheme } from '@mui/material';
 import Sider from '@/components/Sider';
 import DashboardAppbar from '@/components/Header/DashboardHeader';
 import BreadCrumbs from '@/components/BreadCrumbs';
+import SubHeader from '@/components/SubHeader';
 import { accessTokenKey, appbarHeight } from '@/utils/constants';
 import { usePathname, useRouter } from 'next/navigation';
 import { enqueueSnackbar } from 'notistack';
@@ -152,8 +153,8 @@ export default function Layout({ children }: LayoutProps) {
     return null;
   }
 
-  // Determine page title based on pathname
-  const getPageTitle = (path: string) => {
+  // Determine page title based on pathname - always return a title (never null)
+  const getPageTitle = (path: string): string => {
     const pathParts = path.replace(/^\/dashboard\/?/, '').split('/').filter(Boolean);
     const baseRoute = pathParts[0] || '';
     const subRoute = pathParts[1] || '';
@@ -185,10 +186,38 @@ export default function Layout({ children }: LayoutProps) {
       return adminTitleMap[subRoute] || 'Admin';
     }
 
+    // Check if we're on a nested route like /dashboard/projects/[id]/tasks
+    const isIdPattern = (str: string) => {
+      return (
+        /^[a-f0-9]{24}$/i.test(str) || // MongoDB ObjectId
+        /^\d+$/.test(str) || // Numeric ID
+        /^[a-z0-9-]{36}$/i.test(str) // UUID-like
+      );
+    };
+
+    // Look for nested routes (e.g., projects/[id]/tasks)
+    // Start from the end and work backwards to find the first non-ID segment that has a title mapping
+    // This ensures nested routes like /dashboard/projects/[id]/tasks show "Tasks" not "Projects"
+    for (let i = pathParts.length - 1; i >= 0; i--) {
+      const segment = pathParts[i];
+      // If this segment is not an ID and has a title mapping, use it
+      if (segment && !isIdPattern(segment) && titleMap[segment]) {
+        return titleMap[segment];
+      }
+    }
+
+    // Fall back to base route title
     return titleMap[baseRoute] || 'Dashboard';
   };
 
   const currentPageTitle = getPageTitle(pathname);
+  
+  // Determine breadcrumb placement - always show breadcrumbs below title (like projects layout)
+  const breadcrumbsPlacement = 'below';
+
+  // Calculate sub-header height (title + breadcrumbs + padding)
+  // This is approximate - adjust based on actual rendered height
+  const subHeaderHeight = 100; // Approximate height including padding
 
   // Render UI immediately, don't block on userInfo loading
   // User info will populate when ready (non-blocking)
@@ -199,7 +228,9 @@ export default function Layout({ children }: LayoutProps) {
         setCollapsed={setCollapsed}
         pageTitle={currentPageTitle}
         breadcrumbs={<BreadCrumbs mb={0} />}
+        breadcrumbsPlacement={breadcrumbsPlacement}
       />
+      <SubHeader collapsed={collapsed} />
       <Sider
         collapsed={collapsed}
         setCollapsed={setCollapsed}
@@ -211,7 +242,7 @@ export default function Layout({ children }: LayoutProps) {
         sx={{
           flexGrow: 1,
           p: { xs: 1.5, sm: 2, md: 3 },
-          mt: `${appbarHeight}px`,
+          mt: `${appbarHeight + subHeaderHeight}px`,
           width: '100%',
           maxWidth: '100%',
         }}

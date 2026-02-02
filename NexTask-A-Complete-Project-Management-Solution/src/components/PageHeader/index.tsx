@@ -41,6 +41,28 @@ const getPageTitle = (path: string, providedTitle?: string): string => {
     return adminTitleMap[subRoute] || 'Admin';
   }
 
+  // Handle nested routes like /dashboard/projects/[id]/tasks
+  // Check if there's a nested route that has a title mapping
+  // Skip IDs (MongoDB ObjectId, numeric, or UUID-like patterns)
+  const isIdPattern = (str: string) => {
+    return (
+      /^[a-f0-9]{24}$/i.test(str) || // MongoDB ObjectId
+      /^\d+$/.test(str) || // Numeric ID
+      /^[a-z0-9-]{36}$/i.test(str) // UUID-like
+    );
+  };
+
+  // Look for nested routes (e.g., projects/[id]/tasks)
+  // Start from the end and work backwards to find the first non-ID segment that has a title mapping
+  for (let i = pathParts.length - 1; i >= 0; i--) {
+    const segment = pathParts[i];
+    // If this segment is not an ID and has a title mapping, use it
+    if (segment && !isIdPattern(segment) && titleMap[segment]) {
+      return titleMap[segment];
+    }
+  }
+
+  // Fall back to base route title
   return titleMap[baseRoute] || 'Dashboard';
 };
 
@@ -50,23 +72,29 @@ export default function PageHeader({ title, ...props }: CardHeaderPropsWithCompo
   // Also handle /projects/[id]/tasks paths (project tasks pages)
   const isProjectTasksPage = pathname?.match(/^\/projects\/[^/]+\/tasks/);
 
-  // For dashboard pages and project tasks pages, show title and breadcrumbs inside the page
-  if (isDashboard || isProjectTasksPage) {
-    // For project tasks pages, always use "Projects" as the title
-    const pageTitle = isProjectTasksPage 
-      ? 'Projects'
-      : getPageTitle(pathname, title as string);
-    
+  // For dashboard pages, don't show title/breadcrumbs here - they're in the global header/navbar
+  // Only show action buttons if provided
+  if (isDashboard) {
+    if (props.action) {
+      return (
+        <Box sx={{ mb: 3, display: 'flex', justifyContent: 'flex-end' }}>
+          {props.action}
+        </Box>
+      );
+    }
+    return null;
+  }
+
+  // For project tasks pages (non-dashboard), show title and breadcrumbs inside the page
+  if (isProjectTasksPage) {
     return (
       <Box sx={{ mb: 3 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
           <Stack spacing={1} sx={{ flex: 1 }}>
-            {pageTitle && (
-              <Typography variant="h5" sx={{ fontWeight: 600, fontSize: '1.5rem' }}>
-                {pageTitle}
-              </Typography>
-            )}
-            <BreadCrumbs mb={0} inDashboard={isDashboard} />
+            <Typography variant="h5" sx={{ fontWeight: 600, fontSize: '1.5rem' }}>
+              Projects
+            </Typography>
+            <BreadCrumbs mb={0} inDashboard={false} />
           </Stack>
           {props.action && (
             <Box sx={{ ml: 2, flexShrink: 0 }}>
