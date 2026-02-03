@@ -57,6 +57,7 @@ import { accessTokenKey } from '@/utils/constants';
 import { enqueueSnackbar } from 'notistack';
 import { useSelector } from 'react-redux';
 import { selectCurrentUser, selectSuperuser } from '@/redux/selectors';
+import { getSectionBackgroundColor } from '../utils/sectionColors';
 
 interface TaskSection {
   _id: string;
@@ -248,6 +249,9 @@ const TaskSectionColumn: React.FC<{
       })
       .filter((id): id is string => id !== null && id !== undefined);
 
+    // Get section background color based on section name and ID
+    const sectionBgColor = getSectionBackgroundColor(section.name, section._id);
+
     return (
       <Paper
         sx={{
@@ -258,7 +262,7 @@ const TaskSectionColumn: React.FC<{
           display: 'flex',
           flexDirection: 'column',
           flexShrink: 0, // Prevent columns from shrinking
-          bgcolor: theme.palette.background.default,
+          bgcolor: sectionBgColor, // Section-specific background color
           border: (theme) => `1px solid ${isDragging ? theme.palette.primary.main : theme.palette.divider}`,
           borderRadius: 2,
           overflow: 'hidden', // Contain scrolling
@@ -270,7 +274,7 @@ const TaskSectionColumn: React.FC<{
         <Box
           sx={{
             p: 1.5,
-            bgcolor: theme.palette.background.default,
+            bgcolor: sectionBgColor, // Match section background color
             borderBottom: (theme) => `1px solid ${theme.palette.divider}`,
             display: 'flex',
             alignItems: 'center',
@@ -395,7 +399,7 @@ const TaskSectionColumn: React.FC<{
               ? theme.palette.mode === 'dark'
                 ? 'rgba(25, 118, 210, 0.15)' // More prominent blue tint in dark mode
                 : 'rgba(25, 118, 210, 0.08)' // More prominent blue tint in light mode
-            : theme.palette.background.default,
+            : sectionBgColor, // Use section background color
             borderRadius: 1,
             border: isOver
               ? `2px dashed ${theme.palette.primary.main}`
@@ -494,6 +498,8 @@ const TaskSectionColumn: React.FC<{
                       priority: task.priority || 'Medium',
                       projectId: section.projectId,
                       dueDate: task.dueDate || '',
+                      subtasks: task.subtasks || [],
+                      assigneeInfo: (task as any).assigneeInfo || [],
                     }}
                       onEditTask={() => {
                         // Pass task with converted status to ensure it's available

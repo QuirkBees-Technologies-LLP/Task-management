@@ -14,8 +14,10 @@ import {
   MenuItem,
   ListItemIcon,
   ListItemText,
+  Avatar,
+  Tooltip,
 } from '@mui/material';
-import { InfoOutlined, MoreVert, DeleteOutline, CheckCircle, CheckCircleOutline } from '@mui/icons-material';
+import { InfoOutlined, MoreVert, DeleteOutline, CheckCircle, CheckCircleOutline, CalendarToday, CheckBox } from '@mui/icons-material';
 import { SortableItemProps } from '../types';
 import { getPriorityColor as getPriorityColorUtil, getPriorityDisplayName } from '../utils/priorityColors';
 import { getStatusColor, getStatusDisplayName } from '../utils/statusColors';
@@ -83,6 +85,72 @@ export const SortableItem: React.FC<SortableItemProps> = ({
 
   const getPriorityColor = getPriorityColorUtil;
 
+  // Format date for display
+  const formatDate = (dateString: string | undefined): string => {
+    if (!dateString) return '';
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return '';
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    } catch {
+      return '';
+    }
+  };
+
+  // Calculate completed/total subtasks
+  const getSubtaskProgress = () => {
+    if (!task?.subtasks || task.subtasks.length === 0) return null;
+    const total = task.subtasks.length;
+    const completed = task.subtasks.filter(
+      (subtask) => subtask.status === 'Done'
+    ).length;
+    return { completed, total };
+  };
+
+  const subtaskProgress = getSubtaskProgress();
+
+  // Get assignee avatars
+  const getAssigneeAvatars = () => {
+    if (!task?.assigneeInfo || task.assigneeInfo.length === 0) {
+      return null;
+    }
+    const displayUsers = task.assigneeInfo.slice(0, 3);
+    return (
+      <Stack direction="row" spacing={0.5} sx={{ ml: 'auto' }}>
+        {displayUsers.map((user, index) => {
+          const firstName = user.firstName || '';
+          const lastName = user.lastName || '';
+          const email = user.email || '';
+          const initials = `${firstName[0] || ''}${lastName[0] || ''}`.trim() || (email ? email[0].toUpperCase() : '?');
+          const displayName = `${firstName} ${lastName}`.trim() || email || 'Unknown';
+          return (
+            <Tooltip key={user._id || index} title={displayName}>
+              <Avatar
+                sx={{
+                  width: 24,
+                  height: 24,
+                  fontSize: '10px',
+                  bgcolor: user.photoUrl ? 'transparent' : theme.palette.primary.main,
+                }}
+                src={user.photoUrl}
+                alt={initials}
+              >
+                {!user.photoUrl && initials}
+              </Avatar>
+            </Tooltip>
+          );
+        })}
+        {task.assigneeInfo.length > 3 && (
+          <Tooltip title={`+${task.assigneeInfo.length - 3} more`}>
+            <Avatar sx={{ width: 24, height: 24, bgcolor: theme.palette.primary.main, fontSize: '10px' }}>
+              +{task.assigneeInfo.length - 3}
+            </Avatar>
+          </Tooltip>
+        )}
+      </Stack>
+    );
+  };
+
   const handleCardClick = (e: React.MouseEvent) => {
     // Don't open edit if clicking on the menu button or its menu
     // Also don't open if this was a drag operation
@@ -111,7 +179,7 @@ export const SortableItem: React.FC<SortableItemProps> = ({
       {...listeners}
       sx={{
         mb: 0,
-        bgcolor: theme.palette.background.paper,
+        bgcolor: theme.palette.background.paper, // White background for task cards
         border: `1px solid ${theme.palette.divider}`,
         borderRadius: '8px',
         boxShadow: dndIsDragging ? theme.shadows[8] : theme.shadows[1],
@@ -243,6 +311,41 @@ export const SortableItem: React.FC<SortableItemProps> = ({
                   },
                 }}
               />
+            </Stack>
+
+            {/* Deadline, Subtasks, and Assignees Row */}
+            <Stack 
+              direction="row" 
+              alignItems="center" 
+              spacing={1} 
+              sx={{ 
+                mt: 0.75,
+                flexWrap: 'wrap',
+                gap: 0.75,
+              }}
+            >
+              {/* Deadline */}
+              {task.dueDate && (
+                <Stack direction="row" alignItems="center" spacing={0.25}>
+                  <CalendarToday sx={{ fontSize: '12px', color: theme.palette.text.secondary }} />
+                  <Typography variant="caption" sx={{ fontSize: '11px', color: theme.palette.text.secondary }}>
+                    {formatDate(task.dueDate)}
+                  </Typography>
+                </Stack>
+              )}
+
+              {/* Subtask Progress */}
+              {subtaskProgress && (
+                <Stack direction="row" alignItems="center" spacing={0.25}>
+                  <CheckBox sx={{ fontSize: '12px', color: theme.palette.text.secondary }} />
+                  <Typography variant="caption" sx={{ fontSize: '11px', color: theme.palette.text.secondary }}>
+                    {subtaskProgress.completed}/{subtaskProgress.total}
+                  </Typography>
+                </Stack>
+              )}
+
+              {/* Assignee Avatars */}
+              {getAssigneeAvatars()}
             </Stack>
           </CardContent>
         </>

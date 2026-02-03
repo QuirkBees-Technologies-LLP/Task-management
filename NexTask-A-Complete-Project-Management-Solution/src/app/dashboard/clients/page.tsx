@@ -40,6 +40,7 @@ const ClientManagement: React.FC = () => {
   const [deleteOpen, setDeleteOpen] = useState<boolean>(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
+  const [menuClientId, setMenuClientId] = useState<string | null>(null);
 
   // Derived States
   const isMenuOpen = Boolean(menuAnchorEl);
@@ -83,12 +84,15 @@ const ClientManagement: React.FC = () => {
   };
 
   // Handlers
-  const handleOpenMoreMenu = (event: MouseEvent<HTMLElement>) => {
+  const handleOpenMoreMenu = (event: MouseEvent<HTMLElement>, clientId: string) => {
+    event.stopPropagation(); // Prevent event bubbling
     setMenuAnchorEl(event.currentTarget);
+    setMenuClientId(clientId);
   };
 
   const handleCloseMenu = () => {
     setMenuAnchorEl(null);
+    setMenuClientId(null);
   };
 
   const handleAddEditClient = async (client: Partial<Client>) => {
@@ -204,45 +208,51 @@ const ClientManagement: React.FC = () => {
   };
 
   const renderActions = (item: Client) => {
-    if (isSmallScreen) {
-      return (
-        <>
-          <IconButton onClick={handleOpenMoreMenu} size="small">
-            <MoreVert fontSize="small" />
-          </IconButton>
-          <Menu
-            anchorEl={menuAnchorEl}
-            open={isMenuOpen}
-            onClose={handleCloseMenu}
-            anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
-            transformOrigin={{ vertical: 'top', horizontal: 'center' }}
-          >
-            <MenuItem onClick={() => handleOpenEditModal(item)}>
-              <ListItemIcon>
-                <EditOutlined fontSize="small" />
-              </ListItemIcon>
-              <ListItemText>Edit</ListItemText>
-            </MenuItem>
-            <MenuItem onClick={() => handleOpenDeleteModal(item)}>
-              <ListItemIcon>
-                <DeleteOutline fontSize="small" />
-              </ListItemIcon>
-              <ListItemText>Delete</ListItemText>
-            </MenuItem>
-          </Menu>
-        </>
-      );
-    }
+    const clientId = item._id || item.id || '';
+    const isCurrentMenuOpen = isMenuOpen && menuClientId === String(clientId);
 
     return (
-      <Stack direction="row">
-        <IconButton onClick={() => handleOpenEditModal(item)}>
-          <EditOutlined color="primary" />
+      <>
+        <IconButton 
+          onClick={(e) => handleOpenMoreMenu(e, String(clientId))} 
+          size="small"
+          sx={{ color: 'text.secondary' }}
+        >
+          <MoreVert fontSize="small" />
         </IconButton>
-        <IconButton onClick={() => handleOpenDeleteModal(item)}>
-          <DeleteOutline color="error" />
-        </IconButton>
-      </Stack>
+        <Menu
+          anchorEl={menuAnchorEl}
+          open={isCurrentMenuOpen}
+          onClose={handleCloseMenu}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+          transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <MenuItem 
+            onClick={(e) => {
+              e.stopPropagation();
+              handleOpenEditModal(item);
+            }}
+          >
+            <ListItemIcon>
+              <EditOutlined fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>Edit</ListItemText>
+          </MenuItem>
+          <MenuItem 
+            onClick={(e) => {
+              e.stopPropagation();
+              handleOpenDeleteModal(item);
+            }}
+            sx={{ color: 'error.main' }}
+          >
+            <ListItemIcon>
+              <DeleteOutline fontSize="small" sx={{ color: 'error.main' }} />
+            </ListItemIcon>
+            <ListItemText>Delete</ListItemText>
+          </MenuItem>
+        </Menu>
+      </>
     );
   };
 

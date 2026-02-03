@@ -22,6 +22,14 @@ export interface Subtask {
   updatedAt?: string;
 }
 
+export interface AssigneeInfo {
+  _id: string;
+  firstName?: string;
+  lastName?: string;
+  email: string;
+  photoUrl?: string;
+}
+
 export type Task = {
   id: number | string;
   title: string;
@@ -34,6 +42,7 @@ export type Task = {
   attachments?: TaskAttachment[];
   subtasks?: Subtask[];
   assignee?: string[]; // Array of user IDs
+  assigneeInfo?: AssigneeInfo[]; // Array of assignee information with profile pictures
 };
 
 export interface ResponsiveTableColumn {
