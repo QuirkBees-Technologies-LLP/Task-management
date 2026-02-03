@@ -44,6 +44,7 @@ html {
   scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
 }
+
 body,
 #root,
 #root__layout {
@@ -52,23 +53,28 @@ body,
   min-height: 100%;
   flex-direction: column;
 }
+
 img {
   max-width: 100%;
   vertical-align: middle;
 }
+
 ul {
   margin: 0;
   padding: 0;
   list-style-type: none;
 }
+
 input[type='number'] {
   -moz-appearance: textfield;
   appearance: none;
 }
+
 input[type='number']::-webkit-outer-spin-button {
   margin: 0;
   -webkit-appearance: none;
 }
+
 input[type='number']::-webkit-inner-spin-button {
   margin: 0;
   -webkit-appearance: none;
@@ -76,15 +82,32 @@ input[type='number']::-webkit-inner-spin-button {
 
 /* styles/globals.css */
 #nprogress .bar {
-  height: 2px; /* Adjust the height of the bar */
+  height: 2px;
+  /* Adjust the height of the bar */
   z-index: 999999 !important;
 }
+
 td.MuiTableCell-root {
   border-bottom: 1px solid #EEF0F4;
   font-size: 13px;
 }
 
 /* Dark mode */
-.dark td.MuiTableCell-root  {
+.dark td.MuiTableCell-root {
   border-bottom: 1px solid #1F2937 !important;
+}
+
+.sidebar_design~.MuiBox-root {
+  margin-top: 70px !important;
+}
+
+@media screen and (max-width: 899px) {
+  .sub-header-xs~.MuiBox-root {
+    margin-top: 130px !important;
+  }
+}
+@media screen and (max-width: 575px) {
+  .sub-header-xs~.MuiBox-root {
+    margin-top: 140px !important;
+  }
 }

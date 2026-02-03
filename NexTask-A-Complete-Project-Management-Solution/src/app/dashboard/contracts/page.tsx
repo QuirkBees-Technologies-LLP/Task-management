@@ -7,11 +7,17 @@ import ContractForm from './components/ContractForm';
 import PageHeader from '@/components/PageHeader';
 import { Contract } from './types';
 import ResponsiveTable from '@/components/Table';
-import { contractColumns, getContractStatusColor } from './helpers';
+import { contractColumns } from './helpers';
 import axios from 'axios';
 import { safeLocalStorageGet } from '@/utils/helpers';
 import { accessTokenKey } from '@/utils/constants';
 import { enqueueSnackbar } from 'notistack';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
+import {
+  Menu,
+  MenuItem,
+  ListItemIcon,
+} from '@mui/material';
 
 export default function Contracts() {
   const theme = useTheme();
@@ -21,7 +27,7 @@ export default function Contracts() {
   const [saving, setSaving] = useState<boolean>(false);
   const [selectedContract, setSelectedContract] = useState<Contract | undefined>(undefined);
   const [isFormOpen, setIsFormOpen] = useState<boolean>(false);
-  const [open, setOpen] = useState<boolean>(false);
+  const [setOpen] = useState<boolean>(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState<boolean>(false);
   const [contractToDelete, setContractToDelete] = useState<Contract | null>(null);
 
@@ -175,6 +181,23 @@ export default function Contracts() {
       setSaving(false);
     }
   };
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [selectedItem, setSelectedItem] = useState<Contract | null>(null);
+
+  const open = Boolean(anchorEl);
+
+  const handleMenuOpen = (
+    event: React.MouseEvent<HTMLElement>,
+    item: Contract
+  ) => {
+    setAnchorEl(event.currentTarget);
+    setSelectedItem(item);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+    setSelectedItem(null);
+  };
 
   return (
     <>
@@ -239,37 +262,49 @@ export default function Contracts() {
               />
 
               {/* RIGHT SIDE BUTTON */}
-                <Button
-                  variant="outlined"
-                  startIcon={<AddOutlined />}
-                  onClick={handleAddContract}
-                  sx={{
-                    borderRadius: "6px",
-                    fontWeight: 500,
-                    color: (theme) =>
-                      theme.palette.mode === "dark" ? "#fff" : "#000",
+              <Button
+                variant="outlined"
+                startIcon={<AddOutlined />}
+                onClick={handleAddContract}
+                sx={{
+                  borderRadius: "6px",
+                  fontWeight: 500,
+                  color: (theme) =>
+                    theme.palette.mode === "dark" ? "#fff" : "#000",
 
+                  borderColor: (theme) =>
+                    theme.palette.mode === "dark" ? "#fff" : "#000",
+
+                  "&:hover": {
                     borderColor: (theme) =>
                       theme.palette.mode === "dark" ? "#fff" : "#000",
 
-                    "&:hover": {
-                      borderColor: (theme) =>
-                        theme.palette.mode === "dark" ? "#fff" : "#000",
-
-                      backgroundColor: (theme) =>
-                        theme.palette.mode === "dark"
-                          ? "rgba(255, 255, 255, 0.08)"
-                          : "rgba(0, 0, 0, 0.04)",
-                    },
-                  }}
-                >
-                  Add Contracts
-                </Button>
+                    backgroundColor: (theme) =>
+                      theme.palette.mode === "dark"
+                        ? "rgba(255, 255, 255, 0.08)"
+                        : "rgba(0, 0, 0, 0.04)",
+                  },
+                }}
+              >
+                Add Contracts
+              </Button>
             </Box>
           }
         />
       </Box>
-      <Paper sx={{ p: isSmallScreen ? 2 : 0 }}>
+      <Paper
+        elevation={0}
+        sx={(theme) => ({
+          borderRadius: '8px',
+          overflow: 'hidden',
+          border: theme.palette.mode === 'dark'
+            ? '1px solid #2A2F3A'
+            : '1px solid #EDEFF3',
+          backgroundColor: theme.palette.mode === 'dark'
+            ? '#0F172A'
+            : '#FFFFFF',
+        })}
+      >
         <ResponsiveTable
           columns={contractColumns}
           data={contracts}
@@ -279,35 +314,65 @@ export default function Contracts() {
             secondaryKeys: ['client', 'startDate', 'endDate'],
           }}
           renderActions={(item: Contract) => (
-            <Stack direction="row" spacing={1}>
-              <IconButton
-                size="small"
-                color="primary"
-                onClick={() => handleViewContract(item)}
-                title="View"
-              >
-                <Visibility fontSize="small" />
+            <>
+              <IconButton size="small" onClick={(e) => handleMenuOpen(e, item)}>
+                <MoreVertIcon fontSize="small" />
               </IconButton>
-              <IconButton
-                size="small"
-                color="secondary"
-                onClick={() => handleEditContract(item)}
-                title="Edit"
+
+              <Menu
+                anchorEl={anchorEl}
+                open={open && selectedItem?.id === item.id}
+                onClose={handleMenuClose}
+                anchorOrigin={{
+                  vertical: 'bottom',
+                  horizontal: 'right',
+                }}
+                transformOrigin={{
+                  vertical: 'top',
+                  horizontal: 'right',
+                }}
+                PaperProps={{
+                  sx: (theme) => ({
+                    borderRadius: '8px',
+                    minWidth: 160,
+                    bgcolor:
+                      theme.palette.mode === 'dark'
+                        ? '#111827'
+                        : '#FFFFFF',
+                    border: `1px solid ${theme.palette.mode === 'dark' ? '#1F2937' : '#E5E7EB'
+                      }`,
+                  }),
+                }}
               >
-                <Edit fontSize="small" />
-              </IconButton>
-              <IconButton
-                size="small"
-                color="error"
-                onClick={() => handleDeleteContract(item)}
-                title="Delete"
-              >
-                <DeleteOutline fontSize="small" />
-              </IconButton>
-              {isSmallScreen && (
-                <Chip label={item.status} color={getContractStatusColor(item.status)} size="small" />
-              )}
-            </Stack>
+                <MenuItem
+                  onClick={() => {
+                    handleViewContract(item);
+                    handleMenuClose();
+                  }}
+                >
+                  <Typography>View</Typography>
+                </MenuItem>
+
+                <MenuItem
+                  onClick={() => {
+                    handleEditContract(item);
+                    handleMenuClose();
+                  }}
+                >
+                  <Typography>Edit</Typography>
+                </MenuItem>
+
+                <MenuItem
+                  onClick={() => {
+                    handleDeleteContract(item);
+                    handleMenuClose();
+                  }}
+                  sx={{ color: 'error.main' }}
+                >
+                  <Typography>Delete</Typography>
+                </MenuItem>
+              </Menu>
+            </>
           )}
         />
       </Paper>

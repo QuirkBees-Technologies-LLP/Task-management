@@ -19,7 +19,21 @@ const clientsColumns: ResponsiveTableColumn[] = [
         <Stack direction="row" spacing={1.5} alignItems="center">
           <Avatar
             src={client.photoUrl || undefined}
-            sx={{ width: 32, height: 32, fontSize: 14 }}
+            sx={(theme) => ({
+              width: 38,
+              height: 38,
+              borderRadius: '8px',
+              bgcolor:
+                theme.palette.mode === 'dark'
+                  ? '#1F2937'
+                  : '#F3F4F6',
+              color:
+                theme.palette.mode === 'dark'
+                  ? '#E5E7EB'
+                  : '#111827',
+              fontWeight: 600,
+              fontSize: 15,
+            })}
           >
             {(!client.photoUrl && initials) || undefined}
           </Avatar>

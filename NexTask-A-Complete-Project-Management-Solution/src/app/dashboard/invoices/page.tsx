@@ -479,31 +479,47 @@ export default function InvoicesFeature() {
         />
       </Box>
 
-      {/* {isSmallScreen && (
-        <Box>
-          <TextField
-            fullWidth
-            label="Filter by project or status"
-            variant="standard"
-            margin="normal"
-            value={filter}
-            onChange={handleFilterChange}
-            size="small"
-            sx={{ mb: 1.5 }}
-          />
-        </Box>
-      )} */}
-
-      <Paper>
+      <Paper
+        elevation={0}
+        sx={(theme) => ({
+          borderRadius: '8px',
+          overflow: 'hidden',
+          border: theme.palette.mode === 'dark'
+            ? '1px solid #2A2F3A'
+            : '1px solid #EDEFF3',
+          backgroundColor: theme.palette.mode === 'dark'
+            ? '#0F172A'
+            : '#FFFFFF',
+        })}
+      >
         <TableContainer>
           <Table>
             <TableHead>
-              <TableRow>
+              <TableRow
+                sx={(theme) => ({
+                  backgroundColor:
+                    theme.palette.mode === 'dark'
+                      ? '#111827'
+                      : '#FAFBFD',
+                  '& th': {
+                    fontSize: 13,
+                    fontWeight: 500,
+                    color:
+                      theme.palette.mode === 'dark'
+                        ? '#9CA3AF'
+                        : 'text.secondary',
+                    borderBottom:
+                      theme.palette.mode === 'dark'
+                        ? '1px solid #1F2937'
+                        : '1px solid #EDEFF3',
+                  },
+                })}
+              >
                 <TableCell>Invoice</TableCell>
                 <TableCell>Amount</TableCell>
                 <TableCell>Status</TableCell>
                 <TableCell>Due Date</TableCell>
-                <TableCell align="right">Actions</TableCell>
+                <TableCell align="left">Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -511,19 +527,19 @@ export default function InvoicesFeature() {
                 Array.from({ length: 5 }).map((_, index) => (
                   <TableRow key={index}>
                     <TableCell>
-                      <Skeleton variant="text" width="60%" />
+                      <Skeleton variant="text" />
                     </TableCell>
                     <TableCell>
-                      <Skeleton variant="text" width="40%" />
+                      <Skeleton variant="text" />
                     </TableCell>
                     <TableCell>
-                      <Skeleton variant="rectangular" width={80} height={28} />
+                      <Skeleton variant="rectangular"/>
                     </TableCell>
                     <TableCell>
-                      <Skeleton variant="text" width="50%" />
+                      <Skeleton variant="text" />
                     </TableCell>
-                    <TableCell align="right">
-                      <Skeleton variant="text" width="30%" />
+                    <TableCell align="left">
+                      <Skeleton variant="text" />
                     </TableCell>
                   </TableRow>
                 ))

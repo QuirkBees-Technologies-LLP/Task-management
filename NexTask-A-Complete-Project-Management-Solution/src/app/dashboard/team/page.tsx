@@ -676,15 +676,13 @@ const StaffManagementPage: React.FC = () => {
                         PaperProps={{
                           sx: (theme) => ({
                             borderRadius: '8px',
-                            minWidth: 140,
-                            backgroundColor:
+                            minWidth: 160,
+                            bgcolor:
                               theme.palette.mode === 'dark'
                                 ? '#111827'
                                 : '#FFFFFF',
-                            border:
-                              theme.palette.mode === 'dark'
-                                ? '1px solid #1F2937'
-                                : '1px solid #EDEFF3',
+                            border: `1px solid ${theme.palette.mode === 'dark' ? '#1F2937' : '#E5E7EB'
+                              }`,
                           }),
                         }}
                       >
@@ -695,11 +693,9 @@ const StaffManagementPage: React.FC = () => {
                             handleOpenEdit(selectedStaff);
                           }}
                           sx={{
-                            fontSize: 14,
                             gap: 1.5,
                           }}
                         >
-                          <Edit fontSize="small" />
                           Edit
                         </MenuItem>
 
@@ -711,12 +707,10 @@ const StaffManagementPage: React.FC = () => {
                             setDeleteDialogOpen(true); // existing delete dialog
                           }}
                           sx={{
-                            fontSize: 14,
                             gap: 1.5,
                             color: 'error.main',
                           }}
                         >
-                          <Delete fontSize="small" />
                           Delete
                         </MenuItem>
                       </Menu>

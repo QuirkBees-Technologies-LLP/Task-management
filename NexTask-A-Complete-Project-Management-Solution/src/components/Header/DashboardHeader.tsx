@@ -121,7 +121,7 @@ const DashboardAppbar: React.FC<DashboardAppbarProps> = ({
             sx={{
               display: 'flex',
               alignItems: 'center',
-              gap: '32px',
+              gap: {xs: "15px", md: "32px"},
               // width: isSmallScreen
               //   ? 'auto'
               //   : collapsed
@@ -182,12 +182,14 @@ const DashboardAppbar: React.FC<DashboardAppbarProps> = ({
               </Box>
             ) : (
               <>
-                {pageTitle && (
-                  <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary', lineHeight: 1.1 }}>
-                    {pageTitle}
-                  </Typography>
-                )}
-                {breadcrumbs && <Box sx={{ mt: pageTitle ? 0.25 : 0 }}>{breadcrumbs}</Box>}
+                <Box sx={{ display: { xs: 'none', md: 'block' } }}>
+                  {pageTitle && (
+                    <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary', lineHeight: 1.1 }}>
+                      {pageTitle}
+                    </Typography>
+                  )}
+                  {breadcrumbs && <Box sx={{ mt: pageTitle ? 0.25 : 0 }}>{breadcrumbs}</Box>}
+                </Box>
               </>
             )}
           </Box>

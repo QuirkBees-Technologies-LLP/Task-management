@@ -77,7 +77,7 @@ export default function PageHeader({ title, ...props }: CardHeaderPropsWithCompo
   if (isDashboard) {
     if (props.action) {
       return (
-        <Box sx={{ mb: 3, display: 'flex', justifyContent: 'flex-end' }}>
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
           {props.action}
         </Box>
       );
@@ -90,12 +90,14 @@ export default function PageHeader({ title, ...props }: CardHeaderPropsWithCompo
     return (
       <Box sx={{ mb: 3 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-          <Stack spacing={1} sx={{ flex: 1 }}>
-            <Typography variant="h5" sx={{ fontWeight: 600, fontSize: '1.5rem' }}>
-              Projects
-            </Typography>
-            <BreadCrumbs mb={0} inDashboard={false} />
-          </Stack>
+          <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+            <Stack spacing={1} sx={{ flex: 1 }}>
+              <Typography variant="h5" sx={{ fontWeight: 600, fontSize: '1.5rem' }}>
+                Projects
+              </Typography>
+              <BreadCrumbs mb={0} inDashboard={false} />
+            </Stack>
+          </Box>
           {props.action && (
             <Box sx={{ ml: 2, flexShrink: 0 }}>
               {props.action}

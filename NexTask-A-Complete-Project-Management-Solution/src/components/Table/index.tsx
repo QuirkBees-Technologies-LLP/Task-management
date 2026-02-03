@@ -215,9 +215,40 @@ const Table: React.FC<TableProps> = ({ loading, data, columns, renderActions }) 
         ) : (
           <MuiTable aria-label="responsive-table">
             <TableHead>
-              <TableRow>
+              <TableRow
+                sx={(theme) => ({
+                  backgroundColor:
+                    theme.palette.mode === 'dark'
+                      ? '#111827'
+                      : '#FAFBFD',
+                  '& th': {
+                    fontSize: 13,
+                    fontWeight: 500,
+                    color:
+                      theme.palette.mode === 'dark'
+                        ? '#9CA3AF'
+                        : 'text.secondary',
+                    borderBottom:
+                      theme.palette.mode === 'dark'
+                        ? '1px solid #1F2937'
+                        : '1px solid #EDEFF3',
+                  },
+                })}
+              >
                 {columns.map((column) => (
-                  <TableCell key={column.key} align={column.align}>
+                  <TableCell
+                    key={column.key}
+                    align={column.align}
+                    sx={{
+                      fontSize: 13,
+                      fontWeight: 500,
+                      color: (theme) =>
+                        theme.palette.mode === 'dark' ? '#94A3B8' : '#64748B',
+                      borderBottom: '1px solid',
+                      borderColor: (theme) =>
+                        theme.palette.mode === 'dark' ? '#1E293B' : '#E5E7EB',
+                    }}
+                  >
                     <TableSortLabel
                       active={orderBy === column.key}
                       direction={orderBy === column.key ? order : 'asc'}
@@ -227,9 +258,14 @@ const Table: React.FC<TableProps> = ({ loading, data, columns, renderActions }) 
                     </TableSortLabel>
                   </TableCell>
                 ))}
-                {renderActions && <TableCell align="center">Actions</TableCell>}
+                {renderActions && (
+                  <TableCell align="left" sx={{ fontSize: 13, color: 'text.secondary', borderColor: (theme) => theme.palette.mode === 'dark' ? '#1E293B' : '#E5E7EB', }}>
+                    Actions
+                  </TableCell>
+                )}
               </TableRow>
             </TableHead>
+
             <TableBody>
               <>
                 {safeData.length ? (
@@ -247,14 +283,19 @@ const Table: React.FC<TableProps> = ({ loading, data, columns, renderActions }) 
                       return (
                         <TableRow
                           key={uniqueKey}
-                          suppressHydrationWarning
-                          sx={{
-                            bgcolor: taskDueToday ? '#fca5a5' : 'inherit', // soft red background for tasks due today
-                            color: taskDueToday ? '#1f2937' : 'inherit', // dark text for good contrast
-                            '&:hover': {
-                              bgcolor: taskDueToday ? '#f87171' : 'action.hover', // slightly darker red on hover
+                          hover
+                          sx={(theme) => ({
+                            '& td': {
+                              fontSize: 13,
+                              borderBottom: `1px solid ${theme.palette.divider}`,
                             },
-                          }}
+                            '&:hover': {
+                              backgroundColor:
+                                theme.palette.mode === 'dark'
+                                  ? '#020617'
+                                  : '#FAFBFF',
+                            },
+                          })}
                         >
                           {columns.map(({ key, align, render }) => (
                             <TableCell key={`${uniqueKey}-${key}`} align={align} suppressHydrationWarning>
@@ -262,7 +303,7 @@ const Table: React.FC<TableProps> = ({ loading, data, columns, renderActions }) 
                             </TableCell>
                           ))}
                           {renderActions && (
-                            <TableCell align="center">{renderActions(item)}</TableCell>
+                            <TableCell align="left">{renderActions(item)}</TableCell>
                           )}
                         </TableRow>
                       );

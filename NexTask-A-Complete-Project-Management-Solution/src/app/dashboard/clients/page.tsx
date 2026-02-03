@@ -350,7 +350,19 @@ const ClientManagement: React.FC = () => {
         />
       </Box>
       {/* Responsive Table */}
-      <Paper sx={{ p: isSmallScreen ? 2 : 0 }}>
+      <Paper
+        elevation={0}
+        sx={(theme) => ({
+          borderRadius: '8px',
+          overflow: 'hidden',
+          border: theme.palette.mode === 'dark'
+            ? '1px solid #2A2F3A'
+            : '1px solid #EDEFF3',
+          backgroundColor: theme.palette.mode === 'dark'
+            ? '#0F172A'
+            : '#FFFFFF',
+        })}
+      >
         <ResponsiveTable
           data={dataSource}
           columns={clientsColumns}

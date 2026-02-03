@@ -71,7 +71,7 @@ export default function SubHeader({ collapsed = false }: SubHeaderProps) {
   const theme = useTheme();
   const isSmallScreen = useMediaQuery(theme.breakpoints.down('md'));
   const isDashboard = pathname?.startsWith('/dashboard');
-  
+
   // Only show sub-header for dashboard pages
   if (!isDashboard) {
     return null;
@@ -84,13 +84,16 @@ export default function SubHeader({ collapsed = false }: SubHeaderProps) {
 
   return (
     <Box
+      className="sub-header-xs"
       sx={{
         position: 'fixed',
+        display: { xs: 'block', md: 'none' },
         top: `${appbarHeight}px`,
         left: `${leftMargin}px`,
         right: 0,
         zIndex: (theme) => theme.zIndex.drawer - 1,
-        backgroundColor: 'transparent',
+        backgroundColor: (theme) => theme.palette.background.paper,
+        borderBottom: (theme) => `1px solid ${theme.palette.divider}`,
         px: { xs: 2, sm: 3, md: 4 },
         py: 2,
         transition: (theme) =>
@@ -100,14 +103,16 @@ export default function SubHeader({ collapsed = false }: SubHeaderProps) {
           }),
       }}
     >
-      <Stack spacing={1}>
-        {pageTitle && (
-          <Typography variant="h5" sx={{ fontWeight: 600, fontSize: '1.5rem', color: 'text.primary' }}>
-            {pageTitle}
-          </Typography>
-        )}
-        <BreadCrumbs mb={0} inDashboard={isDashboard} />
-      </Stack>
+      <Box>
+        <Stack spacing={1}>
+          {pageTitle && (
+            <Typography variant="h5" sx={{ fontWeight: 600, fontSize: '1.5rem', color: 'text.primary' }}>
+              {pageTitle}
+            </Typography>
+          )}
+          <BreadCrumbs mb={0} inDashboard={isDashboard} />
+        </Stack>
+      </Box>
     </Box>
   );
 }

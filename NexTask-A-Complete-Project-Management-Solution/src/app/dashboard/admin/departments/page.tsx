@@ -646,13 +646,13 @@ const DepartmentsPage: React.FC = () => {
           PaperProps={{
             sx: (theme) => ({
               borderRadius: '8px',
-              minWidth: 140,
-              border: `1px solid ${theme.palette.divider}`,
-              backgroundColor: theme.palette.background.paper,
-              '& .MuiMenuItem-root': {
-                fontSize: 13,
-                gap: 1,
-              },
+              minWidth: 160,
+              bgcolor:
+                theme.palette.mode === 'dark'
+                  ? '#111827'
+                  : '#FFFFFF',
+              border: `1px solid ${theme.palette.mode === 'dark' ? '#1F2937' : '#E5E7EB'
+                }`,
             }),
           }}
         >
@@ -662,7 +662,6 @@ const DepartmentsPage: React.FC = () => {
               setAnchorEl(null);
             }}
           >
-            <Edit fontSize="small" />
             Edit
           </MenuItem>
 
@@ -671,9 +670,7 @@ const DepartmentsPage: React.FC = () => {
               setDeleteDialogOpen(true);
               setAnchorEl(null);
             }}
-            sx={{ color: 'error.main' }}
-          >
-            <Delete fontSize="small" />
+            sx={{ color: 'error.main' }}>
             Delete
           </MenuItem>
         </Menu>
