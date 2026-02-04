@@ -116,7 +116,7 @@ export const SortableItem: React.FC<SortableItemProps> = ({
     }
     const displayUsers = task.assigneeInfo.slice(0, 3);
     return (
-      <Stack direction="row" spacing={0.5} sx={{ ml: 'auto' }}>
+      <Stack direction="row" className='task_user' spacing={0.5} sx={{ mt: '5px' }}>
         {displayUsers.map((user, index) => {
           const firstName = user.firstName || '';
           const lastName = user.lastName || '';
@@ -127,10 +127,11 @@ export const SortableItem: React.FC<SortableItemProps> = ({
             <Tooltip key={user._id || index} title={displayName}>
               <Avatar
                 sx={{
-                  width: 24,
-                  height: 24,
-                  fontSize: '10px',
+                  width: 28,
+                  height: 28,
+                  fontSize: '12px',
                   bgcolor: user.photoUrl ? 'transparent' : theme.palette.primary.main,
+                  border: `1px solid ${theme.palette.divider}`,
                 }}
                 src={user.photoUrl}
                 alt={initials}
@@ -142,7 +143,7 @@ export const SortableItem: React.FC<SortableItemProps> = ({
         })}
         {task.assigneeInfo.length > 3 && (
           <Tooltip title={`+${task.assigneeInfo.length - 3} more`}>
-            <Avatar sx={{ width: 24, height: 24, bgcolor: theme.palette.primary.main, fontSize: '10px' }}>
+            <Avatar sx={{ width: 28, height: 28, bgcolor: theme.palette.primary.main, fontSize: '12px' }}>
               +{task.assigneeInfo.length - 3}
             </Avatar>
           </Tooltip>
@@ -178,11 +179,11 @@ export const SortableItem: React.FC<SortableItemProps> = ({
       {...attributes}
       {...listeners}
       sx={{
-        mb: 0,
+        mb: '0 !important',
         bgcolor: theme.palette.background.paper, // White background for task cards
         border: `1px solid ${theme.palette.divider}`,
         borderRadius: '8px',
-        boxShadow: dndIsDragging ? theme.shadows[8] : theme.shadows[1],
+        padding: '16px',
         minHeight: 'auto',
         cursor: dndIsDragging ? 'grabbing' : 'grab',
         userSelect: 'none', // Prevent text selection during drag
@@ -197,8 +198,8 @@ export const SortableItem: React.FC<SortableItemProps> = ({
     >
       {task ? (
         <>
-          <CardContent sx={{ p: 1, pb: 0.75, '&:last-child': { pb: 0.75 }, overflow: 'visible' }}>
-            <Stack direction="row" spacing={0.5} alignItems="flex-start" sx={{ mb: 0.5 }}>
+          <CardContent sx={{ p: '0 !important', overflow: 'visible' }}>
+            <Stack direction="row" alignItems="center" gap={1} sx={{ mb: 2 }}>
               {/* Checkmark icon - green filled when completed, gray outlined when not */}
               {(() => {
                 const taskStatus = (task.status || '').toLowerCase();
@@ -208,7 +209,6 @@ export const SortableItem: React.FC<SortableItemProps> = ({
                     sx={{
                       color: '#10b981',
                       fontSize: '20px',
-                      mt: 0.25,
                       flexShrink: 0,
                     }}
                   />
@@ -217,7 +217,6 @@ export const SortableItem: React.FC<SortableItemProps> = ({
                     sx={{
                       color: theme.palette.text.disabled,
                       fontSize: '20px',
-                      mt: 0.25,
                       flexShrink: 0,
                     }}
                   />
@@ -229,7 +228,20 @@ export const SortableItem: React.FC<SortableItemProps> = ({
                   fontWeight={500}
                   sx={{
                     mb: 0,
-                    color: theme.palette.text.primary,
+                    backgroundColor:
+                      theme.palette.mode === 'dark'
+                        ? 'rgb(52 62 78 / 80%)'   // dark slate
+                        : 'rgba(243, 244, 246, 0.8)',
+
+                    padding: '6px',
+                    borderRadius: '4px',
+                    width: 'fit-content',
+
+                    color:
+                      theme.palette.mode === 'dark'
+                        ? 'rgba(226, 232, 240, 1)' // light text
+                        : theme.palette.text.primary,
+
                     lineHeight: 1.2,
                     fontSize: '13px',
                   }}
@@ -283,9 +295,10 @@ export const SortableItem: React.FC<SortableItemProps> = ({
                 label={getStatusDisplayName(task.status || 'Todo', task.projectId)}
                 size="small"
                 sx={{
-                  height: '18px',
-                  fontSize: '10px',
                   fontWeight: 500,
+                  minWidth: 'fit-content',
+                  borderRadius: '4px',
+                  fontSize: '12px',
                   bgcolor: getStatusColor(task.status || 'Todo', task.projectId).bg,
                   color: getStatusColor(task.status || 'Todo', task.projectId).text,
                   border: 'none',
@@ -299,9 +312,10 @@ export const SortableItem: React.FC<SortableItemProps> = ({
                 label={getPriorityDisplayName(task.priority || 'Medium', task.projectId)}
                 size="small"
                 sx={{
-                  height: '18px',
-                  fontSize: '10px',
                   fontWeight: 500,
+                  minWidth: 'fit-content',
+                  borderRadius: '4px',
+                  fontSize: '12px',
                   bgcolor: getPriorityColor(task.priority || 'Medium').bg,
                   color: getPriorityColor(task.priority || 'Medium').text,
                   border: 'none',
@@ -314,36 +328,34 @@ export const SortableItem: React.FC<SortableItemProps> = ({
             </Stack>
 
             {/* Deadline, Subtasks, and Assignees Row */}
-            <Stack 
-              direction="row" 
-              alignItems="center" 
-              spacing={1} 
-              sx={{ 
+            <Stack
+              sx={{
                 mt: 0.75,
                 flexWrap: 'wrap',
                 gap: 0.75,
               }}
             >
-              {/* Deadline */}
-              {task.dueDate && (
-                <Stack direction="row" alignItems="center" spacing={0.25}>
-                  <CalendarToday sx={{ fontSize: '12px', color: theme.palette.text.secondary }} />
-                  <Typography variant="caption" sx={{ fontSize: '11px', color: theme.palette.text.secondary }}>
-                    {formatDate(task.dueDate)}
-                  </Typography>
-                </Stack>
-              )}
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0, mt: 1 }}>
+                {/* Deadline */}
+                {task.dueDate && (
+                  <Stack direction="row" alignItems="center" spacing={0.25} gap={0.25}>
+                    <CalendarToday sx={{ fontSize: '14px', color: theme.palette.text.secondary }} />
+                    <Typography variant="caption" sx={{ fontSize: '14px', color: theme.palette.text.secondary }}>
+                      {formatDate(task.dueDate)}
+                    </Typography>
+                  </Stack>
+                )}
 
-              {/* Subtask Progress */}
-              {subtaskProgress && (
-                <Stack direction="row" alignItems="center" spacing={0.25}>
-                  <CheckBox sx={{ fontSize: '12px', color: theme.palette.text.secondary }} />
-                  <Typography variant="caption" sx={{ fontSize: '11px', color: theme.palette.text.secondary }}>
-                    {subtaskProgress.completed}/{subtaskProgress.total}
-                  </Typography>
-                </Stack>
-              )}
-
+                {/* Subtask Progress */}
+                {subtaskProgress && (
+                  <Stack direction="row" alignItems="center" spacing={0.25}>
+                    <CheckBox sx={{ fontSize: '12px', color: theme.palette.text.secondary }} />
+                    <Typography variant="caption" sx={{ fontSize: '11px', color: theme.palette.text.secondary }}>
+                      {subtaskProgress.completed}/{subtaskProgress.total}
+                    </Typography>
+                  </Stack>
+                )}
+              </Box>
               {/* Assignee Avatars */}
               {getAssigneeAvatars()}
             </Stack>

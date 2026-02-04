@@ -5,23 +5,24 @@
  */
 
 // Pastel color palette for custom sections - excludes colors used for standard sections
+// Pastel colors optimized for DARK MODE (rgba only)
 const PASTEL_COLORS = [
-  '#F0F9FF', // Sky blue
-  '#F5F0FF', // Lavender
-  '#FFF0F5', // Pink
-  '#F0FFF4', // Mint
-  '#FFFBF0', // Cream
-  '#FCE7F3', // Light pink
-  '#CCFBF1', // Light teal
-  '#DBEAFE', // Light blue
-  '#F3E8FF', // Light purple
-  '#FFE4E6', // Light rose
-  '#E0F2FE', // Light sky
-  '#F3F4F6', // Light gray
-  '#E5E7EB', // Light stone
-  '#FEF9E3', // Light yellow (different shade)
-  '#E8F4F8', // Light cyan
-  '#F5E6FF', // Light violet
+  'rgba(186, 230, 253, 0.1)', // Sky blue
+  'rgba(216, 180, 254, 0.1)', // Lavender
+  'rgba(251, 182, 206, 0.1)', // Pink
+  'rgba(167, 243, 208, 0.1)', // Mint
+  'rgba(254, 240, 138, 0.1)', // Cream
+  'rgba(251, 207, 232, 0.1)', // Light pink
+  'rgba(153, 246, 228, 0.1)', // Light teal
+  'rgba(191, 219, 254, 0.1)', // Light blue
+  'rgba(233, 213, 255, 0.1)', // Light purple
+  'rgba(254, 205, 211, 0.1)', // Light rose
+  'rgba(186, 230, 253, 0.1)', // Light sky
+  'rgba(209, 213, 219, 0.1)', // Light gray
+  'rgba(209, 213, 219, 0.1)', // Light stone
+  'rgba(234, 179, 8, 0.1)',  // Light yellow
+  'rgba(165, 243, 252, 0.1)', // Light cyan
+  'rgba(221, 214, 254, 0.1)', // Light violet
 ];
 
 /**
@@ -30,18 +31,17 @@ const PASTEL_COLORS = [
  * @returns A pastel background color hex code
  */
 const getRandomPastelColor = (sectionName: string): string => {
-  // Convert section name to a hash for consistent color assignment
   let hash = 0;
+
   for (let i = 0; i < sectionName.length; i++) {
-    const char = sectionName.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32-bit integer
+    hash = ((hash << 5) - hash) + sectionName.charCodeAt(i);
+    hash |= 0;
   }
 
-  // Use absolute value and modulo to get index
   const index = Math.abs(hash) % PASTEL_COLORS.length;
   return PASTEL_COLORS[index];
 };
+
 
 /**
  * Get background color for a task section based on its name
@@ -51,37 +51,37 @@ const getRandomPastelColor = (sectionName: string): string => {
  */
 export const getSectionBackgroundColor = (
   sectionName: string | undefined,
-  sectionId?: string | undefined
+  sectionId?: string
 ): string => {
   if (!sectionName) {
-    return '#F5F5F5'; // Default grayish
+    return 'rgba(148, 163, 184, 0.1)'; // default neutral dark gray
   }
 
   const nameLower = sectionName.toLowerCase().trim();
 
-  // To Do / Todo / Pending
+  // To Do / Pending
   if (nameLower.includes('todo') || nameLower.includes('to do') || nameLower.includes('pending')) {
-    return '#F5F5F5'; // Grayish background
+    return 'rgba(148, 163, 184, 0.1)'; // neutral gray
   }
 
   // In Progress
-  if (nameLower.includes('progress') || nameLower.includes('in progress')) {
-    return '#FFF9E6'; // Light yellow
+  if (nameLower.includes('progress')) {
+    return 'rgba(234, 179, 8, 0.1)'; // yellow (warning soft)
   }
 
   // Completed / Done
   if (nameLower.includes('completed') || nameLower.includes('done') || nameLower.includes('complete')) {
-    return '#E8F5E9'; // Light green
+    return 'rgba(34, 197, 94, 0.1)'; // green success
   }
 
   // In Review
-  if (nameLower.includes('review') || nameLower.includes('in review')) {
-    return '#E3F2FD'; // Light blue
+  if (nameLower.includes('review')) {
+    return 'rgba(59, 130, 246, 0.1)'; // blue info
   }
 
-  // For custom sections, use section ID if available for more consistent coloring,
-  // otherwise use section name
+  // Custom sections
   const identifier = sectionId || sectionName;
   return getRandomPastelColor(identifier);
 };
+
 

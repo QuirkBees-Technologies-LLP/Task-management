@@ -255,16 +255,16 @@ const TaskSectionColumn: React.FC<{
     return (
       <Paper
         sx={{
-          minWidth: 280,
-          maxWidth: 280,
-          width: 280,
+          minWidth: 388,
+          maxWidth: 388,
+          width: 388,
           height: 'calc(100vh - 180px)', // Full height columns
           display: 'flex',
           flexDirection: 'column',
           flexShrink: 0, // Prevent columns from shrinking
           bgcolor: sectionBgColor, // Section-specific background color
           border: (theme) => `1px solid ${isDragging ? theme.palette.primary.main : theme.palette.divider}`,
-          borderRadius: 2,
+          borderRadius: '8px',
           overflow: 'hidden', // Contain scrolling
           opacity: isDragging ? 0.5 : 1,
           transition: 'all 0.2s ease-in-out',
@@ -399,7 +399,7 @@ const TaskSectionColumn: React.FC<{
               ? theme.palette.mode === 'dark'
                 ? 'rgba(25, 118, 210, 0.15)' // More prominent blue tint in dark mode
                 : 'rgba(25, 118, 210, 0.08)' // More prominent blue tint in light mode
-            : sectionBgColor, // Use section background color
+              : sectionBgColor, // Use section background color
             borderRadius: 1,
             border: isOver
               ? `2px dashed ${theme.palette.primary.main}`
@@ -410,7 +410,9 @@ const TaskSectionColumn: React.FC<{
             transition: 'all 0.2s ease-in-out',
             position: 'relative',
             display: 'flex',
+            justifyContent: 'space-between',
             flexDirection: 'column',
+            borderRadius: '0',
             gap: 0.5, // Add gap between cards for better spacing
             '&::before': isOver ? {
               content: '""',
@@ -464,55 +466,57 @@ const TaskSectionColumn: React.FC<{
           >
             {section.tasks.length > 0 ? (
               <>
-                {section.tasks.map((task, index) => {
-                  // Ensure IDs are strings
-                  const taskId = task._id ? String(task._id) : `temp-${index}`;
-                  const sectionId = section._id ? String(section._id) : '';
-                  const sortableId = `${sectionId}::${taskId}::${index}`;
-                  
-                  // Skip if task doesn't have a valid ID
-                  if (!task._id) {
-                    console.warn('Task missing _id:', task);
-                    return null;
-                  }
-                  
-                  // Use actual task status if available, otherwise fall back to section name
-                  // Convert API status format to frontend format
-                  let taskStatus = (task as any).status || section.name;
-                  if (taskStatus === 'pending') {
-                    taskStatus = 'Todo';
-                  } else if (taskStatus === 'in-progress') {
-                    taskStatus = 'In Progress';
-                  } else if (taskStatus === 'completed') {
-                    taskStatus = 'Done';
-                  }
-                  return (
-                  <SortableItem
-                      key={sortableId}
-                      id={sortableId}
-                    item={{
-                      id: taskId,
-                      title: task.title,
-                      description: task.description,
-                        status: taskStatus,
-                      priority: task.priority || 'Medium',
-                      projectId: section.projectId,
-                      dueDate: task.dueDate || '',
-                      subtasks: task.subtasks || [],
-                      assigneeInfo: (task as any).assigneeInfo || [],
-                    }}
-                      onEditTask={() => {
-                        // Pass task with converted status to ensure it's available
-                        const taskWithStatus = {
-                          ...task,
-                          status: taskStatus, // Use the converted status
-                        };
-                        onEditTask(taskWithStatus);
-                      }}
-                    onDeleteTask={() => onDeleteTask(taskId)}
-                  />
-                  );
-                })}
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                  {section.tasks.map((task, index) => {
+                    // Ensure IDs are strings
+                    const taskId = task._id ? String(task._id) : `temp-${index}`;
+                    const sectionId = section._id ? String(section._id) : '';
+                    const sortableId = `${sectionId}::${taskId}::${index}`;
+
+                    // Skip if task doesn't have a valid ID
+                    if (!task._id) {
+                      console.warn('Task missing _id:', task);
+                      return null;
+                    }
+
+                    // Use actual task status if available, otherwise fall back to section name
+                    // Convert API status format to frontend format
+                    let taskStatus = (task as any).status || section.name;
+                    if (taskStatus === 'pending') {
+                      taskStatus = 'Todo';
+                    } else if (taskStatus === 'in-progress') {
+                      taskStatus = 'In Progress';
+                    } else if (taskStatus === 'completed') {
+                      taskStatus = 'Done';
+                    }
+                    return (
+                      <SortableItem
+                        key={sortableId}
+                        id={sortableId}
+                        item={{
+                          id: taskId,
+                          title: task.title,
+                          description: task.description,
+                          status: taskStatus,
+                          priority: task.priority || 'Medium',
+                          projectId: section.projectId,
+                          dueDate: task.dueDate || '',
+                          subtasks: task.subtasks || [],
+                          assigneeInfo: (task as any).assigneeInfo || [],
+                        }}
+                        onEditTask={() => {
+                          // Pass task with converted status to ensure it's available
+                          const taskWithStatus = {
+                            ...task,
+                            status: taskStatus, // Use the converted status
+                          };
+                          onEditTask(taskWithStatus);
+                        }}
+                        onDeleteTask={() => onDeleteTask(taskId)}
+                      />
+                    );
+                  })}
+                </Box>
                 {/* Add Task Button - right after tasks */}
                 <Box sx={{ mt: 0.5, flexShrink: 0, px: 0.5 }}>
                   <Button
@@ -522,11 +526,22 @@ const TaskSectionColumn: React.FC<{
                     size="small"
                     variant="text"
                     sx={{
+                      backgroundColor: theme.palette.mode === 'dark'
+                        ? theme.palette.background.paper
+                        : '#fff',
+
+                      border: `1px solid ${theme.palette.divider}`,
+                      borderRadius: '8px',
+                      padding: '16px',
                       textTransform: 'none',
+
                       color: theme.palette.text.secondary,
                       justifyContent: 'flex-start',
+
                       '&:hover': {
-                        bgcolor: theme.palette.action.hover,
+                        bgcolor: theme.palette.mode === 'dark'
+                          ? theme.palette.action.hover
+                          : theme.palette.action.hover,
                       },
                     }}
                   >
@@ -546,7 +561,7 @@ const TaskSectionColumn: React.FC<{
                     flex: '0 1 auto',
                   }}
                 >
-                 
+
                 </Box>
                 {/* Add Task Button - after empty state */}
                 <Box sx={{ mt: 0.5, flexShrink: 0, px: 0.5 }}>
@@ -557,11 +572,22 @@ const TaskSectionColumn: React.FC<{
                     size="small"
                     variant="text"
                     sx={{
+                      backgroundColor: theme.palette.mode === 'dark'
+                        ? theme.palette.background.paper
+                        : '#fff',
+
+                      border: `1px solid ${theme.palette.divider}`,
+                      borderRadius: '8px',
+                      padding: '16px',
                       textTransform: 'none',
+
                       color: theme.palette.text.secondary,
                       justifyContent: 'flex-start',
+
                       '&:hover': {
-                        bgcolor: theme.palette.action.hover,
+                        bgcolor: theme.palette.mode === 'dark'
+                          ? theme.palette.action.hover
+                          : theme.palette.action.hover,
                       },
                     }}
                   >
@@ -660,10 +686,10 @@ const TaskBoard: React.FC<TaskBoardProps> = ({
       // It's a task drag
       const parts = activeId.split('::');
       const taskId = parts[1];
-    const section = sections.find((s) => s.tasks.some((t) => String(t._id) === taskId));
-    if (section) {
-      const task = section.tasks.find((t) => String(t._id) === taskId);
-      if (task) setActiveTask(task);
+      const section = sections.find((s) => s.tasks.some((t) => String(t._id) === taskId));
+      if (section) {
+        const task = section.tasks.find((t) => String(t._id) === taskId);
+        if (task) setActiveTask(task);
       }
     }
   };
@@ -916,7 +942,7 @@ const TaskBoard: React.FC<TaskBoardProps> = ({
     return (
       <Box sx={{ display: 'flex', gap: 2, overflowX: 'auto', pb: 2 }}>
         {[1, 2, 3].map((i) => (
-          <Skeleton key={i} variant="rectangular" width={300} height={600} sx={{ borderRadius: 2 }} />
+          <Skeleton key={i} variant="rectangular" width={388} height={775} sx={{ borderRadius: "8px" }} />
         ))}
       </Box>
     );
@@ -938,75 +964,75 @@ const TaskBoard: React.FC<TaskBoardProps> = ({
         <SortableContext
           items={sectionIds}
           strategy={horizontalListSortingStrategy}
-      >
-        <Box
-          sx={{
-            display: 'flex',
-            gap: 2,
-            overflowX: 'auto',
-            overflowY: 'hidden', // Prevent vertical scrolling on main container
-            pb: 2,
-            height: 'calc(100vh - 180px)',
-            width: '100%',
-            maxWidth: '100%',
-            // Prevent horizontal scroll on page level
-            position: 'relative',
-            // Custom scrollbar styling
-            '&::-webkit-scrollbar': {
-              height: '8px',
-            },
-            '&::-webkit-scrollbar-track': {
-              background: 'transparent',
-            },
-            '&::-webkit-scrollbar-thumb': {
-              background: theme.palette.divider,
-              borderRadius: '4px',
-              '&:hover': {
-                background: theme.palette.text.secondary,
-              },
-            },
-          }}
         >
-          {sections.map((section) => (
-              <SortableSectionColumn
-              key={section._id}
-              section={section}
-              onEditSection={handleEditSection}
-              onDeleteSection={handleDeleteSection}
-              onAddTask={onAddTask}
-              onEditTask={onEditTask}
-              onDeleteTask={onDeleteTask}
-              canManageSections={canManageSections}
-            />
-          ))}
-
-          {canManageSections && (
-            <Paper
-              sx={{
-                minWidth: 280,
-                maxWidth: 280,
-                width: 280,
-                height: 'calc(100vh - 180px)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0, // Prevent from shrinking
-                border: (theme) => `2px dashed ${theme.palette.divider}`,
-                borderRadius: 2,
-                cursor: 'pointer',
+          <Box
+            sx={{
+              display: 'flex',
+              gap: 2,
+              overflowX: 'auto',
+              overflowY: 'hidden', // Prevent vertical scrolling on main container
+              pb: 2,
+              height: 'calc(100vh - 180px)',
+              width: '100%',
+              maxWidth: '100%',
+              // Prevent horizontal scroll on page level
+              position: 'relative',
+              // Custom scrollbar styling
+              '&::-webkit-scrollbar': {
+                height: '8px',
+              },
+              '&::-webkit-scrollbar-track': {
+                background: 'transparent',
+              },
+              '&::-webkit-scrollbar-thumb': {
+                background: theme.palette.divider,
+                borderRadius: '4px',
                 '&:hover': {
-                  borderColor: 'primary.main',
-                  bgcolor: 'action.hover',
+                  background: theme.palette.text.secondary,
                 },
-              }}
-              onClick={() => setAddSectionDialogOpen(true)}
-            >
-              <Button startIcon={<Add />} variant="text" size="small">
-                Add Section
-              </Button>
-            </Paper>
-          )}
-        </Box>
+              },
+            }}
+          >
+            {sections.map((section) => (
+              <SortableSectionColumn
+                key={section._id}
+                section={section}
+                onEditSection={handleEditSection}
+                onDeleteSection={handleDeleteSection}
+                onAddTask={onAddTask}
+                onEditTask={onEditTask}
+                onDeleteTask={onDeleteTask}
+                canManageSections={canManageSections}
+              />
+            ))}
+
+            {canManageSections && (
+              <Paper
+                sx={{
+                  minWidth: 388,
+                  maxWidth: 388,
+                  width: 388,
+                  height: 'calc(100vh - 180px)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0, // Prevent from shrinking
+                  border: (theme) => `2px dashed ${theme.palette.divider}`,
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  '&:hover': {
+                    borderColor: 'primary.main',
+                    bgcolor: 'action.hover',
+                  },
+                }}
+                onClick={() => setAddSectionDialogOpen(true)}
+              >
+                <Button startIcon={<Add />} variant="text" size="small">
+                  Add Section
+                </Button>
+              </Paper>
+            )}
+          </Box>
         </SortableContext>
 
         <DragOverlay>
@@ -1014,15 +1040,15 @@ const TaskBoard: React.FC<TaskBoardProps> = ({
             <Paper
               sx={{
                 p: 2,
-                minWidth: 280,
-                maxWidth: 280,
-                width: 280,
+                minWidth: 388,
+                maxWidth: 388,
+                width: 388,
                 height: 'calc(100vh - 180px)',
                 flexShrink: 0,
                 boxShadow: 3,
                 bgcolor: theme.palette.background.default,
                 border: `1px solid ${theme.palette.primary.main}`,
-                borderRadius: 2,
+                borderRadius: '8px',
               }}
             >
               <Typography variant="h6" sx={{ fontSize: '14px', fontWeight: 600 }}>
@@ -1033,7 +1059,7 @@ const TaskBoard: React.FC<TaskBoardProps> = ({
             <Paper
               sx={{
                 p: 2,
-                minWidth: 280,
+                minWidth: 388,
                 boxShadow: 3,
                 bgcolor: theme.palette.background.default,
               }}

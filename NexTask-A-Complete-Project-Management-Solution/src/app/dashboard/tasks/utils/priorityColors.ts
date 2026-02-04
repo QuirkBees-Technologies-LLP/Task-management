@@ -4,24 +4,28 @@
  */
 export const PRIORITY_COLORS = {
   Low: {
-    bg: '#D1FAE5',
-    text: '#065F46',
+    bg: 'rgba(34, 197, 94, 0.20)',     // soft green bg
+    text: 'rgb(20 ,184 ,138,1)',        // strong green text
   },
   Medium: {
-    bg: '#FEF3C7',
-    text: '#92400E',
+    bg: 'rgba(251, 191, 36, 0.20)',    // soft yellow bg
+    text: 'rgb(240, 144, 86,1)',      // strong amber text
   },
-  High: {
-    bg: '#E9D5FF',
-    text: '#6B21A8',
-  },
+High: {
+  bg: 'rgba(255, 59, 59, 0.12)',   // violet (no red tone)
+  text: '#FF3B3B',     // deep violet text
+},
 } as const;
+
 
 export type PriorityValue = 'Low' | 'Medium' | 'High';
 
-export const getPriorityColor = (priority: string): { bg: string; text: string } => {
-  const normalizedPriority = priority?.charAt(0).toUpperCase() + priority?.slice(1).toLowerCase();
-  
+export const getPriorityColor = (
+  priority: string
+): { bg: string; text: string } => {
+  const normalizedPriority =
+    priority?.charAt(0).toUpperCase() + priority?.slice(1).toLowerCase();
+
   switch (normalizedPriority) {
     case 'Low':
       return PRIORITY_COLORS.Low;
@@ -30,7 +34,7 @@ export const getPriorityColor = (priority: string): { bg: string; text: string }
     case 'High':
       return PRIORITY_COLORS.High;
     default:
-      return PRIORITY_COLORS.Medium; // Default to Medium
+      return PRIORITY_COLORS.Medium;
   }
 };
 

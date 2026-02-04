@@ -111,3 +111,9 @@ td.MuiTableCell-root {
     margin-top: 140px !important;
   }
 }
+.task_user .MuiAvatar-root+.MuiAvatar-root {
+  margin-left: -8px;
+}
+.MuiTableCell-root {
+  border-color: var(--mui-palette-divider) !important;
+}

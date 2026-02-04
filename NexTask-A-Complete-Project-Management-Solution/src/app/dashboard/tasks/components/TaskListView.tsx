@@ -34,6 +34,12 @@ import axios from 'axios';
 import { safeLocalStorageGet } from '@/utils/helpers';
 import { accessTokenKey } from '@/utils/constants';
 import { enqueueSnackbar } from 'notistack';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
+import {
+  Menu,
+  MenuItem,
+  ListItemIcon,
+} from '@mui/material';
 
 interface TaskSection {
   _id: string;
@@ -67,7 +73,6 @@ interface TaskListViewProps {
   refreshBoard?: () => void;
 }
 
-
 const TaskListView: React.FC<TaskListViewProps> = ({
   projectId,
   onEditTask,
@@ -79,6 +84,24 @@ const TaskListView: React.FC<TaskListViewProps> = ({
   const [loading, setLoading] = useState(true);
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
 
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+
+  const open = Boolean(anchorEl);
+
+  const handleMenuOpen = (
+    event: React.MouseEvent<HTMLElement>,
+    taskId: string
+  ) => {
+    event.stopPropagation();
+    setAnchorEl(event.currentTarget);
+    setSelectedTaskId(taskId);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+    setSelectedTaskId(null);
+  };
   // Load collapsed state from localStorage on mount
   useEffect(() => {
     try {
@@ -181,7 +204,7 @@ const TaskListView: React.FC<TaskListViewProps> = ({
   const getAssigneeDisplay = (task: TaskSection['tasks'][0]) => {
     // Use assigneeInfo if available (from board API), otherwise use assignee array
     const assigneeInfo = task.assigneeInfo || [];
-    const assigneeIds = task.assignee 
+    const assigneeIds = task.assignee
       ? (Array.isArray(task.assignee) ? task.assignee : [task.assignee])
       : [];
 
@@ -194,17 +217,23 @@ const TaskListView: React.FC<TaskListViewProps> = ({
     }
 
     // Prefer assigneeInfo if available
-    const displayUsers = assigneeInfo.length > 0 
-      ? assigneeInfo 
+    const displayUsers = assigneeInfo.length > 0
+      ? assigneeInfo
       : assigneeIds.map(id => ({ _id: String(id), firstName: '', lastName: '', email: '' }));
 
     return (
-      <Stack direction="row" spacing={0.5}>
+      <Stack direction="row" className='task_user' spacing={0.5}>
         {displayUsers.slice(0, 3).map((user, index) => {
           if (assigneeInfo.length > 0) {
             return (
               <Tooltip key={user._id || index} title={`${user.firstName} ${user.lastName}`.trim() || user.email}>
-                <Avatar sx={{ width: 24, height: 24, fontSize: '10px' }}>
+                <Avatar sx={{
+                  width: 28,
+                  height: 28,
+                  fontSize: '12px',
+                  // bgcolor: user.photoUrl ? 'transparent' : theme.palette.primary.main,
+                  border: `1px solid ${theme.palette.divider}`,
+                }}>
                   {user.firstName?.[0] || ''}
                   {user.lastName?.[0] || ''}
                 </Avatar>
@@ -215,7 +244,7 @@ const TaskListView: React.FC<TaskListViewProps> = ({
         })}
         {displayUsers.length > 3 && (
           <Tooltip title={`+${displayUsers.length - 3} more`}>
-            <Avatar sx={{ width: 24, height: 24, bgcolor: theme.palette.primary.main, fontSize: '10px' }}>
+            <Avatar sx={{ width: 28, height: 28, bgcolor: theme.palette.primary.main, fontSize: '12px' }}>
               +{displayUsers.length - 3}
             </Avatar>
           </Tooltip>
@@ -246,7 +275,7 @@ const TaskListView: React.FC<TaskListViewProps> = ({
       dueDate: task.dueDate || '',
       attachments: task.attachments || [],
       subtasks: task.subtasks || [],
-      assignee: task.assignee 
+      assignee: task.assignee
         ? (Array.isArray(task.assignee) ? task.assignee.map((id: any) => String(id)) : [String(task.assignee)])
         : [],
     };
@@ -303,7 +332,7 @@ const TaskListView: React.FC<TaskListViewProps> = ({
 
       // Refresh sections to show updated status
       fetchTaskSections();
-      
+
       // Dispatch event for other components
       window.dispatchEvent(new CustomEvent('taskUpdated'));
     } catch (error: any) {
@@ -327,9 +356,9 @@ const TaskListView: React.FC<TaskListViewProps> = ({
     <Box>
       {orderedSections.map((section) => {
         const sectionTasks = section.tasks || [];
-        
+
         const isCollapsed = collapsedSections.has(section._id);
-        
+
         return (
           <Box key={section._id} sx={{ mb: 3 }}>
             <Box
@@ -394,7 +423,7 @@ const TaskListView: React.FC<TaskListViewProps> = ({
                       <TableCell sx={{ fontWeight: 600, fontSize: '12px' }}>Due Date</TableCell>
                       <TableCell sx={{ fontWeight: 600, fontSize: '12px' }}>Priority</TableCell>
                       <TableCell sx={{ fontWeight: 600, fontSize: '12px' }}>Status</TableCell>
-                      <TableCell sx={{ fontWeight: 600, fontSize: '12px', width: 100 }} align="right">
+                      <TableCell sx={{ fontWeight: 600, fontSize: '12px', width: 100 }} align="left">
                         Actions
                       </TableCell>
                     </TableRow>
@@ -412,11 +441,11 @@ const TaskListView: React.FC<TaskListViewProps> = ({
                         const taskStatus = task.status || section.name;
                         const statusColor = getStatusColor(taskStatus, section.projectId);
                         const convertedTask = convertTaskToTaskType(task, section);
-                        
+
                         // Determine if task is completed
                         const taskStatusLower = (taskStatus || '').toLowerCase();
                         const isCompleted = taskStatusLower.includes('done') || taskStatusLower.includes('completed');
-                        
+
                         return (
                           <TableRow
                             key={task._id}
@@ -482,9 +511,10 @@ const TaskListView: React.FC<TaskListViewProps> = ({
                                 label={getPriorityDisplayName(task.priority || 'Medium', section.projectId)}
                                 size="small"
                                 sx={{
-                                  height: '20px',
-                                  fontSize: '10px',
                                   fontWeight: 500,
+                                  minWidth: 'fit-content',
+                                  borderRadius: '4px',
+                                  fontSize: '12px',
                                   bgcolor: priorityColor.bg,
                                   color: priorityColor.text,
                                   border: 'none',
@@ -496,37 +526,69 @@ const TaskListView: React.FC<TaskListViewProps> = ({
                                 label={getStatusDisplayName(taskStatus, section.projectId)}
                                 size="small"
                                 sx={{
-                                  height: '20px',
-                                  fontSize: '10px',
                                   fontWeight: 500,
+                                  minWidth: 'fit-content',
+                                  borderRadius: '4px',
+                                  fontSize: '12px',
                                   bgcolor: statusColor.bg,
                                   color: statusColor.text,
                                   border: 'none',
                                 }}
                               />
                             </TableCell>
-                            <TableCell align="right" onClick={(e) => e.stopPropagation()}>
-                              <Stack direction="row" spacing={0.5} justifyContent="flex-end">
-                                <Tooltip title="Edit">
-                                  <IconButton
-                                    size="small"
-                                    onClick={() => onEditTask(convertedTask)}
-                                    sx={{ p: 0.5 }}
-                                  >
+                            <TableCell align="left" onClick={(e) => e.stopPropagation()}>
+                              <IconButton
+                                size="small"
+                                onClick={(e) => handleMenuOpen(e, task._id)}
+                              >
+                                <MoreVertIcon fontSize="small" />
+                              </IconButton>
+
+                              <Menu
+                                anchorEl={anchorEl}
+                                open={open && selectedTaskId === task._id}
+                                onClose={handleMenuClose}
+                                anchorOrigin={{
+                                  vertical: 'bottom',
+                                  horizontal: 'right',
+                                }}
+                                transformOrigin={{
+                                  vertical: 'top',
+                                  horizontal: 'right',
+                                }}
+                                PaperProps={{
+                                  sx: {
+                                    borderRadius: 2,
+                                    minWidth: 140,
+                                    boxShadow: '0px 8px 24px rgba(0,0,0,0.12)',
+                                  },
+                                }}
+                              >
+                                <MenuItem
+                                  onClick={() => {
+                                    onEditTask(convertedTask);
+                                    handleMenuClose();
+                                  }}
+                                >
+                                  <ListItemIcon>
                                     <EditOutlined fontSize="small" />
-                                  </IconButton>
-                                </Tooltip>
-                                <Tooltip title="Delete">
-                                  <IconButton
-                                    size="small"
-                                    onClick={() => onDeleteTask(task._id)}
-                                    sx={{ p: 0.5 }}
-                                    color="error"
-                                  >
+                                  </ListItemIcon>
+                                  <Typography fontSize={14}>Edit</Typography>
+                                </MenuItem>
+
+                                <MenuItem
+                                  onClick={() => {
+                                    onDeleteTask(task._id);
+                                    handleMenuClose();
+                                  }}
+                                  sx={{ color: 'error.main' }}
+                                >
+                                  <ListItemIcon sx={{ color: 'error.main' }}>
                                     <DeleteOutline fontSize="small" />
-                                  </IconButton>
-                                </Tooltip>
-                              </Stack>
+                                  </ListItemIcon>
+                                  <Typography fontSize={14}>Delete</Typography>
+                                </MenuItem>
+                              </Menu>
                             </TableCell>
                           </TableRow>
                         );

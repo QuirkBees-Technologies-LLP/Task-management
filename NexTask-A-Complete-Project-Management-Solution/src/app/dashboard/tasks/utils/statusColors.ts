@@ -4,25 +4,37 @@
  * NOTE: Intentionally different from the priority palette to avoid overlap.
  */
 export const STATUS_COLORS_EXTENDED = [
-  { bg: '#DBEAFE', text: '#1E3A8A' }, // Blue
-  { bg: '#E0E7FF', text: '#3730A3' }, // Indigo
-  { bg: '#CCFBF1', text: '#0F766E' }, // Teal
-  { bg: '#FFE4E6', text: '#BE123C' }, // Rose
-  { bg: '#F3E8FF', text: '#7E22CE' }, // Purple
-  { bg: '#E0F2FE', text: '#075985' }, // Sky
-  { bg: '#E5E7EB', text: '#374151' }, // Gray
-  { bg: '#FCE7F3', text: '#9D174D' }, // Pink
-  { bg: '#F3F4F6', text: '#111827' }, // Stone
-  { bg: '#C7D2FE', text: '#312E81' }, // Deep Indigo
+  { bg: 'rgba(59,130,246,0.20)',  text: 'rgba(30,64,175,1)' },   // Blue
+  { bg: 'rgba(99,102,241,0.20)',  text: 'rgba(55,48,163,1)' },  // Indigo
+  { bg: 'rgba(20,184,166,0.20)',  text: 'rgba(68,175,166,1)' }, // Teal
+  { bg: 'rgba(244,63,94,0.20)',   text: 'rgba(190,18,60,1)' },  // Rose
+  { bg: 'rgba(168,85,247,0.20)',  text: 'rgba(126,34,206,1)' }, // Purple
+  { bg: 'rgba(14,165,233,0.20)',  text: 'rgba(7,89,133,1)' },   // Sky
+  { bg: 'rgba(148,163,184,0.20)', text: 'rgba(31,41,55,1)' },   // Gray
+  { bg: 'rgba(236,72,153,0.20)',  text: 'rgba(157,23,77,1)' },  // Pink
+  { bg: 'rgba(107,114,128,0.20)', text: 'rgba(17,24,39,1)' },   // Stone
+  { bg: 'rgba(79,70,229,0.20)',   text: 'rgba(49,46,129,1)' },  // Deep Indigo
 ];
 
 export type StatusValue = string;
 
 // Default status options and their distinct (non-priority) colors
 const DEFAULT_STATUS_ENTRIES = [
-  { value: 'Todo', name: 'Todo', color: { bg: '#DBEAFE', text: '#1E3A8A' } }, // Blue
-  { value: 'In Progress', name: 'In Progress', color: { bg: '#E0E7FF', text: '#3730A3' } }, // Indigo
-  { value: 'Done', name: 'Done', color: { bg: '#CCFBF1', text: '#0F766E' } }, // Teal
+  {
+    value: 'Todo',
+    name: 'Todo',
+    color: { bg: 'rgba(59,130,246,0.20)', text: 'rgba(30,64,175,1)' },
+  },
+  {
+    value: 'In Progress',
+    name: 'In Progress',
+    color: { bg: 'rgba(99,102,241,0.20)', text: 'rgba(55,48,163,1)' },
+  },
+  {
+    value: 'Done',
+    name: 'Done',
+    color: { bg: 'rgba(20,184,166,0.20)', text: 'rgba(68,175,166,1)' },
+  },
 ] as const;
 
 export const DEFAULT_STATUS_OPTIONS: StatusValue[] = DEFAULT_STATUS_ENTRIES.map((o) => o.value);
@@ -31,20 +43,25 @@ export const DEFAULT_STATUS_OPTIONS: StatusValue[] = DEFAULT_STATUS_ENTRIES.map(
  * Get status color from localStorage or default
  */
 const PRIORITY_BG_SET = new Set([
-  '#d1fae5'.toLowerCase(), // Low
-  '#fef3c7'.toLowerCase(), // Medium
-  '#e9d5ff'.toLowerCase(), // High
+  'rgba(34,197,94,0.2)',
+  'rgba(251,191,36,0.2)',
+  'rgba(168,85,247,0.2)',
 ]);
 
 /**
  * Get status color from localStorage or default
  */
-export const getStatusColor = (status: string, projectId?: string): { bg: string; text: string } => {
+export const getStatusColor = (
+  status: string,
+  projectId?: string
+): { bg: string; text: string } => {
   if (!status) {
-    return { bg: '#D1D5DB', text: '#374151' }; // Default gray
+    return {
+      bg: 'rgba(148,163,184,0.20)',
+      text: 'rgba(31,41,55,1)',
+    };
   }
 
-  // Try to get color from localStorage (project-specific if projectId provided)
   if (typeof window !== 'undefined') {
     try {
       const storageKey = projectId ? `statusOptions_${projectId}` : 'statusOptions';
@@ -52,7 +69,7 @@ export const getStatusColor = (status: string, projectId?: string): { bg: string
       if (savedOptions) {
         const parsed = JSON.parse(savedOptions);
         const option = parsed.find((opt: any) => opt.value === status);
-        if (option && option.color) {
+        if (option?.color) {
           return option.color;
         }
       }
@@ -61,19 +78,26 @@ export const getStatusColor = (status: string, projectId?: string): { bg: string
     }
   }
 
-  // Default color mapping for common statuses (distinct from priority palette)
   const statusLower = status.toLowerCase();
+
   if (statusLower.includes('todo') || statusLower.includes('pending')) {
-    return { bg: '#DBEAFE', text: '#1E3A8A' }; // Blue
-  } else if (statusLower.includes('progress') || statusLower.includes('in progress')) {
-    return { bg: '#E0E7FF', text: '#3730A3' }; // Indigo
-  } else if (statusLower.includes('done') || statusLower.includes('completed')) {
-    return { bg: '#CCFBF1', text: '#0F766E' }; // Teal
+    return { bg: 'rgba(59,130,246,0.20)', text: 'rgb(101, 128, 216, 1)' };
   }
 
-  // Default gray
-  return { bg: '#D1D5DB', text: '#374151' };
+  if (statusLower.includes('progress')) {
+    return { bg: 'rgba(99,102,241,0.20)', text: 'rgba(55,48,163,1)' };
+  }
+
+  if (statusLower.includes('done') || statusLower.includes('completed')) {
+    return { bg: 'rgba(20,184,166,0.20)', text: 'rgba(68,175,166,1)' };
+  }
+
+  return {
+    bg: 'rgba(148,163,184,0.20)',
+    text: 'rgba(31,41,55,1)',
+  };
 };
+
 
 /**
  * Get all status options from localStorage or default
