@@ -42,6 +42,7 @@ import RichTextEditor from './RichTextEditor';
 import PrioritySelect from './PrioritySelect';
 import StatusSelect from './StatusSelect';
 import { getStatusOptions } from '../utils/statusColors';
+import { jwtDecode } from 'jwt-decode';
 
 function TaskDialog({ open, onClose, onSave, task, projects, saving = false }: TaskDialogProps) {
   const theme = useTheme();
@@ -166,6 +167,9 @@ function TaskDialog({ open, onClose, onSave, task, projects, saving = false }: T
         const token = safeLocalStorageGet(accessTokenKey);
         if (!token) return;
 
+        const decoded: any = jwtDecode(token);
+        const canUseAdminUsersApi = decoded?.role === 'Admin' || decoded?.superuser === true;
+
         // Try staff API first, fallback to users API
         try {
           const response = await axios.get('/api/staff?limit=1000', {
@@ -186,17 +190,23 @@ function TaskDialog({ open, onClose, onSave, task, projects, saving = false }: T
           // Fallback to users API
         }
 
-        const usersResponse = await axios.get('/api/users', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (Array.isArray(usersResponse.data)) {
-          const usersList = usersResponse.data.map((u: any) => ({
-            _id: typeof u._id === 'string' ? u._id : (u._id?.toString() || ''),
-            firstName: u.firstName || '',
-            lastName: u.lastName || '',
-            email: u.email || '',
-          }));
-          setUsers(usersList);
+        // Only Admins can access /api/users (without currentUser=true). For Regular users,
+        // calling it returns 401 which triggers the global "Session expired" logout.
+        if (canUseAdminUsersApi) {
+          const usersResponse = await axios.get('/api/users', {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (Array.isArray(usersResponse.data)) {
+            const usersList = usersResponse.data.map((u: any) => ({
+              _id: typeof u._id === 'string' ? u._id : (u._id?.toString() || ''),
+              firstName: u.firstName || '',
+              lastName: u.lastName || '',
+              email: u.email || '',
+            }));
+            setUsers(usersList);
+          }
+        } else {
+          setUsers([]);
         }
       } catch (error) {
         console.error('Error fetching users:', error);

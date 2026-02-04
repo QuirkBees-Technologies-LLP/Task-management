@@ -16,6 +16,7 @@ import { styled } from '@mui/material/styles';
 import axios from 'axios';
 import { safeLocalStorageGet } from '@/utils/helpers';
 import { accessTokenKey } from '@/utils/constants';
+import { jwtDecode } from 'jwt-decode';
 
 // Dynamically import ReactQuill to prevent SSR issues
 const ReactQuill = dynamic(() => import('react-quill'), {
@@ -278,6 +279,9 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
         const token = safeLocalStorageGet(accessTokenKey);
         if (!token) return;
 
+        const decoded: any = jwtDecode(token);
+        const canUseAdminUsersApi = decoded?.role === 'Admin' || decoded?.superuser === true;
+
         const response = await axios.get('/api/staff?limit=1000', {
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -293,19 +297,24 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
           console.log('Loaded organization users:', staffUsers.length);
           setUsers(staffUsers);
         } else {
-          // Fallback to users API
-          const usersResponse = await axios.get('/api/users', {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          if (Array.isArray(usersResponse.data)) {
-            const usersList = usersResponse.data.map((u: any) => ({
-              _id: typeof u._id === 'string' ? u._id : (u._id?.toString() || ''),
-              firstName: u.firstName || '',
-              lastName: u.lastName || '',
-              email: u.email || '',
-              role: u.role || '',
-            }));
-            setUsers(usersList);
+          // Only Admins can access /api/users (without currentUser=true). For Regular users,
+          // calling it returns 401 which triggers the global "Session expired" logout.
+          if (canUseAdminUsersApi) {
+            const usersResponse = await axios.get('/api/users', {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            if (Array.isArray(usersResponse.data)) {
+              const usersList = usersResponse.data.map((u: any) => ({
+                _id: typeof u._id === 'string' ? u._id : (u._id?.toString() || ''),
+                firstName: u.firstName || '',
+                lastName: u.lastName || '',
+                email: u.email || '',
+                role: u.role || '',
+              }));
+              setUsers(usersList);
+            }
+          } else {
+            setUsers([]);
           }
         }
       } catch (error) {

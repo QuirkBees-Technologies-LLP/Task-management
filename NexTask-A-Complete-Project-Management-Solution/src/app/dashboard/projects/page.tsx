@@ -139,13 +139,16 @@ export default function Projects() {
         // If we have assignees, fetch user info in a single request
         if (assigneeIds.size > 0) {
           try {
-            const usersResponse = await axios.get('/api/users', {
+            // Use /api/staff which is org-scoped and accessible to Regular users too.
+            // /api/users (without currentUser=true) is Admin-only and can trigger a 401 → global logout for Regular users.
+            const usersResponse = await axios.get('/api/staff?limit=1000', {
               headers: { Authorization: `Bearer ${token}` },
             });
 
-            if (Array.isArray(usersResponse.data)) {
+            const staffList = usersResponse.data?.staff;
+            if (Array.isArray(staffList)) {
               const map: Record<string, ProjectAssigneeInfo> = {};
-              usersResponse.data.forEach((u: any) => {
+              staffList.forEach((u: any) => {
                 const userId =
                   typeof u._id === 'string'
                     ? u._id
