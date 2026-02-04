@@ -11,7 +11,7 @@ import {
   Stack,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
-import { getContractStatusColor } from '../helpers';
+import { getStatusStyles } from '../helpers';
 import { ContractDetailsDialogProps } from '../types';
 
 const ContractDetailsDialog: React.FC<ContractDetailsDialogProps> = ({
@@ -95,8 +95,15 @@ const ContractDetailsDialog: React.FC<ContractDetailsDialogProps> = ({
             </Typography>
             <Chip
               label={contract.status || 'N/A'}
-              color={getContractStatusColor(contract.status || '')}
-              sx={{ mt: 1 }}
+              sx={{
+                mt: 1,
+                ...getStatusStyles(contract.status || ''),
+                height: 24,
+                fontWeight: 500,
+                borderRadius: '4px',
+                fontSize: '12px',
+                minWidth: 'fit-content',
+              }}
             />
           </Box>
 

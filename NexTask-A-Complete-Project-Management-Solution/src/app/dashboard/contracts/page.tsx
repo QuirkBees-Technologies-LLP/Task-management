@@ -27,7 +27,7 @@ export default function Contracts() {
   const [saving, setSaving] = useState<boolean>(false);
   const [selectedContract, setSelectedContract] = useState<Contract | undefined>(undefined);
   const [isFormOpen, setIsFormOpen] = useState<boolean>(false);
-  const [setOpen] = useState<boolean>(false);
+  const [open, setOpen] = useState<boolean>(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState<boolean>(false);
   const [contractToDelete, setContractToDelete] = useState<Contract | null>(null);
 
@@ -184,7 +184,7 @@ export default function Contracts() {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedItem, setSelectedItem] = useState<Contract | null>(null);
 
-  const open = Boolean(anchorEl);
+  const menuOpen = Boolean(anchorEl);
 
   const handleMenuOpen = (
     event: React.MouseEvent<HTMLElement>,
@@ -321,7 +321,7 @@ export default function Contracts() {
 
               <Menu
                 anchorEl={anchorEl}
-                open={open && selectedItem?.id === item.id}
+                open={menuOpen && selectedItem?.id === item.id}
                 onClose={handleMenuClose}
                 anchorOrigin={{
                   vertical: 'bottom',
