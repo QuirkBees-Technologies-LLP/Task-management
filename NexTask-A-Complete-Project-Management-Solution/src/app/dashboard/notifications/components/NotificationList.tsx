@@ -235,7 +235,7 @@ const Notifications: React.FC = () => {
                   </IconButton>
                   <Menu
                     anchorEl={anchorEl}
-                    open={open && selectedNotificationId === notificationId}
+                    open={Boolean(anchorEl) && selectedNotificationId === notificationId}
                     onClose={handleMenuClose}
                     anchorOrigin={{
                       vertical: 'bottom',

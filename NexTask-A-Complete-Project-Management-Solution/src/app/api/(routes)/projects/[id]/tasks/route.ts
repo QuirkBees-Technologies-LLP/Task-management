@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import clientPromise from '../../../../lib/mongodb';
 import { DATABASE_NAME } from '../../../../config';
-import { verifyToken } from '../../../../helpers';
+import { verifyToken, getOrgIdFromToken } from '../../../../helpers';
 import { ObjectId } from 'mongodb';
 import { TASK_STATUSES } from '../../../../config/task-statuses/constants';
 import { createNotification } from '../../../../lib/notification';
@@ -373,6 +373,9 @@ export async function POST(
       if (mentionedUserIds.length > 0) {
         const usersCollection = db.collection('users');
 
+        // Get org_id from token for notification scoping
+        const org_id = getOrgIdFromToken(decoded);
+
         // Get task creator info for notification message
         const creator = await usersCollection.findOne({ _id: new ObjectId(decoded.id) });
         const creatorName = creator
@@ -402,6 +405,7 @@ export async function POST(
               userId: new ObjectId(mentionedUserId),
               message: `${creatorName} mentioned you in task "${title}"`,
               type: 'info',
+              org_id: org_id || undefined, // Include org_id if available
             });
           } catch (error) {
             console.error(`Error creating notification for user ${mentionedUserId}:`, error);
@@ -625,6 +629,9 @@ export async function PATCH(
       if (newlyMentioned.length > 0) {
         const usersCollection = db.collection('users');
 
+        // Get org_id from token for notification scoping
+        const org_id = getOrgIdFromToken(decoded);
+
         // Get task updater info for notification message
         const updater = await usersCollection.findOne({ _id: new ObjectId(decoded.id) });
         const updaterName = updater
@@ -656,6 +663,7 @@ export async function PATCH(
               userId: new ObjectId(mentionedUserId),
               message: `${updaterName} mentioned you in task "${taskTitle}"`,
               type: 'info',
+              org_id: org_id || undefined, // Include org_id if available
             });
           } catch (error) {
             console.error(`Error creating notification for user ${mentionedUserId}:`, error);

@@ -231,7 +231,8 @@ const TaskListView: React.FC<TaskListViewProps> = ({
                   width: 28,
                   height: 28,
                   fontSize: '12px',
-                  // bgcolor: user.photoUrl ? 'transparent' : theme.palette.primary.main,
+                  // Match Board view avatar styling (blue background)
+                  bgcolor: theme.palette.primary.main,
                   border: `1px solid ${theme.palette.divider}`,
                 }}>
                   {user.firstName?.[0] || ''}

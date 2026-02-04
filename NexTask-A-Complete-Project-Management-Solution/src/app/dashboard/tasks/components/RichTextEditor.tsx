@@ -199,9 +199,15 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
   const [tooltip, setTooltip] = useState<{ text: string; x: number; y: number } | null>(null);
   const [isQuillReady, setIsQuillReady] = useState(false);
 
-  // Register Quill MentionBlot only on client side
+  // Register Quill MentionBlot only on client side (only once)
   useEffect(() => {
     if (typeof window === 'undefined') return;
+
+    // Use a module-level flag to prevent duplicate registration
+    if ((window as any).__quillMentionRegistered) {
+      setIsQuillReady(true);
+      return;
+    }
 
     const registerQuillBlot = async () => {
       try {
@@ -213,71 +219,47 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
         const Quill = (ReactQuillDefault as any).Quill || (ReactQuillModule as any).Quill;
         
         if (!Quill) {
-          // Fallback: try importing quill directly
-          const quillModule = await import('quill');
-          const QuillClass = (quillModule as any).default || quillModule;
-          
-          // Custom Mention Blot
-          const Mention = QuillClass.import('blots/inline');
-
-          class MentionBlot extends Mention {
-            static blotName = 'mention';
-            static tagName = 'span';
-            static className = 'mention';
-
-            static create(data: { id: string; name: string }) {
-              const node = super.create();
-              node.setAttribute('data-mention-id', data.id);
-              node.setAttribute('data-mention-name', data.name);
-              node.setAttribute('contenteditable', 'false');
-              node.style.backgroundColor = '#e3f2fd';
-              node.style.padding = '2px 4px';
-              node.style.borderRadius = '3px';
-              node.style.color = '#1976d2';
-              return node;
-            }
-
-            static value(node: HTMLElement) {
-              return {
-                id: node.getAttribute('data-mention-id'),
-                name: node.getAttribute('data-mention-name'),
-              };
-            }
-          }
-
-          QuillClass.register(MentionBlot);
-        } else {
-          // Custom Mention Blot
-          const Mention = (Quill as any).import('blots/inline');
-
-          class MentionBlot extends Mention {
-            static blotName = 'mention';
-            static tagName = 'span';
-            static className = 'mention';
-
-            static create(data: { id: string; name: string }) {
-              const node = super.create();
-              node.setAttribute('data-mention-id', data.id);
-              node.setAttribute('data-mention-name', data.name);
-              node.setAttribute('contenteditable', 'false');
-              node.style.backgroundColor = '#e3f2fd';
-              node.style.padding = '2px 4px';
-              node.style.borderRadius = '3px';
-              node.style.color = '#1976d2';
-              return node;
-            }
-
-            static value(node: HTMLElement) {
-              return {
-                id: node.getAttribute('data-mention-id'),
-                name: node.getAttribute('data-mention-name'),
-              };
-            }
-          }
-
-          (Quill as any).register(MentionBlot);
+          setIsQuillReady(true);
+          return;
         }
         
+        // Check if already registered
+        if (Quill.imports && Quill.imports['blots/mention']) {
+          (window as any).__quillMentionRegistered = true;
+          setIsQuillReady(true);
+          return;
+        }
+        
+        // Custom Mention Blot
+        const Mention = (Quill as any).import('blots/inline');
+
+        class MentionBlot extends Mention {
+          static blotName = 'mention';
+          static tagName = 'span';
+          static className = 'mention';
+
+          static create(data: { id: string; name: string }) {
+            const node = super.create();
+            node.setAttribute('data-mention-id', data.id);
+            node.setAttribute('data-mention-name', data.name);
+            node.setAttribute('contenteditable', 'false');
+            node.style.backgroundColor = '#e3f2fd';
+            node.style.padding = '2px 4px';
+            node.style.borderRadius = '3px';
+            node.style.color = '#1976d2';
+            return node;
+          }
+
+          static value(node: HTMLElement) {
+            return {
+              id: node.getAttribute('data-mention-id'),
+              name: node.getAttribute('data-mention-name'),
+            };
+          }
+        }
+
+        (Quill as any).register(MentionBlot);
+        (window as any).__quillMentionRegistered = true;
         setIsQuillReady(true);
       } catch (error) {
         console.error('Error registering Quill blot:', error);
@@ -308,6 +290,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
             email: s.email || '',
             role: s.role || '',
           }));
+          console.log('Loaded organization users:', staffUsers.length);
           setUsers(staffUsers);
         } else {
           // Fallback to users API
@@ -334,6 +317,112 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
 
     fetchUsers();
   }, []);
+
+  // Add keyboard event listener for @ mention detection
+  useEffect(() => {
+    if (!quillRef.current || !isQuillReady) {
+      return;
+    }
+
+    const quill = quillRef.current.getEditor();
+    if (!quill) return;
+    
+    const editorEl = quill.root;
+    if (!editorEl) return;
+
+    const checkForMention = () => {
+      try {
+        const selection = quill.getSelection(true);
+        if (!selection) {
+          setMentionAnchor(null);
+          setMentionSearch('');
+          return;
+        }
+
+        const text = quill.getText();
+        const cursorIndex = selection.index;
+        const textBeforeCursor = text.substring(0, cursorIndex);
+        const lastAtIndex = textBeforeCursor.lastIndexOf('@');
+
+        if (lastAtIndex !== -1) {
+          const textAfterAt = textBeforeCursor.substring(lastAtIndex + 1);
+          
+          // Simple check: if there's no space, newline after @
+          if (!textAfterAt.includes(' ') && !textAfterAt.includes('\n') && textAfterAt.length < 50) {
+            // Check if we're inside an existing mention by checking the HTML
+            // Get the HTML content up to the cursor position
+            const htmlContent = quill.root.innerHTML;
+            const textUpToCursor = textBeforeCursor;
+            
+            // Find the position in HTML that corresponds to our text position
+            // Simple approach: check if there's a mention tag before the @ symbol
+            const htmlBeforeAt = htmlContent.substring(0, htmlContent.indexOf('@') !== -1 ? htmlContent.lastIndexOf('@', htmlContent.indexOf(textUpToCursor)) : 0);
+            const isInMention = htmlBeforeAt.includes('data-mention-id') && !htmlBeforeAt.endsWith('>');
+            
+            if (!isInMention) {
+              console.log('✅ Mention detected:', textAfterAt, 'Users available:', users.length);
+              setMentionSearch(textAfterAt);
+              // Use the editor container as anchor for better positioning
+              const editorContainer = editorEl.closest('.ql-container') || editorEl;
+              console.log('✅ Setting mention anchor');
+              setMentionAnchor({
+                el: editorContainer as HTMLElement,
+                index: lastAtIndex,
+              });
+              return;
+            } else {
+              console.log('❌ Already inside mention tag');
+            }
+          } else {
+            // Space or newline found, hide mentions
+            setMentionAnchor(null);
+            setMentionSearch('');
+          }
+        } else {
+          // No @ found, hide mentions
+          setMentionAnchor(null);
+          setMentionSearch('');
+        }
+      } catch (error) {
+        console.error('❌ Error checking for mention:', error);
+        // On error, try to show mentions anyway if @ is present
+        try {
+          const selection = quill.getSelection(true);
+          if (selection) {
+            const text = quill.getText();
+            const cursorIndex = selection.index;
+            const textBeforeCursor = text.substring(0, cursorIndex);
+            const lastAtIndex = textBeforeCursor.lastIndexOf('@');
+            if (lastAtIndex !== -1) {
+              const textAfterAt = textBeforeCursor.substring(lastAtIndex + 1);
+              if (!textAfterAt.includes(' ') && !textAfterAt.includes('\n') && textAfterAt.length < 50) {
+                setMentionSearch(textAfterAt);
+                const editorContainer = editorEl.closest('.ql-container') || editorEl;
+                setMentionAnchor({
+                  el: editorContainer as HTMLElement,
+                  index: lastAtIndex,
+                });
+                return;
+              }
+            }
+          }
+        } catch (fallbackError) {
+          console.error('❌ Fallback mention check also failed:', fallbackError);
+        }
+        setMentionAnchor(null);
+        setMentionSearch('');
+      }
+    };
+
+    // Use Quill's text-change event which is more reliable
+    quill.on('text-change', checkForMention);
+    quill.on('selection-change', checkForMention);
+    
+    return () => {
+      quill.off('text-change', checkForMention);
+      quill.off('selection-change', checkForMention);
+    };
+  }, [isQuillReady, users]);
 
   // Add tooltips to toolbar buttons
   useEffect(() => {
@@ -427,16 +516,20 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
   }, [value, isQuillReady]);
 
   const filteredUsers = useMemo(() => {
-    if (!mentionSearch) return users.slice(0, 5);
+    // When just typing @ (no search), show first 20 organization users
+    if (!mentionSearch) return users.slice(0, 20);
+    
+    // When typing letters after @, filter and suggest users
     const search = mentionSearch.toLowerCase();
     return users
       .filter(
         (user) =>
           user.firstName?.toLowerCase().includes(search) ||
           user.lastName?.toLowerCase().includes(search) ||
-          user.email?.toLowerCase().includes(search)
+          user.email?.toLowerCase().includes(search) ||
+          `${user.firstName || ''} ${user.lastName || ''}`.toLowerCase().includes(search)
       )
-      .slice(0, 5);
+      .slice(0, 20); // Show up to 20 filtered results
   }, [users, mentionSearch]);
 
   const handleTextChange = (
@@ -446,37 +539,8 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     editor: any
   ) => {
     onChange(content);
-
-    if (source === 'user') {
-      const selection = editor.getSelection();
-      if (selection) {
-        const text = editor.getText();
-        const cursorIndex = selection.index;
-        const textBeforeCursor = text.substring(0, cursorIndex);
-        const lastAtIndex = textBeforeCursor.lastIndexOf('@');
-
-        if (lastAtIndex !== -1) {
-          const textAfterAt = textBeforeCursor.substring(lastAtIndex + 1);
-          // Check if there's no space or newline after @ (meaning we're still typing the mention)
-          if (!textAfterAt.includes(' ') && !textAfterAt.includes('\n') && textAfterAt.length < 50) {
-            // Show mention suggestions
-            setMentionSearch(textAfterAt);
-            const quill = quillRef.current?.getEditor();
-            if (quill) {
-              const editorEl = quill.root;
-              setMentionAnchor({
-                el: editorEl,
-                index: lastAtIndex,
-              });
-            }
-            return;
-          }
-        }
-      }
-    }
-
-    setMentionAnchor(null);
-    setMentionSearch('');
+    // Note: Mention detection is handled by the useEffect with Quill event listeners
+    // This keeps the logic centralized and more reliable
   };
 
   const handleMentionSelect = (user: User) => {
@@ -573,7 +637,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     <Box>
       <EditorContainer>
         <ReactQuill
-          // @ts-ignore - Dynamic import causes ref typing issues
+          // @ts-ignore - Dynamic import causes ref typing issues, but ref works at runtime
           ref={quillRef}
           theme="snow"
           value={value}
@@ -671,16 +735,29 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
           vertical: 'top',
           horizontal: 'left',
         }}
+        disableAutoFocus
+        disableEnforceFocus
+        disableRestoreFocus
         PaperProps={{
           sx: {
-            maxHeight: 300,
-            width: 300,
+            maxHeight: 400,
+            width: 320,
             mt: 0.5,
+            overflowY: 'auto',
+            zIndex: 1300, // Ensure it's above other elements
+            boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
           },
+        }}
+        sx={{
+          zIndex: 1300,
         }}
       >
         <List dense>
-          {filteredUsers.length > 0 ? (
+          {loadingUsers ? (
+            <ListItem>
+              <ListItemText primary="Loading organization users..." />
+            </ListItem>
+          ) : filteredUsers.length > 0 ? (
             filteredUsers.map((user) => (
               <ListItem
                 key={user._id}
@@ -715,7 +792,9 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
             ))
           ) : (
             <ListItem>
-              <ListItemText primary={loadingUsers ? 'Loading users...' : 'No users found'} />
+              <ListItemText 
+                primary={users.length === 0 ? 'No organization users found' : `No users match "${mentionSearch}"`} 
+              />
             </ListItem>
           )}
         </List>
