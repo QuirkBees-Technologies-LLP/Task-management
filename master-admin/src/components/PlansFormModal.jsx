@@ -1,5 +1,14 @@
-import { Modal, Form, Input, Select, Switch, Button, InputNumber ,Row,
-  Col,} from "antd";
+import {
+  Modal,
+  Form,
+  Input,
+  Select,
+  Switch,
+  Button,
+  InputNumber,
+  Row,
+  Col,
+} from "antd";
 import { useEffect } from "react";
 import {
   DeleteOutlined,
@@ -31,10 +40,18 @@ const PlansFormModal = ({
   };
 
   const integerRule = {
-    validator: (_, value) =>
-      Number.isInteger(value)
-        ? Promise.resolve()
-        : Promise.reject(new Error("Must be an integer")),
+    validator: (_, value) => {
+      if (value === undefined || value === null) {
+        return Promise.reject(new Error("This field is required"));
+      }
+      if (typeof value !== "number" || !Number.isInteger(value)) {
+        return Promise.reject(new Error("Only whole numbers are allowed"));
+      }
+      if (value <= 0) {
+        return Promise.reject(new Error("Value must be greater than 0"));
+      }
+      return Promise.resolve();
+    },
   };
 
   /* ---------------- Effect ---------------- */
@@ -42,13 +59,19 @@ const PlansFormModal = ({
     if (!open) return;
 
     if (initialValues) {
+      const billingPeriod = Array.isArray(initialValues.billing_period)
+        ? initialValues.billing_period[0]
+        : initialValues.billing_period;
+
       form.setFieldsValue({
         ...initialValues,
         price: {
-          monthly: initialValues?.price?.monthly ?? 0,
-          yearly: initialValues?.price?.yearly ?? 0,
+          monthly:
+            billingPeriod === "monthly" ? initialValues.price?.monthly || 0 : 0,
+          yearly:
+            billingPeriod === "yearly" ? initialValues.price?.yearly || 0 : 0,
         },
-        features: initialValues?.features ?? [],
+        features: initialValues.features ?? [],
         mark_as_popular: Boolean(initialValues.mark_as_popular),
         status: initialValues.status ?? "active",
       });
@@ -68,7 +91,28 @@ const PlansFormModal = ({
         form={form}
         layout="vertical"
         initialValues={{ features: [] }}
-        onFinish={(values) => onSubmit(values, form)}
+        onFinish={(values) => {
+          const billingPeriod = Array.isArray(values.billing_period)
+            ? values.billing_period[0]
+            : values.billing_period;
+
+          const payload = {
+            ...values,
+            billing_period: billingPeriod ? [billingPeriod] : [],
+            price: {
+              monthly:
+                billingPeriod === "monthly"
+                  ? Number(values.price?.monthly || 0)
+                  : 0,
+              yearly:
+                billingPeriod === "yearly"
+                  ? Number(values.price?.yearly || 0)
+                  : 0,
+            },
+          };
+
+          onSubmit(payload, form);
+        }}
       >
         {/* Plan Name */}
         <Form.Item
@@ -123,38 +167,40 @@ const PlansFormModal = ({
         </Form.Item>
 
         {/* Price */}
-        <Form.Item label="Price">
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item
-                name={["price", "monthly"]}
-                label="Monthly Price"
-                rules={[{ required: true }, positiveNumberRule]}
-              >
-                <InputNumber
-                  min={1}
-                  addonBefore={<DollarOutlined />}
-                  placeholder="Monthly price"
-                  style={{ width: "100%" }}
-                />
-              </Form.Item>
-            </Col>
+        <Form.Item label="Price" required>
+          <Form.Item noStyle>
+            <Row gutter={16}>
+              <Col span={12}>
+                <Form.Item
+                  name={["price", "monthly"]}
+                  label="Monthly Price"
+                  rules={[{ required: true }, positiveNumberRule]}
+                >
+                  <InputNumber
+                    min={1}
+                    addonBefore={<DollarOutlined />}
+                    placeholder="Monthly price"
+                    style={{ width: "100%" }}
+                  />
+                </Form.Item>
+              </Col>
 
-            <Col span={12}>
-              <Form.Item
-                name={["price", "yearly"]}
-                label="Yearly Price"
-                rules={[{ required: true }, positiveNumberRule]}
-              >
-                <InputNumber
-                  min={1}
-                  addonBefore={<DollarOutlined />}
-                  placeholder="Yearly price"
-                  style={{ width: "100%" }}
-                />
-              </Form.Item>
-            </Col>
-          </Row>
+              <Col span={12}>
+                <Form.Item
+                  name={["price", "yearly"]}
+                  label="Yearly Price"
+                  rules={[{ required: true }, positiveNumberRule]}
+                >
+                  <InputNumber
+                    min={1}
+                    addonBefore={<DollarOutlined />}
+                    placeholder="Yearly price"
+                    style={{ width: "100%" }}
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+          </Form.Item>
         </Form.Item>
 
         {/* Billing Period */}
@@ -171,14 +217,13 @@ const PlansFormModal = ({
           />
         </Form.Item>
 
-
         {/* Users Allowed */}
         <Form.Item
           name="users_allowed"
           label="Users Allowed"
           rules={[{ required: true }, positiveNumberRule, integerRule]}
         >
-          <InputNumber min={1} style={{ width: "100%" }} />
+          <InputNumber min={1} style={{ width: "100%" }}   precision={0} />
         </Form.Item>
 
         {/* Organizations Allowed */}
@@ -187,7 +232,7 @@ const PlansFormModal = ({
           label="Organizations Allowed"
           rules={[{ required: true }, positiveNumberRule, integerRule]}
         >
-          <InputNumber min={1} style={{ width: "100%" }} />
+          <InputNumber min={1} style={{ width: "100%" }}    precision={0} />
         </Form.Item>
 
         {/* Best For */}
@@ -296,17 +341,18 @@ const PlansFormModal = ({
         >
           <Switch />
         </Form.Item>
-
-        {/* Submit */}
-        <Button
-          type="primary"
-          htmlType="submit"
-          loading={loading}
-          disabled={loading}
-          block
-        >
-          {initialValues ? "Update Plan" : "Create Plan"}
-        </Button>
+        <div style={{ textAlign: "right" }}>
+          <Button
+            type="primary"
+            htmlType="submit"
+            loading={loading}
+            disabled={loading}
+            block
+            style={{ width: "fit-content" }}
+          >
+            {initialValues ? "Update Plan" : "Create Plan"}
+          </Button>
+        </div>
       </Form>
     </Modal>
   );
