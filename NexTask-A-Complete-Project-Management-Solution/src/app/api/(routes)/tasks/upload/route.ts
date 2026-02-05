@@ -45,8 +45,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'File size exceeds 50MB limit' }, { status: 400 });
     }
 
-    // Create uploads directory if it doesn't exist
-    const uploadsDir = join(process.cwd(), 'public', 'uploads', 'tasks');
+    // Determine the correct project root (handles monorepo setups)
+    // If the NexTask app lives in a subfolder, prefer that as the base
+    let projectRoot = process.cwd();
+    const nestedAppRoot = join(projectRoot, 'NexTask-A-Complete-Project-Management-Solution');
+    if (existsSync(join(nestedAppRoot, 'next.config.mjs'))) {
+      projectRoot = nestedAppRoot;
+    }
+
+    // Create uploads directory inside the Next.js public folder if it doesn't exist
+    const uploadsDir = join(projectRoot, 'public', 'uploads', 'tasks');
     if (!existsSync(uploadsDir)) {
       await mkdir(uploadsDir, { recursive: true });
     }

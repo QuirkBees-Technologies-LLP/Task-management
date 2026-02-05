@@ -20,7 +20,7 @@ import {
   Stack,
   IconButton,
 } from '@mui/material';
-import { AttachFile, Delete } from '@mui/icons-material';
+import { AttachFile, Delete, Visibility } from '@mui/icons-material';
 import RichTextEditor from '@/app/dashboard/tasks/components/RichTextEditor';
 import FileAttachmentDialog from '@/app/dashboard/tasks/components/FileAttachmentDialog';
 import type { TaskAttachment } from '@/app/dashboard/tasks/types';
@@ -572,6 +572,16 @@ export default function ProjectModal({
                               >
                                 {attachment.fileName}
                               </Typography>
+                              <Button
+                                size="small"
+                                href={attachment.fileUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                startIcon={<Visibility />}
+                                sx={{ minWidth: 'auto', px: 1, fontSize: '11px' }}
+                              >
+                                View
+                              </Button>
                               <IconButton
                                 size="small"
                                 onClick={() => handleDeleteAttachment(index)}

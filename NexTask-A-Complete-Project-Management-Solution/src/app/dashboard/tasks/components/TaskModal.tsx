@@ -29,6 +29,7 @@ import {
   OpenInFull,
   MoreVert,
   ArrowForward,
+  Visibility,
 } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
 import { enqueueSnackbar } from 'notistack';
@@ -795,6 +796,16 @@ function TaskDialog({ open, onClose, onSave, task, projects, saving = false }: T
                   >
                     {attachment.fileName}
                   </Typography>
+                  <Button
+                    size="small"
+                    href={attachment.fileUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    startIcon={<Visibility />}
+                    sx={{ minWidth: 'auto', px: 1, fontSize: '11px' }}
+                  >
+                    View
+                  </Button>
                   <IconButton
                     size="small"
                     onClick={() => handleDeleteAttachment(index)}
