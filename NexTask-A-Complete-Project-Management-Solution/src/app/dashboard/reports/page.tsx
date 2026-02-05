@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Grid2, Paper, CardContent, Box, useTheme, useMediaQuery, capitalize } from '@mui/material';
+import { Grid2, Paper, CardContent, useTheme, capitalize } from '@mui/material';
 import dynamic from 'next/dynamic';
 
 import ReportFilters from './components/Filters';
@@ -9,10 +9,8 @@ import TaskCompletionChart from './components/CompletionChart';
 import ReportsChart from '@/components/ReportsChart';
 import CardHeader from '@/components/CardHeader';
 import PageHeader from '@/components/PageHeader';
-import ResponsiveTable from '@/components/Table';
-
-import { projectColumns, projectListKeys } from '../projects/helpers';
-import { taskColumns, taskListKeys } from '../tasks/helpers';
+import { projectColumns } from '../projects/helpers';
+import { taskColumns } from '../tasks/helpers';
 import { Project, ResponsiveTableColumn as ProjectColumn } from '../projects/types';
 import { Task, ResponsiveTableColumn as TaskColumn } from '../tasks/types';
 import { FilterState } from './types';
@@ -31,14 +29,12 @@ const ExportOptions = dynamic(() => import('./components/ExportOptions'), {
 export default function Reports() {
   const router = useRouter();
   const theme = useTheme();
-  const isSmallScreen = useMediaQuery(theme.breakpoints.down('md'));
 
   // State variables
   const [projects, setProjects] = useState<Project[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [dataSource, setDataSource] = useState<Project[] | Task[]>([]);
   const [columns, setColumns] = useState<ProjectColumn[] | TaskColumn[]>(projectColumns);
-  const [loading, setLoading] = useState<boolean>(true);
   const [filters, setFilters] = useState<FilterState>({
     status: 'all',
     type: 'projects',
@@ -85,8 +81,6 @@ export default function Reports() {
         message: error.response?.data?.error || 'Failed to fetch projects',
         variant: 'error',
       });
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -225,20 +219,7 @@ export default function Reports() {
           </Paper>
         </Grid2>
 
-        {/* Responsive Table */}
-        <Grid2 size={{ xs: 12 }}>
-          <Paper>
-            <CardHeader title={title} />
-            <Box sx={{ px: isSmallScreen ? 2 : 0 }}>
-              <ResponsiveTable
-                data={dataSource}
-                columns={columns}
-                loading={loading}
-                listKeys={filters.type === 'projects' ? projectListKeys : taskListKeys}
-              />
-            </Box>
-          </Paper>
-        </Grid2>
+
       </Grid2>
     </>
   );
