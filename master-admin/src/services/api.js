@@ -67,8 +67,8 @@ export const organizationAPI = {
   create: (payload) =>
     api.post("/superadmin/organizations", payload),
 
-  list: ({ page = 1, limit = 10, search = "", plan = "" }) =>
-    api.get("/superadmin/organizations", { params: { page, limit, search, plan } }),
+  list: ({ page = 1, limit = 10, search = "", plan = "", status = "" }) =>
+    api.get("/superadmin/organizations", { params: { page, limit, search, plan, status } }),
 
   updateStatus: (id, payload) =>
     api.patch(`/superadmin/organizations/${id}`, payload),
@@ -104,16 +104,6 @@ export const plansAPI = {
   // DELETE /api/superadmin/plans/:id (soft delete)
   delete: (id) =>
     api.delete(`/superadmin/plans/${id}`),
-};
-
-/* ----------------------------------------------------
-   Dashboard APIs (Super Admin)
----------------------------------------------------- */
-
-export const dashboardAPI = {
-  // GET /api/superadmin/dashboard
-  getStats: () =>
-    api.get('/superadmin/dashboard'),
 };
 
 export default api;

@@ -59,7 +59,7 @@ const Plans = () => {
         setLoading(false);
       }
     },
-    [search]
+    [search],
   );
 
   useEffect(() => {
@@ -75,25 +75,33 @@ const Plans = () => {
       try {
         setSubmitLoading(true);
 
-        // Construct payload according to new API structure
+        const normalizeArray = (val) =>
+          Array.isArray(val) ? val : val ? [val] : [];
+
         const payload = {
           plan_name: values.plan_name,
           description: values.description || "",
-          plan_type: Array.isArray(values.plan_type) ? values.plan_type : [],
-          trial_type: Array.isArray(values.trial_type) ? values.trial_type : [],
           price: {
-            monthly: values.price_monthly || 0,
-            yearly: values.price_yearly || 0,
+            monthly: values.price?.monthly ?? null,
+            yearly: values.price?.yearly ?? null,
           },
-          billing_period: Array.isArray(values.billing_period) ? values.billing_period : [],
-          users_allowed: values.users_allowed || 0,
-          organizations_allowed: values.organizations_allowed || 0,
-          best_for: values.best_for || "",
-          access_level: Array.isArray(values.access_level) ? values.access_level : [],
-          features: Array.isArray(values.features) ? values.features : [],
+          billing_period: values.billing_period,
+          features: normalizeArray(values.features),
           mark_as_popular: Boolean(values.mark_as_popular),
           status: values.status || "active",
         };
+
+        if (values.plan_type)
+          payload.plan_type = normalizeArray(values.plan_type);
+        if (values.trial_type)
+          payload.trial_type = normalizeArray(values.trial_type);
+        if (values.users_allowed)
+          payload.users_allowed = Number(values.users_allowed);
+        if (values.organizations_allowed)
+          payload.organizations_allowed = Number(values.organizations_allowed);
+        if (values.best_for) payload.best_for = values.best_for;
+        if (values.access_level)
+          payload.access_level = normalizeArray(values.access_level);
 
         if (isEditing && editInitialValues?._id) {
           await plansAPI.update(editInitialValues._id, payload);
@@ -115,7 +123,7 @@ const Plans = () => {
         setSubmitLoading(false);
       }
     },
-    [isEditing, editInitialValues, fetchPlans, paginationState]
+    [isEditing, editInitialValues, fetchPlans, paginationState],
   );
 
   const openCreateModal = () => {
@@ -126,7 +134,15 @@ const Plans = () => {
 
   const openEditModal = (record) => {
     setIsEditing(true);
-    setEditInitialValues({ ...record });
+
+    setEditInitialValues({
+      ...record,
+      price: {
+        monthly: record.price?.monthly ?? 0,
+        yearly: record.price?.yearly ?? 0,
+      },
+    });
+
     setOpen(true);
   };
 
@@ -148,7 +164,7 @@ const Plans = () => {
       message.success(
         `Plan ${
           newStatus === "active" ? "activated" : "deactivated"
-        } successfully`
+        } successfully`,
       );
       fetchPlans(paginationState.current, paginationState.pageSize);
     } catch {
@@ -165,18 +181,81 @@ const Plans = () => {
         dataIndex: "plan_name",
         key: "plan_name",
       },
+
+      {
+        title: "Plan Type",
+        dataIndex: "plan_type",
+        key: "plan_type",
+        render: (v) =>
+          v && v.length ? (
+            <>
+              {v.map((item) => (
+                <Tag key={item} color="purple">
+                  {item}
+                </Tag>
+              ))}
+            </>
+          ) : (
+            <Tag>-</Tag>
+          ),
+      },
+
+      {
+        title: "Trial",
+        dataIndex: "trial_type",
+        key: "trial_type",
+        render: (v) =>
+          v && v.length ? (
+            v.map((item) => (
+              <Tag key={item} color={item === "free" ? "green" : "orange"}>
+                {item}
+              </Tag>
+            ))
+          ) : (
+            <Tag>-</Tag>
+          ),
+      },
+
       {
         title: "Price",
         dataIndex: "price",
-        key: "price",
-        render: (v) => <b>₹{v}</b>,
+        render: (price, record) => {
+          if (!price) return "-";
+
+          if (typeof price === "number") return price;
+
+          if (typeof price === "object") {
+            const period = record.billing_period?.[0] ?? "monthly"; // fallback to monthly
+            return price[period] ?? "-";
+          }
+
+          return "-";
+        },
       },
+
       {
-        title: "Billing",
-        dataIndex: "billing_period",
-        key: "billing_period",
-        render: (v) => <Tag color="blue">{v}</Tag>,
+        title: "Users",
+        dataIndex: "users_allowed",
+        key: "users_allowed",
+        render: (v) => <Tag>{v || 0}</Tag>,
       },
+
+      {
+        title: "Access",
+        dataIndex: "access_level",
+        key: "access_level",
+        render: (v) =>
+          v && v.length ? (
+            v.map((item) => (
+              <Tag key={item} color="blue">
+                {item}
+              </Tag>
+            ))
+          ) : (
+            <Tag>-</Tag>
+          ),
+      },
+
       {
         title: "Popular",
         dataIndex: "mark_as_popular",
@@ -187,11 +266,10 @@ const Plans = () => {
               YES
             </Tag>
           ) : (
-            <Tag color="default" style={{ fontWeight: 600 }}>
-              No
-            </Tag>
+            <Tag>NO</Tag>
           ),
       },
+
       {
         title: "Status",
         dataIndex: "status",
@@ -206,6 +284,7 @@ const Plans = () => {
           />
         ),
       },
+
       {
         title: "Action",
         key: "action",
@@ -231,7 +310,7 @@ const Plans = () => {
         ),
       },
     ],
-    [togglingId]
+    [togglingId],
   );
 
   return (

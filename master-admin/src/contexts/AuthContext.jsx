@@ -7,7 +7,7 @@ import {
   clearAuth,
 } from "../utils/authStorage";
 import { authAPI } from "../services/api";
-import  api  from "../services/api";
+import api from "../services/api";
 import { message } from "antd";
 import { useNavigate } from "react-router-dom";
 const AuthContext = createContext(null);
@@ -45,12 +45,12 @@ export const AuthProvider = ({ children }) => {
     setLoading(false);
   }, []);
 
-   // Axios Response Interceptor for token errors
+  // Axios Response Interceptor for token errors
   useEffect(() => {
     const interceptor = api.interceptors.response.use(
       (response) => response,
       (error) => {
-        const errorMessage = error?.response?.data?.error || '';
+        const errorMessage = error?.response?.data?.error || "";
         if (errorMessage === "Invalid or expired token") {
           message.error("Session expired. Please login again.");
           logout(); // Reuse your existing logout (clears storage + navigates)
@@ -67,11 +67,6 @@ export const AuthProvider = ({ children }) => {
   const login = async (credentials) => {
     const response = await authAPI.login(credentials);
 
-    /**
-     * Expected response structure:
-     * response.data.data.token
-     * response.data.data.user
-     */
     const { token, user } = response.data;
 
     setToken(token);

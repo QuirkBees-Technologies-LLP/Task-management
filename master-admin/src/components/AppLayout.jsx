@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Layout, theme } from "antd";
 import HeaderBar from "./HeaderBar";
 import SidebarMenu from "./SidebarMenu";
@@ -9,7 +9,7 @@ const AppLayout = ({ children }) => {
   const [collapsed, setCollapsed] = useState(false);
   const [isSmallScreen, setIsSmallScreen] = useState(false);
   const {
-    token: { colorBgContainer, borderRadiusLG },
+    token: { borderRadiusLG },
   } = theme.useToken();
 
   // Initialize and sync collapsed state based on viewport width (< 991px)

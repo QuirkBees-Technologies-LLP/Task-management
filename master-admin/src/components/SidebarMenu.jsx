@@ -1,12 +1,11 @@
-import React from "react";
 import { Layout, Menu } from "antd";
 import { SettingOutlined } from "@ant-design/icons";
 import { Link, useLocation } from "react-router-dom";
-import { BusFront,Calendar, CalendarCheck, House, User, Building } from "lucide-react";
+import { Calendar, House, Building } from "lucide-react";
 
 const { Sider } = Layout;
 
-const SidebarMenu = ({ collapsed, setCollapsed, isSmallScreen }) => {
+const SidebarMenu = ({ collapsed, isSmallScreen }) => {
   const location = useLocation();
 
   // Determine selected key based on current path
