@@ -366,7 +366,7 @@ const Organisation = () => {
       >
         <Col>
           <Title level={3} style={{ margin: 0 }}>
-            Organization Management
+            Organisation Management
           </Title>
         </Col>
         <Col>
@@ -375,7 +375,7 @@ const Organisation = () => {
             icon={<PlusOutlined />}
             onClick={openCreateModal}
           >
-            Add Organization
+            Add Organisation
           </Button>
         </Col>
       </Row>
