@@ -26,6 +26,7 @@ const PlansFormModal = ({
   onSubmit,
 }) => {
   const [form] = Form.useForm();
+  const [isSubmitDisabled, setIsSubmitDisabled] = useState(true);
 
   /* ---------------- Validation Rules ---------------- */
   const nameRule = {
@@ -77,6 +78,15 @@ const PlansFormModal = ({
       });
     }
   }, [open, initialValues, form]);
+  /* ---------------- Check form validity ---------------- */
+  const checkFormValid = async () => {
+    try {
+      await form.validateFields(); // validate all fields
+      setIsSubmitDisabled(false); // no errors, enable submit
+    } catch (error) {
+      setIsSubmitDisabled(true); // errors exist, disable submit
+    }
+  };
 
   return (
     <Modal
