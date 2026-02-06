@@ -1,9 +1,11 @@
-const Dashboard = () => {
-        return (
-            <div>
-                <div>Dashboard</div>
-            </div>
-        );
-    };
+import { Box, Typography } from "@mui/material";
 
-    export default Dashboard;
+const Dashboard = () => {
+  return (
+    <Box>
+      <Typography>Dashboard</Typography>
+    </Box>
+  );
+};
+
+export default Dashboard;
