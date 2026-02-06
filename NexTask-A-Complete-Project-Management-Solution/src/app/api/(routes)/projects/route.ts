@@ -4,6 +4,7 @@ import { DATABASE_NAME } from '../../config';
 import { verifyToken, userRolesServer, requireOrgIdFromToken, getOrgIdFromToken } from '../../helpers';
 import { addOrgIdToQuery, addOrgIdToDocument } from '../../lib/orgIdHelper';
 import { ObjectId } from 'mongodb';
+import { createNotification } from '../../lib/notification';
 
 export async function GET(request: Request) {
   const { decoded, error, status } = await verifyToken(request);
@@ -183,6 +184,35 @@ export async function POST(request: Request) {
     }, org_id);
 
     const result = await projectsCollection.insertOne(newProject);
+
+    // Send notifications to assigned users (excluding the creator/admin)
+    if (assigneeIds.length > 0) {
+      const usersCollection = db.collection('users');
+      
+      // Get admin info for notification message
+      const admin = await usersCollection.findOne({ _id: new ObjectId(decoded.id) });
+      const adminName = admin
+        ? `${admin.firstName || ''} ${admin.lastName || ''}`.trim() || admin.email
+        : 'Admin';
+
+      // Send notifications to assigned users (excluding the creator)
+      for (const assigneeId of assigneeIds) {
+        try {
+          // Don't notify if admin assigned themselves
+          if (assigneeId.equals(creatorId)) continue;
+
+          await createNotification({
+            userId: assigneeId,
+            message: `${adminName} has assigned you to project "${name}"`,
+            type: 'info',
+            org_id: org_id || undefined,
+          });
+        } catch (error) {
+          console.error(`Error creating notification for user ${assigneeId}:`, error);
+          // Continue with other notifications even if one fails
+        }
+      }
+    }
 
     return NextResponse.json(
       { success: true, project: { ...newProject, _id: result.insertedId } },

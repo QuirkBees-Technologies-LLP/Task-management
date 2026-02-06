@@ -366,6 +366,38 @@ export async function POST(
 
     const result = await tasksCollection.insertOne(newTask);
 
+    // Send notifications to assigned users (only if admin is creating and assigning)
+    if (assigneeIds.length > 0 && decoded.role === 'Admin') {
+      const org_id = getOrgIdFromToken(decoded);
+      const usersCollection = db.collection('users');
+      
+      // Get admin info for notification message
+      const admin = await usersCollection.findOne({ _id: new ObjectId(decoded.id) });
+      const adminName = admin
+        ? `${admin.firstName || ''} ${admin.lastName || ''}`.trim() || admin.email
+        : 'Admin';
+
+      const projectName = project.name || 'a project';
+
+      // Send notifications to assigned users
+      for (const assigneeId of assigneeIds) {
+        try {
+          // Don't notify if admin assigned themselves
+          if (assigneeId.toString() === decoded.id) continue;
+
+          await createNotification({
+            userId: assigneeId,
+            message: `${adminName} has assigned you to task "${title}" in project "${projectName}"`,
+            type: 'info',
+            org_id: org_id || undefined,
+          });
+        } catch (error) {
+          console.error(`Error creating notification for user ${assigneeId}:`, error);
+          // Continue with other notifications even if one fails
+        }
+      }
+    }
+
     // Extract mentions from description and send notifications
     if (description) {
       const mentionedUserIds = extractMentionsFromHTML(description);
@@ -584,6 +616,51 @@ export async function PATCH(
             assigneeIds.push(new ObjectId(assigneeIdStr));
           }
           updateData.assignee = assigneeIds;
+
+          // Send notifications to newly assigned users (only if admin is assigning)
+          if (decoded.role === 'Admin') {
+            const org_id = getOrgIdFromToken(decoded);
+            
+            // Get existing assignees to find newly added ones
+            const existingAssignees = existingTask.assignee 
+              ? (Array.isArray(existingTask.assignee) 
+                  ? existingTask.assignee.map((id: any) => id.toString()) 
+                  : [existingTask.assignee.toString()])
+              : [];
+            
+            const newAssignees = assigneeIds
+              .map(id => id.toString())
+              .filter(id => !existingAssignees.includes(id));
+
+            if (newAssignees.length > 0) {
+              // Get admin info for notification message
+              const admin = await usersCollection.findOne({ _id: new ObjectId(decoded.id) });
+              const adminName = admin
+                ? `${admin.firstName || ''} ${admin.lastName || ''}`.trim() || admin.email
+                : 'Admin';
+
+              const taskTitle = title || existingTask.title || 'a task';
+              const projectName = project.name || 'a project';
+
+              // Send notifications to newly assigned users
+              for (const newAssigneeId of newAssignees) {
+                try {
+                  // Don't notify if admin assigned themselves
+                  if (newAssigneeId === decoded.id) continue;
+
+                  await createNotification({
+                    userId: new ObjectId(newAssigneeId),
+                    message: `${adminName} has assigned you to task "${taskTitle}" in project "${projectName}"`,
+                    type: 'info',
+                    org_id: org_id || undefined,
+                  });
+                } catch (error) {
+                  console.error(`Error creating notification for user ${newAssigneeId}:`, error);
+                  // Continue with other notifications even if one fails
+                }
+              }
+            }
+          }
         } catch (error) {
           return NextResponse.json({ error: 'Invalid assignee ID format' }, { status: 400 });
         }
