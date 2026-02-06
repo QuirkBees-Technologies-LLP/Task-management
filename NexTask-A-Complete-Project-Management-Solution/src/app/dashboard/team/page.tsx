@@ -505,7 +505,7 @@ const StaffManagementPage: React.FC = () => {
               <TableBody>
                 {staff.length === 0 ? (
                   <TableRow
-                    key={item._id}
+                    key="no-staff"
                     hover
                     sx={(theme) => ({
                       '& td': {
