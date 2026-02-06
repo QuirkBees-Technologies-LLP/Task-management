@@ -17,8 +17,9 @@ import {
   CircularProgress,
   Box,
 } from '@mui/material';
-import { ExpandMore, AccessTime, MoreVert, VisibilityOffOutlined, Delete } from '@mui/icons-material';
+import { ExpandMore, AccessTime, MoreVert, VisibilityOffOutlined, VisibilityOutlined, Delete } from '@mui/icons-material';
 import { useDispatch, useSelector } from 'react-redux';
+import { useRouter } from 'next/navigation';
 import { loadNotifications, submitMarkAsRead } from '@/redux/slices';
 import { selectNotifications } from '@/redux/selectors';
 import { getNotificationColor, getNotificationIcon } from '../helpers';
@@ -87,6 +88,7 @@ const mapNotificationType = (message: string, type?: string): string => {
 
 const Notifications: React.FC = () => {
   const dispatch = useDispatch();
+  const router = useRouter();
   const { data: notifications, loading } = useSelector(selectNotifications);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedNotificationId, setSelectedNotificationId] = useState<string | null>(null);
@@ -117,17 +119,47 @@ const Notifications: React.FC = () => {
 
       await axios.put(
         '/api/notifications',
-        { id: notificationId },
+        { id: notificationId, read: true },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
       dispatch(submitMarkAsRead({ id: notificationId }));
       dispatch(loadNotifications({ limit: showAll ? 100 : 20 })); // Refresh list
       handleMenuClose();
+      enqueueSnackbar({
+        message: 'Notification marked as read',
+        variant: 'success',
+      });
     } catch (error: any) {
       console.error('Error marking notification as read:', error);
       enqueueSnackbar({
         message: error.response?.data?.error || 'Failed to mark notification as read',
+        variant: 'error',
+      });
+    }
+  };
+
+  const handleMarkAsUnread = async (notificationId: string) => {
+    try {
+      const token = safeLocalStorageGet(accessTokenKey);
+      if (!token) return;
+
+      await axios.put(
+        '/api/notifications',
+        { id: notificationId, read: false },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      dispatch(loadNotifications({ limit: showAll ? 100 : 20 })); // Refresh list
+      handleMenuClose();
+      enqueueSnackbar({
+        message: 'Notification marked as unread',
+        variant: 'success',
+      });
+    } catch (error: any) {
+      console.error('Error marking notification as unread:', error);
+      enqueueSnackbar({
+        message: error.response?.data?.error || 'Failed to mark notification as unread',
         variant: 'error',
       });
     }
@@ -192,10 +224,11 @@ const Notifications: React.FC = () => {
                     cursor: 'pointer',
                   },
                 }}
-                onClick={() => {
-                  if (!isRead) {
-                    handleMarkAsRead(notificationId);
-                  }
+                onClick={(e) => {
+                  // Stop event propagation to prevent menu from closing before redirect
+                  e.stopPropagation();
+                  // Redirect to notification page on click
+                  router.push('/dashboard/notifications');
                 }}
               >
                 {/* Notification Icon */}
@@ -230,7 +263,12 @@ const Notifications: React.FC = () => {
 
                 {/* Menu Options */}
                 <ListItemIcon>
-                  <IconButton onClick={(e) => handleMenuClick(e, notificationId)}>
+                  <IconButton 
+                    onClick={(e) => {
+                      e.stopPropagation(); // Prevent triggering the list item click
+                      handleMenuClick(e, notificationId);
+                    }}
+                  >
                     <MoreVert />
                   </IconButton>
                   <Menu
@@ -246,15 +284,37 @@ const Notifications: React.FC = () => {
                       horizontal: 'center',
                     }}
                   >
-                    {!isRead && (
-                      <MenuItem onClick={() => handleMarkAsRead(notificationId)}>
+                    {!isRead ? (
+                      <MenuItem 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleMarkAsRead(notificationId);
+                        }}
+                      >
                         <ListItemIcon>
                           <VisibilityOffOutlined fontSize="small" />
                         </ListItemIcon>
                         <ListItemText>Mark as read</ListItemText>
                       </MenuItem>
+                    ) : (
+                      <MenuItem 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleMarkAsUnread(notificationId);
+                        }}
+                      >
+                        <ListItemIcon>
+                          <VisibilityOutlined fontSize="small" />
+                        </ListItemIcon>
+                        <ListItemText>Mark as unread</ListItemText>
+                      </MenuItem>
                     )}
-                    <MenuItem onClick={() => handleDelete(notificationId)}>
+                    <MenuItem 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(notificationId);
+                      }}
+                    >
                       <ListItemIcon>
                         <Delete fontSize="small" />
                       </ListItemIcon>

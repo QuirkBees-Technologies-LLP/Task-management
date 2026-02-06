@@ -26,6 +26,7 @@ import {
   KeyboardArrowRight,
   CheckCircle,
   CheckCircleOutline,
+  InfoOutlined,
 } from '@mui/icons-material';
 import { Task } from '../types';
 import { getStatusColor, getStatusDisplayName, getStatusOptions } from '../utils/statusColors';
@@ -199,6 +200,29 @@ const TaskListView: React.FC<TaskListViewProps> = ({
       return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     } catch {
       return dateString;
+    }
+  };
+
+  // Check if due date is today
+  const isDueToday = (dueDate?: string): boolean => {
+    if (!dueDate) return false;
+    try {
+      const today = new Date();
+      const date = new Date(dueDate);
+      
+      if (isNaN(date.getTime())) return false;
+      
+      // Normalize both dates to start of day for accurate comparison
+      today.setHours(0, 0, 0, 0);
+      date.setHours(0, 0, 0, 0);
+      
+      return (
+        today.getFullYear() === date.getFullYear() &&
+        today.getMonth() === date.getMonth() &&
+        today.getDate() === date.getDate()
+      );
+    } catch {
+      return false;
     }
   };
 
@@ -419,13 +443,35 @@ const TaskListView: React.FC<TaskListViewProps> = ({
                 <Table>
                   <TableHead>
                     <TableRow>
-                      <TableCell sx={{ fontWeight: 600, width: 40 }}></TableCell>
-                      <TableCell sx={{ fontWeight: 600 , minWidth: '160px'}}>Task Name</TableCell>
-                      <TableCell sx={{ fontWeight: 600 }}>Assignee</TableCell>
-                      <TableCell sx={{ fontWeight: 600 , minWidth: '110px'}}>Due Date</TableCell>
-                      <TableCell sx={{ fontWeight: 600 }}>Priority</TableCell>
-                      <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
-                      <TableCell sx={{ fontWeight: 600, width: 100 }} align="left">
+                      <TableCell sx={{ fontWeight: 600, fontSize: '12px', width: 40 }}></TableCell>
+                      <TableCell sx={{ fontWeight: 600, fontSize: '12px' }}>Task Name</TableCell>
+                      <TableCell sx={{ fontWeight: 600, fontSize: '12px' }}>Assignee</TableCell>
+                      <TableCell sx={{ fontWeight: 600, fontSize: '12px' }}>
+                        <Stack direction="row" alignItems="center" spacing={0.5}>
+                          <span>Due Date</span>
+                          <Tooltip
+                            title="Tasks with due dates set to today will have a red background until they are marked as completed."
+                            arrow
+                          >
+                            <IconButton
+                              size="small"
+                              sx={{
+                                p: 0,
+                                color: theme.palette.text.secondary,
+                                '&:hover': {
+                                  color: theme.palette.primary.main,
+                                },
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <InfoOutlined sx={{ fontSize: '12px' }} />
+                            </IconButton>
+                          </Tooltip>
+                        </Stack>
+                      </TableCell>
+                      <TableCell sx={{ fontWeight: 600, fontSize: '12px' }}>Priority</TableCell>
+                      <TableCell sx={{ fontWeight: 600, fontSize: '12px' }}>Status</TableCell>
+                      <TableCell sx={{ fontWeight: 600, fontSize: '12px', width: 100 }} align="left">
                         Actions
                       </TableCell>
                     </TableRow>
@@ -447,6 +493,9 @@ const TaskListView: React.FC<TaskListViewProps> = ({
                         // Determine if task is completed
                         const taskStatusLower = (taskStatus || '').toLowerCase();
                         const isCompleted = taskStatusLower.includes('done') || taskStatusLower.includes('completed');
+                        
+                        // Check if task is due today and not completed
+                        const taskDueToday = !isCompleted && isDueToday(task.dueDate);
 
                         return (
                           <TableRow
@@ -454,8 +503,17 @@ const TaskListView: React.FC<TaskListViewProps> = ({
                             hover
                             sx={{
                               cursor: 'pointer',
+                              bgcolor: taskDueToday
+                                ? theme.palette.mode === 'dark'
+                                  ? 'rgba(127, 29, 29, 0.3)' // Dark red background for dark mode
+                                  : 'rgba(254, 242, 242, 0.8)' // Light red background for light mode
+                                : 'inherit',
                               '&:hover': {
-                                bgcolor: theme.palette.action.hover,
+                                bgcolor: taskDueToday
+                                  ? theme.palette.mode === 'dark'
+                                    ? 'rgba(153, 27, 27, 0.4)' // Slightly darker red on hover for dark mode
+                                    : 'rgba(254, 226, 226, 0.9)' // Slightly darker red on hover for light mode
+                                  : theme.palette.action.hover,
                               },
                             }}
                             onClick={() => onEditTask(convertedTask)}
@@ -504,7 +562,17 @@ const TaskListView: React.FC<TaskListViewProps> = ({
                               {getAssigneeDisplay(task)}
                             </TableCell>
                             <TableCell>
-                              <Typography variant="body2" sx={{ color: theme.palette.text.secondary }}>
+                              <Typography
+                                variant="body2"
+                                sx={{
+                                  color: isDueToday(task.dueDate)
+                                    ? theme.palette.mode === 'dark'
+                                      ? '#f87171' // Lighter red for dark mode
+                                      : '#ef4444' // Red for light mode
+                                    : theme.palette.text.secondary,
+                                  fontWeight: isDueToday(task.dueDate) ? 600 : 400,
+                                }}
+                              >
                                 {formatDate(task.dueDate || '')}
                               </Typography>
                             </TableCell>

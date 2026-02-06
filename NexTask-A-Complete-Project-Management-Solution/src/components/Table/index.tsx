@@ -285,13 +285,21 @@ const Table: React.FC<TableProps> = ({ loading, data, columns, renderActions }) 
                           key={uniqueKey}
                           hover
                           sx={(theme) => ({
+                            bgcolor: taskDueToday
+                              ? theme.palette.mode === 'dark'
+                                ? 'rgba(127, 29, 29, 0.3)' // Dark red background for dark mode
+                                : 'rgba(254, 242, 242, 0.8)' // Light red background for light mode
+                              : 'inherit',
                             '& td': {
                               fontSize: 13,
                               borderBottom: `1px solid ${theme.palette.divider}`,
                             },
                             '&:hover': {
-                              backgroundColor:
-                                theme.palette.mode === 'dark'
+                              backgroundColor: taskDueToday
+                                ? theme.palette.mode === 'dark'
+                                  ? 'rgba(153, 27, 27, 0.4)' // Slightly darker red on hover for dark mode
+                                  : 'rgba(254, 226, 226, 0.9)' // Slightly darker red on hover for light mode
+                                : theme.palette.mode === 'dark'
                                   ? '#020617'
                                   : '#FAFBFF',
                             },
@@ -392,15 +400,23 @@ const List: React.FC<ListProps> = ({ loading, data, listKeys, renderActions }) =
                   <ListItem
                     key={uniqueKey}
                     divider
-                    sx={{
+                    sx={(theme) => ({
                       pl: 0,
                       pr: 0,
-                      bgcolor: taskDueToday ? '#fca5a5' : 'inherit', // soft red background for tasks due today
-                      color: taskDueToday ? '#1f2937' : 'inherit', // dark text for good contrast
+                      bgcolor: taskDueToday
+                        ? theme.palette.mode === 'dark'
+                          ? 'rgba(127, 29, 29, 0.3)' // Dark red background for dark mode
+                          : 'rgba(254, 242, 242, 0.8)' // Light red background for light mode
+                        : 'inherit',
+                      color: 'inherit', // Keep default text color for readability
                       '&:hover': {
-                        bgcolor: taskDueToday ? '#f87171' : 'action.hover', // slightly darker red on hover
+                        bgcolor: taskDueToday
+                          ? theme.palette.mode === 'dark'
+                            ? 'rgba(153, 27, 27, 0.4)' // Slightly darker red on hover for dark mode
+                            : 'rgba(254, 226, 226, 0.9)' // Slightly darker red on hover for light mode
+                          : 'action.hover',
                       },
-                    }}
+                    })}
                   >
                     <ListItemText
                       primaryTypographyProps={{ gutterBottom: true }}

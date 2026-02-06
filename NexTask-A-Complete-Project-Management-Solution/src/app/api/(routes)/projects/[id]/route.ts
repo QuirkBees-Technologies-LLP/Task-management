@@ -5,6 +5,7 @@ import { verifyToken, userRolesServer, getOrgIdFromToken, verifySystemAdmin } fr
 import { sendEmail } from '@/utils/sendEmail';
 import { getEmailTemplate } from '@/utils/emailTemplates';
 import { ObjectId } from 'mongodb';
+import { createNotification } from '../../../lib/notification';
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   // Check if system admin
@@ -183,6 +184,50 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       }
 
       updateData.assignee = assigneeIds;
+
+      // Send notifications to newly assigned users (only if admin is assigning)
+      // Note: This endpoint already requires admin role (line 103), so we can send notifications
+      const org_id = getOrgIdFromToken(decoded);
+      
+      // Get existing assignees to find newly added ones
+      const existingAssignees = existingProject.assignee 
+        ? (Array.isArray(existingProject.assignee) 
+            ? existingProject.assignee.map((id: any) => id.toString()) 
+            : [existingProject.assignee.toString()])
+        : [];
+      
+      const newAssignees = assigneeIds
+        .map(id => id.toString())
+        .filter(id => !existingAssignees.includes(id));
+
+      if (newAssignees.length > 0) {
+        // Get admin info for notification message
+        const usersCollection = db.collection('users');
+        const admin = await usersCollection.findOne({ _id: new ObjectId(decoded.id) });
+        const adminName = admin
+          ? `${admin.firstName || ''} ${admin.lastName || ''}`.trim() || admin.email
+          : 'Admin';
+
+        const projectName = name || existingProject.name || 'a project';
+
+        // Send notifications to newly assigned users
+        for (const newAssigneeId of newAssignees) {
+          try {
+            // Don't notify if admin assigned themselves
+            if (newAssigneeId === decoded.id) continue;
+
+            await createNotification({
+              userId: new ObjectId(newAssigneeId),
+              message: `${adminName} has assigned you to project "${projectName}"`,
+              type: 'info',
+              org_id: org_id || undefined,
+            });
+          } catch (error) {
+            console.error(`Error creating notification for user ${newAssigneeId}:`, error);
+            // Continue with other notifications even if one fails
+          }
+        }
+      }
     }
 
     // Update attachments if provided (allows overwriting existing list)

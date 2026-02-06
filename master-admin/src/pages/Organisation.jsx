@@ -17,7 +17,7 @@ import { Pencil, Trash } from "lucide-react";
 import { organizationAPI } from "../services/api";
 import OrganizationFormModal from "../components/OrganizationFormModal";
 import DebouncedSearch from "../components/debouncedSearch";
-import PlanSelect from "../components/PlanSelect";
+import CommonSelect from "../components/CommonSelect";
 import { plansAPI } from "../services/api";
 
 const { Title } = Typography;
@@ -34,6 +34,7 @@ const Organisation = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedPlanId, setSelectedPlanId] = useState(null);
   const [selectedPlanName, setSelectedPlanName] = useState(null);
+  const [selectedStatus, setSelectedStatus] = useState(null);
   const [plansMap, setPlansMap] = useState({});
   const [paginationState, setPaginationState] = useState({
     current: 1,
@@ -43,7 +44,13 @@ const Organisation = () => {
 
   /* -------------------- Fetch -------------------- */
   const fetchOrganizations = useCallback(
-    async (page = 1, pageSize = PAGE_SIZE, searchTerm = "", plan = "") => {
+    async (
+      page = 1,
+      pageSize = PAGE_SIZE,
+      searchTerm = "",
+      plan = "",
+      status = ""
+    ) => {
       try {
         setLoading(true);
         const res = await organizationAPI.list({
@@ -51,6 +58,7 @@ const Organisation = () => {
           limit: pageSize,
           search: searchTerm,
           plan,
+          status,
         });
         setData(res.data?.organizations ?? []);
         setPaginationState((prev) => ({
@@ -76,9 +84,20 @@ const Organisation = () => {
   const handleSearch = useCallback(
     (value) => {
       setSearchTerm(value); // store for pagination
-      fetchOrganizations(1, paginationState.pageSize, value, selectedPlanName); // always fetch from first page
+      fetchOrganizations(
+        1,
+        paginationState.pageSize,
+        value,
+        selectedPlanName,
+        selectedStatus
+      );
     },
-    [fetchOrganizations, paginationState.pageSize, selectedPlanName]
+    [
+      fetchOrganizations,
+      paginationState.pageSize,
+      selectedPlanName,
+      selectedStatus,
+    ]
   );
 
   // ✅ Plan filter handler
@@ -89,10 +108,38 @@ const Organisation = () => {
       setSelectedPlanId(planId); // for Select
       setSelectedPlanName(planName); // for API
 
-      fetchOrganizations(1, paginationState.pageSize, searchTerm, planName);
+      fetchOrganizations(
+        1,
+        paginationState.pageSize,
+        searchTerm,
+        planName,
+        selectedStatus
+      );
     },
-    [plansMap, fetchOrganizations, paginationState.pageSize, searchTerm]
+    [
+      plansMap,
+      fetchOrganizations,
+      paginationState.pageSize,
+      searchTerm,
+      selectedStatus,
+    ]
   );
+  /* -------------------- Status Filter Handler -------------------- */
+  const handleStatusFilter = useCallback(
+    (status) => {
+      setSelectedStatus(status);
+
+      fetchOrganizations(
+        1,
+        paginationState.pageSize,
+        searchTerm,
+        selectedPlanName,
+        status
+      );
+    },
+    [fetchOrganizations, paginationState.pageSize, searchTerm, selectedPlanName]
+  );
+
   /* -------------------- Load Plans Map -------------------- */
 
   useEffect(() => {
@@ -122,10 +169,11 @@ const Organisation = () => {
         pagination.current,
         pagination.pageSize,
         searchTerm,
-        selectedPlanName
-      ); // use current search
+        selectedPlanName,
+        selectedStatus
+      );
     },
-    [fetchOrganizations, searchTerm, selectedPlanName]
+    [fetchOrganizations, searchTerm, selectedPlanName, selectedStatus]
   );
   /* -------------------- Submit -------------------- */
   const handleSubmit = useCallback(
@@ -163,7 +211,21 @@ const Organisation = () => {
           selectedPlanName
         );
       } catch (error) {
-        message.error(error.response?.data?.message || "Operation failed");
+        const backendError = error?.response?.data?.error;
+
+        // Handle duplicate slug error at form level
+        if (backendError === "Organization with this slug already exists") {
+          form.setFields([
+            {
+              name: "slug",
+              errors: [
+                "This slug is already in use. Please enter a unique slug.",
+              ],
+            },
+          ]);
+        } else {
+          message.error(error?.response?.data?.message || "Operation failed");
+        }
       } finally {
         setSubmitLoading(false);
       }
@@ -174,7 +236,7 @@ const Organisation = () => {
       fetchOrganizations,
       paginationState,
       searchTerm,
-     selectedPlanName,
+      selectedPlanName,
     ]
   );
 
@@ -234,7 +296,9 @@ const Organisation = () => {
       {
         title: "Owner Email",
         dataIndex: "ownerEmail",
-        render: (_, record) => <a href={`mailto:${record.owner.email}`}>{record.owner.email}</a>,
+        render: (_, record) => (
+          <a href={`mailto:${record.owner.email}`}>{record.owner.email}</a>
+        ),
       },
       {
         title: "Status",
@@ -302,7 +366,7 @@ const Organisation = () => {
       >
         <Col>
           <Title level={3} style={{ margin: 0 }}>
-            Organization Management
+            Organisation Management
           </Title>
         </Col>
         <Col>
@@ -311,7 +375,7 @@ const Organisation = () => {
             icon={<PlusOutlined />}
             onClick={openCreateModal}
           >
-            Add Organization
+            Add Organisation
           </Button>
         </Col>
       </Row>
@@ -319,17 +383,40 @@ const Organisation = () => {
       <Row style={{ marginBottom: 16 }}>
         <Col>
           <DebouncedSearch
-            placeholder="Search by organization name"
+            placeholder="Search"
             onSearch={handleSearch}
             className="search_data"
           />
         </Col>
         <Col>
-          <PlanSelect
+          <CommonSelect
             value={selectedPlanId}
             onChange={handlePlanFilter}
             placeholder="Filter by plan"
             allowClear
+            fetcher={async () => {
+              const res = await plansAPI.list();
+              return res.data?.plans || [];
+            }}
+            mapOption={(plan) => ({
+              label: plan.plan_name,
+              value: plan._id,
+            })}
+            filterFn={(plan) => plan.status === "active"} // optional
+          />
+        </Col>
+        <Col>
+          <CommonSelect
+            value={selectedStatus}
+            onChange={handleStatusFilter}
+            placeholder="Filter by status"
+            allowClear
+            showSearch={false}
+            fetcher={async () => [
+              { label: "Active", value: "active" },
+              { label: "Inactive", value: "inactive" },
+            ]}
+            mapOption={(item) => item}
           />
         </Col>
       </Row>

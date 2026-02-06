@@ -97,6 +97,29 @@ export const SortableItem: React.FC<SortableItemProps> = ({
     }
   };
 
+  // Check if due date is today
+  const isDueToday = (dueDate?: string): boolean => {
+    if (!dueDate) return false;
+    try {
+      const today = new Date();
+      const date = new Date(dueDate);
+      
+      if (isNaN(date.getTime())) return false;
+      
+      // Normalize both dates to start of day for accurate comparison
+      today.setHours(0, 0, 0, 0);
+      date.setHours(0, 0, 0, 0);
+      
+      return (
+        today.getFullYear() === date.getFullYear() &&
+        today.getMonth() === date.getMonth() &&
+        today.getDate() === date.getDate()
+      );
+    } catch {
+      return false;
+    }
+  };
+
   // Calculate completed/total subtasks
   const getSubtaskProgress = () => {
     if (!task?.subtasks || task.subtasks.length === 0) return null;
@@ -170,6 +193,13 @@ export const SortableItem: React.FC<SortableItemProps> = ({
     }
   };
 
+  // Check if task is completed
+  const taskStatus = (task?.status || '').toLowerCase();
+  const isCompleted = taskStatus.includes('done') || taskStatus.includes('completed');
+  
+  // Check if task is due today and not completed
+  const taskDueToday = !isCompleted && task?.dueDate && isDueToday(task.dueDate);
+
   return (
     <Card
       ref={setNodeRef}
@@ -180,8 +210,18 @@ export const SortableItem: React.FC<SortableItemProps> = ({
       {...listeners}
       sx={{
         mb: '0 !important',
-        bgcolor: theme.palette.background.paper, // White background for task cards
-        border: `1px solid ${theme.palette.divider}`,
+        bgcolor: taskDueToday
+          ? theme.palette.mode === 'dark'
+            ? 'rgba(127, 29, 29, 0.3)' // Dark red background for dark mode
+            : 'rgba(254, 242, 242, 0.8)' // Light red background for light mode
+          : theme.palette.background.paper,
+        border: `1px solid ${
+          taskDueToday
+            ? theme.palette.mode === 'dark'
+              ? 'rgba(185, 28, 28, 0.4)' // Dark red border for dark mode
+              : 'rgba(254, 202, 202, 0.5)' // Light red border for light mode
+            : theme.palette.divider
+        }`,
         borderRadius: '8px',
         padding: '16px',
         minHeight: 'auto',
@@ -192,7 +232,16 @@ export const SortableItem: React.FC<SortableItemProps> = ({
         overflow: 'hidden', // Keep content inside card
         '&:hover': {
           boxShadow: dndIsDragging ? theme.shadows[8] : theme.shadows[4],
-          borderColor: theme.palette.primary.main,
+          borderColor: taskDueToday
+            ? theme.palette.mode === 'dark'
+              ? 'rgba(220, 38, 38, 0.5)' // Darker red border on hover for dark mode
+              : 'rgba(254, 202, 202, 0.8)' // Light red border on hover for light mode
+            : theme.palette.primary.main,
+          bgcolor: taskDueToday
+            ? theme.palette.mode === 'dark'
+              ? 'rgba(153, 27, 27, 0.4)' // Slightly darker red on hover for dark mode
+              : 'rgba(254, 226, 226, 0.9)' // Slightly darker red on hover for light mode
+            : undefined,
         },
       }}
     >
@@ -339,8 +388,28 @@ export const SortableItem: React.FC<SortableItemProps> = ({
                 {/* Deadline */}
                 {task.dueDate && (
                   <Stack direction="row" alignItems="center" spacing={0.25} gap={0.25}>
-                    <CalendarToday sx={{ fontSize: '14px', color: theme.palette.text.secondary }} />
-                    <Typography variant="caption" sx={{ fontSize: '14px', color: theme.palette.text.secondary }}>
+                    <CalendarToday
+                      sx={{
+                        fontSize: '14px',
+                        color: isDueToday(task.dueDate)
+                          ? theme.palette.mode === 'dark'
+                            ? '#f87171' // Lighter red for dark mode
+                            : '#ef4444' // Red for light mode
+                          : theme.palette.text.secondary,
+                      }}
+                    />
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        fontSize: '14px',
+                        color: isDueToday(task.dueDate)
+                          ? theme.palette.mode === 'dark'
+                            ? '#f87171' // Lighter red for dark mode
+                            : '#ef4444' // Red for light mode
+                          : theme.palette.text.secondary,
+                        fontWeight: isDueToday(task.dueDate) ? 600 : 400,
+                      }}
+                    >
                       {formatDate(task.dueDate)}
                     </Typography>
                   </Stack>

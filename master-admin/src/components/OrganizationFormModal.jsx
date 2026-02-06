@@ -1,6 +1,7 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Modal, Form, Input, Button, Select } from "antd";
-import PlanSelect from "../components/PlanSelect";
+import { useCallback, useEffect } from "react";
+import { Modal, Form, Input, Button } from "antd";
+import CommonSelect from "./CommonSelect";
+import { plansAPI } from "../services/api";
 
 const OrganizationFormModal = ({
   open,
@@ -10,8 +11,8 @@ const OrganizationFormModal = ({
   onSubmit,
 }) => {
   const [form] = Form.useForm();
-  const isEditing = Boolean(initialValues?._id);  
-  
+  const isEditing = Boolean(initialValues?._id);
+
   /* -------------------- Populate Form -------------------- */
   useEffect(() => {
     if (!open) return;
@@ -37,11 +38,41 @@ const OrganizationFormModal = ({
     },
     [onSubmit, form]
   );
+  /* -------------------- No number Validation -------------------- */
+  const noNumberRule = {
+    pattern: /^[A-Za-z\s]+$/,
+    message: "This field must not contain numbers",
+  };
+  /* -------------------- Slug  Validation -------------------- */
 
   const handleCancel = useCallback(() => {
     form.resetFields();
     onCancel();
   }, [form, onCancel]);
+
+  const handleSlugChange = async (e) => {
+  const value = e.target.value;
+
+  setSlugStatus(null);
+  setSlugHelp("");
+
+  if (!value) return;
+
+  try {
+    await organizationAPI.checkSlug(value); // backend endpoint
+    setSlugStatus("success");
+    setSlugHelp("Slug is available");
+  } catch (err) {
+    if (
+      err?.response?.data?.error ===
+      "Organization with this slug already exists"
+    ) {
+      setSlugStatus("error");
+      setSlugHelp("This slug is already in use");
+    }
+  }
+};
+
 
   return (
     <Modal
@@ -56,7 +87,7 @@ const OrganizationFormModal = ({
         <Form.Item
           label="Company Name"
           name="name"
-          rules={[{ required: true }]}
+          rules={[{ required: true }, noNumberRule]}
         >
           <Input />
         </Form.Item>
@@ -64,7 +95,7 @@ const OrganizationFormModal = ({
         <Form.Item
           label="Company Slug"
           name="slug"
-          rules={[{ required: true }]}
+          rules={[{ required: true }, noNumberRule]}
         >
           <Input />
         </Form.Item>
@@ -72,7 +103,7 @@ const OrganizationFormModal = ({
         <Form.Item
           label="Owner First Name"
           name="firstName"
-          rules={[{ required: true }]}
+          rules={[{ required: true }, noNumberRule]}
         >
           <Input />
         </Form.Item>
@@ -80,7 +111,7 @@ const OrganizationFormModal = ({
         <Form.Item
           label="Owner Last Name"
           name="lastName"
-          rules={[{ required: true }]}
+          rules={[{ required: true }, noNumberRule]}
         >
           <Input />
         </Form.Item>
@@ -105,11 +136,22 @@ const OrganizationFormModal = ({
         <Form.Item
           label="Select Plan"
           name="planId"
-          getValueFromEvent={(value) => value}
           rules={[{ required: true, message: "Please select a plan" }]}
         >
-          <PlanSelect />
+          <CommonSelect
+            placeholder="Select a plan"
+            fetcher={async () => {
+              const res = await plansAPI.list();
+              return res.data?.plans || [];
+            }}
+            filterFn={(plan) => plan.status === "active"}
+            mapOption={(plan) => ({
+              label: plan.plan_name,
+              value: plan._id,
+            })}
+          />
         </Form.Item>
+
         <div style={{ textAlign: "right" }}>
           <Button
             type="primary"

@@ -126,10 +126,15 @@ export async function PUT(request: Request) {
 
   try {
     const body = await request.json();
-    const { id } = body;
+    const { id, read } = body;
 
     if (!id) {
       return NextResponse.json({ error: 'Notification ID is required' }, { status: 400 });
+    }
+
+    // Validate read parameter (should be boolean)
+    if (read !== undefined && typeof read !== 'boolean') {
+      return NextResponse.json({ error: 'Read parameter must be a boolean' }, { status: 400 });
     }
 
     const client = await clientPromise;
@@ -137,17 +142,20 @@ export async function PUT(request: Request) {
 
     const orgObjectId = org_id instanceof ObjectId ? org_id : new ObjectId(org_id);
 
+    // Use provided read value, or default to true for backward compatibility
+    const readValue = read !== undefined ? read : true;
+
     const result = await db
       .collection('notifications')
       .updateOne({
         _id: new ObjectId(id),
         userId: new ObjectId(userId),
         org_id: orgObjectId // Ensure notification belongs to user's organization
-      }, { $set: { read: true } });
+      }, { $set: { read: readValue } });
 
     return NextResponse.json(
       {
-        message: 'Notifications marked as read',
+        message: readValue ? 'Notification marked as read' : 'Notification marked as unread',
         modified: result.modifiedCount,
       },
       { status: 200 }

@@ -15,8 +15,9 @@ import {
   useTheme,
   TextField,
   MenuItem,
+  Tooltip,
 } from '@mui/material';
-import { ArrowBack, EditOutlined, SaveOutlined, CancelOutlined, AttachFile, Delete } from '@mui/icons-material';
+import { ArrowBack, EditOutlined, SaveOutlined, CancelOutlined, AttachFile, Delete, InfoOutlined } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 import axios from 'axios';
 import { safeLocalStorageGet } from '@/utils/helpers';
@@ -253,6 +254,34 @@ const TaskDetailsPage: React.FC = () => {
       });
     } catch {
       return dateString || 'Not set';
+    }
+  };
+
+  // Check if due date is today
+  const isDueToday = (dueDate?: string): boolean => {
+    if (!dueDate) return false;
+    try {
+      const today = new Date();
+      let date: Date;
+      if (dueDate.includes('T')) {
+        date = new Date(dueDate);
+      } else {
+        date = new Date(dueDate + 'T00:00:00');
+      }
+      
+      if (isNaN(date.getTime())) return false;
+      
+      // Normalize both dates to start of day for accurate comparison
+      today.setHours(0, 0, 0, 0);
+      date.setHours(0, 0, 0, 0);
+      
+      return (
+        today.getFullYear() === date.getFullYear() &&
+        today.getMonth() === date.getMonth() &&
+        today.getDate() === date.getDate()
+      );
+    } catch {
+      return false;
     }
   };
 
@@ -738,22 +767,39 @@ const TaskDetailsPage: React.FC = () => {
           </Box>
 
           <Divider />
-
           {/* Due Date */}
           <Box>
-            <Typography
-              variant="subtitle2"
-              sx={{
-                mb: 1,
-                color: theme.palette.text.secondary,
-                fontWeight: 600,
-                textTransform: 'uppercase',
-                fontSize: '11px',
-                letterSpacing: '0.5px',
-              }}
-            >
-              Due Date
-            </Typography>
+            <Stack direction="row" alignItems="center" spacing={0.5} sx={{ mb: 1 }}>
+              <Typography
+                variant="subtitle2"
+                sx={{
+                  color: theme.palette.text.secondary,
+                  fontWeight: 600,
+                  textTransform: 'uppercase',
+                  fontSize: '11px',
+                  letterSpacing: '0.5px',
+                }}
+              >
+                Due Date
+              </Typography>
+              <Tooltip
+                title="Tasks with due dates set to today will have a red background until they are marked as completed."
+                arrow
+              >
+                <IconButton
+                  size="small"
+                  sx={{
+                    p: 0,
+                    color: theme.palette.text.secondary,
+                    '&:hover': {
+                      color: theme.palette.primary.main,
+                    },
+                  }}
+                >
+                  <InfoOutlined sx={{ fontSize: '14px' }} />
+                </IconButton>
+              </Tooltip>
+            </Stack>
             {isEditing ? (
               <TextField
                 name="dueDate"
@@ -843,7 +889,12 @@ const TaskDetailsPage: React.FC = () => {
               <Typography
                 variant="body1"
                 sx={{
-                  color: theme.palette.text.primary,
+                  color: isDueToday(task.dueDate)
+                    ? theme.palette.mode === 'dark'
+                      ? '#f87171' // Lighter red for dark mode
+                      : '#ef4444' // Red for light mode
+                    : theme.palette.text.primary,
+                  fontWeight: isDueToday(task.dueDate) ? 600 : 400,
                 }}
               >
                 {formatDate(task.dueDate)}

@@ -20,7 +20,7 @@ import {
   Stack,
   IconButton,
 } from '@mui/material';
-import { AttachFile, CloseOutlined, Delete } from '@mui/icons-material';
+import { AttachFile, Delete, Visibility } from '@mui/icons-material';
 import RichTextEditor from '@/app/dashboard/tasks/components/RichTextEditor';
 import FileAttachmentDialog from '@/app/dashboard/tasks/components/FileAttachmentDialog';
 import type { TaskAttachment } from '@/app/dashboard/tasks/types';
@@ -599,71 +599,81 @@ export default function ProjectModal({
                       />
                     </Grid2>
 
-                    <Grid2 size={12}>
-                      <Divider sx={{ my: 2 }} />
-                      <Box sx={{ mb: 2 }}>
-                        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
-                          <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                            Attachments {(values.attachments && (values.attachments as TaskAttachment[]).length)
-                              ? `(${(values.attachments as TaskAttachment[]).length})`
-                              : '(0)'}
-                          </Typography>
-                          <Button
-                            startIcon={<AttachFile />}
-                            onClick={() => setAttachmentDialogOpen(true)}
-                            size="small"
-                            variant="outlined"
-                          >
-                            Attach
-                          </Button>
-                        </Stack>
-                        {values.attachments && (values.attachments as TaskAttachment[]).length > 0 ? (
-                          <Stack spacing={0.5}>
-                            {(values.attachments as TaskAttachment[]).map((attachment, index) => (
-                              <Stack
-                                key={index}
-                                direction="row"
-                                alignItems="center"
-                                spacing={1}
+                  <Grid2 size={12}>
+                    <Divider sx={{ my: 2 }} />
+                    <Box sx={{ mb: 2 }}>
+                      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                          Attachments {(values.attachments && (values.attachments as TaskAttachment[]).length)
+                            ? `(${(values.attachments as TaskAttachment[]).length})`
+                            : '(0)'}
+                        </Typography>
+                        <Button
+                          startIcon={<AttachFile />}
+                          onClick={() => setAttachmentDialogOpen(true)}
+                          size="small"
+                          variant="outlined"
+                        >
+                          Attach
+                        </Button>
+                      </Stack>
+                      {values.attachments && (values.attachments as TaskAttachment[]).length > 0 ? (
+                        <Stack spacing={0.5}>
+                          {(values.attachments as TaskAttachment[]).map((attachment, index) => (
+                            <Stack
+                              key={index}
+                              direction="row"
+                              alignItems="center"
+                              spacing={1}
+                              sx={{
+                                p: 1,
+                                borderRadius: 1,
+                                bgcolor: 'action.hover',
+                              }}
+                            >
+                              <AttachFile fontSize="small" sx={{ color: 'text.secondary' }} />
+                              <Typography
+                                variant="body2"
                                 sx={{
-                                  p: 1,
-                                  borderRadius: 1,
-                                  bgcolor: 'action.hover',
+                                  flex: 1,
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
                                 }}
                               >
-                                <AttachFile fontSize="small" sx={{ color: 'text.secondary' }} />
-                                <Typography
-                                  variant="body2"
-                                  sx={{
-                                    flex: 1,
-                                    overflow: 'hidden',
-                                    textOverflow: 'ellipsis',
-                                    whiteSpace: 'nowrap',
-                                  }}
-                                >
-                                  {attachment.fileName}
-                                </Typography>
-                                <IconButton
-                                  size="small"
-                                  onClick={() => handleDeleteAttachment(index)}
-                                  color="error"
-                                >
-                                  <Delete fontSize="small" />
-                                </IconButton>
-                              </Stack>
-                            ))}
-                          </Stack>
-                        ) : (
-                          <Typography variant="body2" sx={{ color: 'text.secondary', fontStyle: 'italic' }}>
-                            No attachments
-                          </Typography>
-                        )}
-                      </Box>
-                    </Grid2>
+                                {attachment.fileName}
+                              </Typography>
+                              <Button
+                                size="small"
+                                href={attachment.fileUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                startIcon={<Visibility />}
+                                sx={{ minWidth: 'auto', px: 1, fontSize: '11px' }}
+                              >
+                                View
+                              </Button>
+                              <IconButton
+                                size="small"
+                                onClick={() => handleDeleteAttachment(index)}
+                                color="error"
+                              >
+                                <Delete fontSize="small" />
+                              </IconButton>
+                            </Stack>
+                          ))}
+                        </Stack>
+                      ) : (
+                        <Typography variant="body2" sx={{ color: 'text.secondary', fontStyle: 'italic' }}>
+                          No attachments
+                        </Typography>
+                      )}
+                    </Box>
                   </Grid2>
-                </Form>
-              }
-            />
+                </Grid2>
+              </Form>
+            }
+          />
 
             <FileAttachmentDialog
               open={attachmentDialogOpen}
