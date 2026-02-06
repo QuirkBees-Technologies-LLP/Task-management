@@ -50,7 +50,6 @@ const clientsColumns: ResponsiveTableColumn[] = [
     title: 'Project Name',
     key: 'projectName',
   },
-  { title: 'Project Name', key: 'projectName' },
   { title: 'Email', key: 'email' },
   { title: 'Phone', key: 'phone' },
   { title: 'Company', key: 'company' },
