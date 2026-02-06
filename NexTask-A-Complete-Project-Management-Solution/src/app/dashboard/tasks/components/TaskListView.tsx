@@ -444,9 +444,9 @@ const TaskListView: React.FC<TaskListViewProps> = ({
                   <TableHead>
                     <TableRow>
                       <TableCell sx={{ fontWeight: 600, fontSize: '12px', width: 40 }}></TableCell>
-                      <TableCell sx={{ fontWeight: 600, fontSize: '12px' }}>Task Name</TableCell>
+                      <TableCell sx={{ fontWeight: 600, fontSize: '12px' , minWidth:'160px'}}>Task Name</TableCell>
                       <TableCell sx={{ fontWeight: 600, fontSize: '12px' }}>Assignee</TableCell>
-                      <TableCell sx={{ fontWeight: 600, fontSize: '12px' }}>
+                      <TableCell sx={{ fontWeight: 600, fontSize: '12px' , minWidth:'110px'}}>
                         <Stack direction="row" alignItems="center" spacing={0.5}>
                           <span>Due Date</span>
                           <Tooltip

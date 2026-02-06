@@ -20,7 +20,7 @@ import {
   Stack,
   IconButton,
 } from '@mui/material';
-import { AttachFile, Delete, Visibility } from '@mui/icons-material';
+import { AttachFile, CloseOutlined, Delete, Visibility } from '@mui/icons-material';
 import RichTextEditor from '@/app/dashboard/tasks/components/RichTextEditor';
 import FileAttachmentDialog from '@/app/dashboard/tasks/components/FileAttachmentDialog';
 import type { TaskAttachment } from '@/app/dashboard/tasks/types';
