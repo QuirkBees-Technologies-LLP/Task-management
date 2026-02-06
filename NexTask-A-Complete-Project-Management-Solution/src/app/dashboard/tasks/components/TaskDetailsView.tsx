@@ -11,8 +11,9 @@ import {
   Stack,
   Divider,
   useTheme,
+  Tooltip,
 } from '@mui/material';
-import { CloseOutlined } from '@mui/icons-material';
+import { CloseOutlined, InfoOutlined } from '@mui/icons-material';
 import { Task } from '../types';
 import { getPriorityColor as getPriorityColorUtil, getPriorityDisplayName } from '../utils/priorityColors';
 import { getStatusColor, getStatusDisplayName } from '../utils/statusColors';
@@ -43,6 +44,29 @@ const TaskDetailsView: React.FC<TaskDetailsViewProps> = ({ open, onClose, task, 
       });
     } catch {
       return dateString;
+    }
+  };
+
+  // Check if due date is today
+  const isDueToday = (dueDate?: string): boolean => {
+    if (!dueDate) return false;
+    try {
+      const today = new Date();
+      const date = new Date(dueDate);
+      
+      if (isNaN(date.getTime())) return false;
+      
+      // Normalize both dates to start of day for accurate comparison
+      today.setHours(0, 0, 0, 0);
+      date.setHours(0, 0, 0, 0);
+      
+      return (
+        today.getFullYear() === date.getFullYear() &&
+        today.getMonth() === date.getMonth() &&
+        today.getDate() === date.getDate()
+      );
+    } catch {
+      return false;
     }
   };
 
@@ -182,20 +206,43 @@ const TaskDetailsView: React.FC<TaskDetailsViewProps> = ({ open, onClose, task, 
 
           {/* Due Date */}
           <Box>
-            <Typography
-              variant="subtitle2"
-              sx={{
-                mb: 1,
-                color: theme.palette.text.secondary,
-                fontWeight: 600,
-              }}
-            >
-              Due Date
-            </Typography>
+            <Stack direction="row" alignItems="center" spacing={0.5} sx={{ mb: 1 }}>
+              <Typography
+                variant="subtitle2"
+                sx={{
+                  color: theme.palette.text.secondary,
+                  fontWeight: 600,
+                }}
+              >
+                Due Date
+              </Typography>
+              <Tooltip
+                title="Tasks with due dates set to today will have a red background until they are marked as completed."
+                arrow
+              >
+                <IconButton
+                  size="small"
+                  sx={{
+                    p: 0,
+                    color: theme.palette.text.secondary,
+                    '&:hover': {
+                      color: theme.palette.primary.main,
+                    },
+                  }}
+                >
+                  <InfoOutlined sx={{ fontSize: '14px' }} />
+                </IconButton>
+              </Tooltip>
+            </Stack>
             <Typography
               variant="body2"
               sx={{
-                color: theme.palette.text.primary,
+                color: isDueToday(task.dueDate)
+                  ? theme.palette.mode === 'dark'
+                    ? '#f87171' // Lighter red for dark mode
+                    : '#ef4444' // Red for light mode
+                  : theme.palette.text.primary,
+                fontWeight: isDueToday(task.dueDate) ? 600 : 400,
               }}
             >
               {formatDate(task.dueDate)}
