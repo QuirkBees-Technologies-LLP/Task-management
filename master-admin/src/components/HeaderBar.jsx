@@ -1,73 +1,122 @@
-import { Button, Layout, Avatar, Dropdown } from "antd";
-import { MenuFoldOutlined, MenuUnfoldOutlined, LogoutOutlined } from "@ant-design/icons";
+import { AppBar, Toolbar, IconButton, Avatar, Box, Typography, Menu, MenuItem } from "@mui/material";
+import MenuIcon from "@mui/icons-material/Menu";
+import MenuOpenIcon from "@mui/icons-material/MenuOpen";
+import LogoutIcon from "@mui/icons-material/Logout";
 import { useAuth } from "../contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
-
-const { Header } = Layout;
+import { useState } from "react";
 
 const HeaderBar = ({ collapsed, setCollapsed }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [anchorEl, setAnchorEl] = useState(null);
 
   const handleLogout = () => {
     logout();
     navigate('/login');
+    setAnchorEl(null);
   };
 
-  const items = [
-    {
-      key: "logout",
-      label: "Logout",
-      icon: <LogoutOutlined />,
-      onClick: handleLogout,
-    },
-  ];
+  const handleMenuOpen = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
+
+  const open = Boolean(anchorEl);
 
   return (
-    <Header
-      style={{
-        background: "#fff",
-        padding: "0 20px",
-        borderBottom: "1px solid #f0f0f0",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
+    <AppBar
+      position="static"
+      sx={{
+        backgroundColor: "#fff",
+        boxShadow: "0 1px 0 0 #f0f0f0",
+        height: 64,
       }}
+      elevation={0}
     >
-      {/* Left: Collapse Button */}
-      <Button
-        type="text"
-        icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-        onClick={() => setCollapsed(!collapsed)}
-        style={{
-          fontSize: "16px",
-          width: 40,
-          height: 40,
+      <Toolbar
+        sx={{
+          padding: "0 20px",
+          minHeight: 64,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
         }}
-      />
+      >
+        {/* Left: Collapse Button */}
+        <IconButton
+          onClick={() => setCollapsed(!collapsed)}
+          sx={{
+            width: 40,
+            height: 40,
+            fontSize: "16px",
+          }}
+          size="large"
+        >
+          {collapsed ? <MenuOpenIcon /> : <MenuIcon />}
+        </IconButton>
 
-      {/* Right: Profile with Dropdown */}
-      <Dropdown menu={{ items }} trigger={["click"]} placement="bottomRight">
-        <div
-          style={{
+        {/* Right: Profile with Dropdown */}
+        <Box
+          sx={{
             display: "flex",
             alignItems: "center",
             gap: "10px",
             cursor: "pointer",
           }}
+          onClick={handleMenuOpen}
         >
           <Avatar
-            size={40}
-            style={{ backgroundColor: '#203165' }}
+            sx={{
+              width: 40,
+              height: 40,
+              backgroundColor: '#203165',
+              fontSize: "16px",
+            }}
           >
             {user?.firstName?.charAt(0)?.toUpperCase() || 'A'}
           </Avatar>
-          <span style={{ fontWeight: "500" }}>
+          <Typography
+            sx={{
+              fontWeight: 500,
+              fontSize: "14px",
+              userSelect: "none",
+            }}
+          >
             {user?.firstName} {user?.lastName}
-          </span>
-        </div>
-      </Dropdown>
-    </Header>
+          </Typography>
+        </Box>
+
+        {/* Profile Menu */}
+        <Menu
+          anchorEl={anchorEl}
+          open={open}
+          onClose={handleMenuClose}
+          anchorOrigin={{
+            vertical: "bottom",
+            horizontal: "right",
+          }}
+          transformOrigin={{
+            vertical: "top",
+            horizontal: "right",
+          }}
+          PaperProps={{
+            sx: {
+              mt: 1,
+              minWidth: 160,
+            },
+          }}
+        >
+          <MenuItem onClick={handleLogout} sx={{ gap: 1 }}>
+            <LogoutIcon fontSize="small" />
+            Logout
+          </MenuItem>
+        </Menu>
+      </Toolbar>
+    </AppBar>
   );
 };
 

@@ -1,4 +1,10 @@
-import { createContext, useRef, useContext, useEffect, useState } from "react";
+import {
+  createContext,
+  useRef,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
 import {
   setToken,
   getToken,
@@ -8,8 +14,11 @@ import {
 } from "../utils/authStorage";
 import { authAPI } from "../services/api";
 import api from "../services/api";
-import { message } from "antd";
 import { useNavigate } from "react-router-dom";
+
+// MUI
+import { Snackbar, Alert } from "@mui/material";
+
 const AuthContext = createContext(null);
 
 export const useAuth = () => {
@@ -24,15 +33,36 @@ export const AuthProvider = ({ children }) => {
   const [user, setUserState] = useState(null);
   const [token, setTokenState] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // Snackbar state (replacement for antd message)
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "error",
+  });
+
   const navigate = useNavigate();
   const navigateRef = useRef(navigate);
 
-  // Update ref whenever navigate changes
+  /* -------------------- Snackbar helpers -------------------- */
+  const showError = (msg) => {
+    setSnackbar({
+      open: true,
+      message: msg,
+      severity: "error",
+    });
+  };
+
+  const handleSnackbarClose = () => {
+    setSnackbar((prev) => ({ ...prev, open: false }));
+  };
+
+  /* -------------------- Sync navigate ref -------------------- */
   useEffect(() => {
     navigateRef.current = navigate;
   }, [navigate]);
 
-  // Restore auth on refresh
+  /* -------------------- Restore auth on refresh -------------------- */
   useEffect(() => {
     const storedToken = getToken();
     const storedUser = getUser();
@@ -45,16 +75,18 @@ export const AuthProvider = ({ children }) => {
     setLoading(false);
   }, []);
 
-  // Axios Response Interceptor for token errors
+  /* -------------------- Axios interceptor -------------------- */
   useEffect(() => {
     const interceptor = api.interceptors.response.use(
       (response) => response,
       (error) => {
         const errorMessage = error?.response?.data?.error || "";
+
         if (errorMessage === "Invalid or expired token") {
-          message.error("Session expired. Please login again.");
-          logout(); // Reuse your existing logout (clears storage + navigates)
+          showError("Session expired. Please login again.");
+          logout();
         }
+
         return Promise.reject(error);
       }
     );
@@ -62,16 +94,15 @@ export const AuthProvider = ({ children }) => {
     return () => {
       api.interceptors.response.eject(interceptor);
     };
-  }, []); // Empty deps: runs once, uses navigateRef
+  }, []);
 
+  /* -------------------- Auth actions -------------------- */
   const login = async (credentials) => {
     const response = await authAPI.login(credentials);
-
     const { token, user } = response.data;
 
     setToken(token);
     setUser(user);
-
     setTokenState(token);
     setUserState(user);
 
@@ -82,7 +113,7 @@ export const AuthProvider = ({ children }) => {
     clearAuth();
     setUserState(null);
     setTokenState(null);
-    navigate("/login", { replace: true });
+    navigateRef.current("/login", { replace: true });
   };
 
   return (
@@ -97,6 +128,22 @@ export const AuthProvider = ({ children }) => {
       }}
     >
       {children}
+
+      {/* Global Snackbar (AntD message replacement) */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={3000}
+        onClose={handleSnackbarClose}
+        anchorOrigin={{ vertical: "top", horizontal: "right" }}
+      >
+        <Alert
+          onClose={handleSnackbarClose}
+          severity={snackbar.severity}
+          variant="filled"
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </AuthContext.Provider>
   );
 };
