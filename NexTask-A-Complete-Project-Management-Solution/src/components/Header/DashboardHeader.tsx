@@ -194,13 +194,15 @@ const DashboardAppbar: React.FC<DashboardAppbarProps> = ({
             )}
           </Box>
           <Box sx={{ marginLeft: 'auto' }}>
-            {!isXsScreen && (
-              <Tooltip title="Dark mode">
-                <IconButton onClick={() => setMode(mode === 'light' ? 'dark' : 'light')}>
-                  {mode === 'dark' ? <LightMode /> : <DarkModeOutlined />}
-                </IconButton>
-              </Tooltip>
-            )}
+            {/* {!isXsScreen && (
+              // <Tooltip title="Dark mode">
+              //   <IconButton onClick={() => setMode(mode === 'light' ? 'dark' : 'light')}>
+              //     {mode === 'dark' ? <LightMode /> : <DarkModeOutlined />}
+              //   </IconButton>
+              // </Tooltip>
+            )} */
+            
+            }
             {/* {!isSmallScreen && (
               <Tooltip title="Settings">
                 <IconButton onClick={() => setSettingsOpen(true)}>

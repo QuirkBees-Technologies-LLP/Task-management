@@ -199,6 +199,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [tooltip, setTooltip] = useState<{ text: string; x: number; y: number } | null>(null);
   const [isQuillReady, setIsQuillReady] = useState(false);
+  const isInteractingWithPopover = useRef(false);
 
   // Register Quill MentionBlot only on client side (only once)
   useEffect(() => {
