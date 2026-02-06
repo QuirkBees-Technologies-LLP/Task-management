@@ -7,6 +7,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { submitFeedback } from '@/redux/slices';
 import { selectFeedback, selectCurrentUser, selectSuperuser } from '@/redux/selectors';
 import { enqueueSnackbar } from 'notistack';
+import axios from 'axios';
 
 // Minimum characters required for feedback text.
 const MIN_LENGTH = 20;
@@ -60,12 +61,14 @@ const FeedbackForm = (props: FeedbackFormProps) => {
   const [openModal, setOpenModal] = useState(false);
   const [action, setAction] = useState("");
 
-  const { saving } = useSelector(selectFeedback);
   const { data: userInfo } = useSelector(selectCurrentUser);
   const isSuperUser = useSelector(selectSuperuser);
 
   // Check if user is admin (Admin role or Superuser)
   const isAdmin = userInfo?.role === 'Admin' || isSuperUser;
+
+  // Local state for saving
+  const [saving, setSaving] = useState(false);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -91,7 +94,7 @@ const FeedbackForm = (props: FeedbackFormProps) => {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (values?.feedback?.length < MIN_LENGTH) {
       setError(true);
@@ -102,8 +105,40 @@ const FeedbackForm = (props: FeedbackFormProps) => {
       return;
     }
 
-    // Send both the raw values (for support ticket) and optional attachment
-    dispatch(submitFeedback({ values, attachment, setValues, setAttachment }));
+    setSaving(true);
+    try {
+      const ticketData = {
+        subject: 'User Feedback',
+        description: values.feedback,
+        category: 'feedback',
+        priority: 'medium',
+        contact: {
+          firstName: values.firstName || '',
+          lastName: values.lastName || '',
+          email: values.email || '',
+        },
+      };
+
+      console.log('Submitting feedback to /api/support:', ticketData);
+      const response = await axios.post('/api/support', ticketData);
+      console.log('Feedback submission response:', response.data);
+
+      enqueueSnackbar({
+        message: 'Feedback submitted successfully!',
+        variant: 'success',
+      });
+      setValues(initialValues);
+      setAttachment(null);
+    } catch (error: any) {
+      console.error('Error submitting feedback:', error);
+      console.error('Error details:', error.response?.data || error.message);
+      enqueueSnackbar({
+        variant: 'error',
+        message: 'Failed to submit feedback. Please try again.',
+      });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleOpen = () => {
