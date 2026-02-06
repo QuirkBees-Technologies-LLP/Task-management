@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
 import clientPromise from '../../lib/mongodb';
 import { DATABASE_NAME } from '../../config';
-import { verifyToken } from '../../helpers';
+import { verifyToken, getOrgIdFromToken, userRolesServer } from '../../helpers';
+import { createNotification } from '../../lib/notification';
 
 // GET: Fetch support tickets
 export async function GET(request: Request) {
@@ -22,6 +23,15 @@ export async function GET(request: Request) {
     const ticketsCollection = db.collection('supportTickets');
 
     const query: any = {};
+
+    // NOTE: We intentionally do NOT filter strictly by org_id here to ensure
+    // older tickets (without org_id) and tickets from users without org info
+    // are still visible in the Support UI. Role-based checks still apply below.
+
+    // Regular users only see their own tickets; admins see all tickets.
+    if (decoded.role === userRolesServer.regular) {
+      query.createdBy = decoded.id;
+    }
     if (search) {
       query.$or = [
         { ticketNumber: { $regex: search, $options: 'i' } },
@@ -75,12 +85,21 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const { ticketNumber, subject, description, priority, category, assignedTo } = body;
+    const {
+      ticketNumber,
+      subject,
+      description,
+      priority,
+      category,
+      assignedTo,
+      contact,
+      attachments,
+    } = body;
 
     if (!subject || !description) {
       return NextResponse.json(
         { error: 'Subject and description are required' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -88,10 +107,13 @@ export async function POST(request: Request) {
     const db = client.db(DATABASE_NAME);
     const ticketsCollection = db.collection('supportTickets');
 
+    // Determine org for scoping (optional but preferred)
+    const org_id = getOrgIdFromToken(decoded);
+
     // Generate ticket number if not provided
     const ticketNum = ticketNumber || `TKT-${Date.now()}`;
 
-    const newTicket = {
+    const newTicket: any = {
       ticketNumber: ticketNum,
       subject,
       description,
@@ -102,16 +124,51 @@ export async function POST(request: Request) {
       createdAt: new Date(),
       updatedAt: new Date(),
       createdBy: decoded.id,
+      contact: contact || null,
+      attachments: Array.isArray(attachments) ? attachments : [],
     };
 
+    if (org_id) {
+      newTicket.org_id = org_id;
+    }
+
     const result = await ticketsCollection.insertOne(newTicket);
+
+    // Notify org admins that a new support ticket was created
+    if (org_id) {
+      const usersCollection = db.collection('users');
+
+      const admins = await usersCollection
+        .find({ org_id, role: userRolesServer.admin })
+        .toArray();
+
+      const requesterName =
+        (contact?.firstName || '') + ' ' + (contact?.lastName || '') ||
+        decoded.email ||
+        'A user';
+
+      const message = `${requesterName.trim()} submitted a new support ticket "${subject}"`;
+
+      for (const admin of admins) {
+        try {
+          await createNotification({
+            userId: admin._id,
+            message,
+            type: 'info',
+            org_id,
+          });
+        } catch (err) {
+          console.error('Error creating support ticket notification for admin:', err);
+        }
+      }
+    }
 
     return NextResponse.json(
       {
         success: true,
         ticket: { ...newTicket, _id: result.insertedId.toString() },
       },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error: any) {
     console.error('Error creating support ticket:', error);
