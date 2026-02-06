@@ -117,3 +117,12 @@ td.MuiTableCell-root {
 .MuiTableCell-root {
   border-color: var(--mui-palette-divider) !important;
 }
+.MuiOutlinedInput-root {
+  border-radius: 4px !important;
+}
+.mui-18ofa0f-MuiFormLabel-root-MuiInputLabel-root {
+  top: -8px !important;
+}
+.mui-1toxriw-MuiList-root-MuiMenu-list {
+  padding: 0 !important;
+}

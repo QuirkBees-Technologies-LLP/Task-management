@@ -335,7 +335,7 @@ export const SortableItem: React.FC<SortableItemProps> = ({
                 gap: 0.75,
               }}
             >
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0, mt: 1 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0, mt: 1 }}>
                 {/* Deadline */}
                 {task.dueDate && (
                   <Stack direction="row" alignItems="center" spacing={0.25} gap={0.25}>
@@ -348,9 +348,9 @@ export const SortableItem: React.FC<SortableItemProps> = ({
 
                 {/* Subtask Progress */}
                 {subtaskProgress && (
-                  <Stack direction="row" alignItems="center" spacing={0.25}>
-                    <CheckBox sx={{ fontSize: '12px', color: theme.palette.text.secondary }} />
-                    <Typography variant="caption" sx={{ fontSize: '11px', color: theme.palette.text.secondary }}>
+                  <Stack direction="row" alignItems="center" spacing={0.25} gap={0.25}>
+                    <CheckBox sx={{ fontSize: '14px', color: theme.palette.text.secondary }} />
+                    <Typography variant="caption" sx={{ fontSize: '14px', color: theme.palette.text.secondary }}>
                       {subtaskProgress.completed}/{subtaskProgress.total}
                     </Typography>
                   </Stack>

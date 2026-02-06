@@ -88,8 +88,8 @@ export default function PageHeader({ title, ...props }: CardHeaderPropsWithCompo
   // For project tasks pages (non-dashboard), show title and breadcrumbs inside the page
   if (isProjectTasksPage) {
     return (
-      <Box sx={{ mb: 3 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+      <Box sx={{ padding: '16px 24px' }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' , flexWrap: 'wrap' , gap:'20px'}}>
           <Box sx={{ display: { xs: 'block', md: 'none' } }}>
             <Stack spacing={1} sx={{ flex: 1 }}>
               <Typography variant="h5" sx={{ fontWeight: 600, fontSize: '1.5rem' }}>
@@ -99,7 +99,7 @@ export default function PageHeader({ title, ...props }: CardHeaderPropsWithCompo
             </Stack>
           </Box>
           {props.action && (
-            <Box sx={{ ml: 2, flexShrink: 0 }}>
+            <Box sx={{ flexShrink: 0 }}>
               {props.action}
             </Box>
           )}

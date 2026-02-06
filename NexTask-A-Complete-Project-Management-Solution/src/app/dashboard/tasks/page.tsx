@@ -52,12 +52,12 @@ interface ApiTask {
 export default function TaskManagement() {
   const router = useRouter();
   const theme = useTheme();
-  
+
   // Redirect to projects page if accessed directly
   useEffect(() => {
     router.replace('/dashboard/projects');
   }, [router]);
-  
+
   const [tasks, setTasks] = useState<Task[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
@@ -108,7 +108,7 @@ export default function TaskManagement() {
               }
             }
           }
-          
+
           return {
             id: typeof t._id === 'string' ? t._id : String(t._id || ''),
             title: t.title,
@@ -119,7 +119,7 @@ export default function TaskManagement() {
             dueDate: formattedDueDate,
             attachments: [],
             subtasks: [],
-            assignee: (t.assignee && Array.isArray(t.assignee)) 
+            assignee: (t.assignee && Array.isArray(t.assignee))
               ? t.assignee.map((id: any) => String(id))
               : (t.assignee ? [String(t.assignee)] : []), // Convert to array format (handle legacy single ID)
           };
@@ -263,7 +263,7 @@ export default function TaskManagement() {
             }
           }
         }
-        
+
         const updatePayload: any = {
           taskId: String(task.id),
           title: task.title,
@@ -287,9 +287,9 @@ export default function TaskManagement() {
         console.log('Update response:', response.data);
 
         // Check if the response indicates success (HTTP 2xx status and success flag)
-        const isSuccess = response.status >= 200 && response.status < 300 && 
-                         (response.data?.success !== false && response.data?.success !== undefined ? response.data.success : true);
-        
+        const isSuccess = response.status >= 200 && response.status < 300 &&
+          (response.data?.success !== false && response.data?.success !== undefined ? response.data.success : true);
+
         if (!isSuccess) {
           throw new Error(response.data?.error || 'Failed to update task');
         }
@@ -313,9 +313,9 @@ export default function TaskManagement() {
         // Update currentTask if it's the same task being edited (important for keepOpen scenario)
         // This ensures the TaskModal re-renders with the updated status immediately
         // IMPORTANT: Match by both task ID AND project ID to prevent updating tasks from other projects
-        if (currentTask && 
-            String(currentTask.id) === String(task.id) && 
-            String(currentTask.projectId) === String(task.projectId)) {
+        if (currentTask &&
+          String(currentTask.id) === String(task.id) &&
+          String(currentTask.projectId) === String(task.projectId)) {
           // Create a new object reference to trigger re-render
           const updatedCurrentTask = {
             ...currentTask,
@@ -343,15 +343,15 @@ export default function TaskManagement() {
           { headers: { Authorization: `Bearer ${token}` } }
         );
         console.log('Create response:', response.data);
-        
+
         // Check if the response indicates success (HTTP 2xx status and success flag)
-        const isSuccess = response.status >= 200 && response.status < 300 && 
-                         (response.data?.success !== false && response.data?.success !== undefined ? response.data.success : true);
-        
+        const isSuccess = response.status >= 200 && response.status < 300 &&
+          (response.data?.success !== false && response.data?.success !== undefined ? response.data.success : true);
+
         if (!isSuccess) {
           throw new Error(response.data?.error || 'Failed to create task');
         }
-        
+
         enqueueSnackbar({ message: 'Task created successfully', variant: 'success' });
         // Dispatch event for calendar refresh
         window.dispatchEvent(new CustomEvent('taskCreated'));
@@ -381,7 +381,7 @@ export default function TaskManagement() {
       }
     } catch (error: any) {
       console.error('Error in handleSaveTask:', error);
-      
+
       // Only show error if it's an actual save error (not a refresh error)
       // Check if it's an axios error with a response (actual API error)
       if (error.response) {
@@ -419,8 +419,8 @@ export default function TaskManagement() {
       // If we have selectedProjectId, use it to scope the search
       const task = selectedProjectId
         ? tasks.find(
-            (t) => String(t.id) === String(id) && String(t.projectId) === String(selectedProjectId)
-          )
+          (t) => String(t.id) === String(id) && String(t.projectId) === String(selectedProjectId)
+        )
         : tasks.find((t) => String(t.id) === String(id));
       console.log('Found task for deletion:', task);
       if (!task || !task.projectId) {
@@ -499,39 +499,103 @@ export default function TaskManagement() {
 
   return (
     <>
-      <PageHeader
-        title="Tasks"
-        action={
-          <ToggleButtonGroup
-            value={view}
-            exclusive
-            onChange={(_, newView) => {
-              if (newView !== null) {
-                setView(newView);
-              }
-            }}
-            size="small"
-            sx={{
-              '& .MuiToggleButton-root': {
-                border: `1px solid ${theme.palette.divider}`,
-                px: 1.5,
-                py: 0.5,
-              },
-            }}
-          >
-            <ToggleButton value="board" aria-label="Board view">
-              <Tooltip title="Board View">
+      <Box
+        sx={{
+          backgroundColor: (theme) => theme.palette.background.paper,
+          border: (theme) => `1px solid ${theme.palette.divider}`,
+          borderRadius: "8px",
+          mb: 3,
+        }}
+      >
+        <PageHeader
+          title="Tasks"
+          action={
+            <ToggleButtonGroup
+              value={view}
+              exclusive
+              onChange={(_, newView) => {
+                if (newView !== null) {
+                  setView(newView);
+                }
+              }}
+              size="small"
+              sx={{
+                backgroundColor: theme.palette.mode === 'dark'
+                  ? 'rgba(255,255,255,0.06)'
+                  : 'rgba(0,0,0,0.04)',
+                borderRadius: '8px',
+                p: 0.5,
+                gap: 0.5,
+                '& .MuiToggleButtonGroup-grouped': {
+                  border: 'none',
+                },
+              }}
+            >
+              {/* Board Tab */}
+              <ToggleButton
+                value="board"
+                sx={{
+                  px: 2,
+                  py: 1,
+                  borderRadius: '8px !important',
+                  textTransform: 'none',
+                  display: 'flex',
+                  gap: 1,
+                  fontSize: "14px",
+                  fontWeight: 500,
+                  color: theme.palette.text.secondary,
+
+                  '&.Mui-selected': {
+                    backgroundColor: theme.palette.background.paper,
+                    color: theme.palette.text.primary,
+                    boxShadow: theme.palette.mode === 'dark'
+                      ? '0 0 0 1px rgba(255,255,255,0.08)'
+                      : '0 1px 4px rgba(0,0,0,0.12)',
+                  },
+
+                  '&:hover': {
+                    backgroundColor: theme.palette.action.hover,
+                  },
+                }}
+              >
                 <ViewModule fontSize="small" />
-              </Tooltip>
-            </ToggleButton>
-            <ToggleButton value="list" aria-label="List view">
-              <Tooltip title="List View">
+                Board
+              </ToggleButton>
+
+              {/* List Tab */}
+              <ToggleButton
+                value="list"
+                sx={{
+                  px: 2,
+                  py: 1,
+                  borderRadius: '8px !important',
+                  textTransform: 'none',
+                  display: 'flex',
+                  gap: 1,
+                  fontSize: "14px",
+                  fontWeight: 500,
+                  color: theme.palette.text.secondary,
+
+                  '&.Mui-selected': {
+                    backgroundColor: theme.palette.background.paper,
+                    color: theme.palette.text.primary,
+                    boxShadow: theme.palette.mode === 'dark'
+                      ? '0 0 0 1px rgba(255,255,255,0.08)'
+                      : '0 1px 4px rgba(0,0,0,0.12)',
+                  },
+
+                  '&:hover': {
+                    backgroundColor: theme.palette.action.hover,
+                  },
+                }}
+              >
                 <ViewList fontSize="small" />
-              </Tooltip>
-            </ToggleButton>
-          </ToggleButtonGroup>
-        }
-      />
+                List
+              </ToggleButton>
+            </ToggleButtonGroup>
+          }
+        />
+      </Box>
       <Box sx={{ width: '100%' }}>
         {loading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 400 }}>

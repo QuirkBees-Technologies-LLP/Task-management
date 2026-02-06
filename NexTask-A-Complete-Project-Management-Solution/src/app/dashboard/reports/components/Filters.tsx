@@ -77,7 +77,6 @@ const ReportFilters: React.FC<ReportFiltersProps> = ({ onApplyFilter }) => {
       sx={{
         backgroundColor: (theme) => theme.palette.background.paper,
         border: (theme) => `1px solid ${theme.palette.divider}`,
-        padding: "16px 24px",
         borderRadius: "8px",
         mb: 3,
       }}
@@ -86,7 +85,7 @@ const ReportFilters: React.FC<ReportFiltersProps> = ({ onApplyFilter }) => {
         title={
           <Grid2 container alignItems="center" spacing={2}>
             {/* Report Type Selector */}
-            <Grid2 size={{ xs: 5, md: 3 }}>
+            <Grid2 size={{ xs: 12, sm: 5, md: 3 }}>
               <TextField
                 select
                 margin="dense"
@@ -96,7 +95,7 @@ const ReportFilters: React.FC<ReportFiltersProps> = ({ onApplyFilter }) => {
                 value={selectedType}
                 onChange={(e) => setSelectedType(e.target.value as FilterState['type'])}
                 sx={{
-                  width: { xs: "unset", lg: "520px" },
+                  width: { xs: "100%", lg: "520px" },
                   maxWidth: "100%",
                   borderRadius: "6px",
 
@@ -128,7 +127,7 @@ const ReportFilters: React.FC<ReportFiltersProps> = ({ onApplyFilter }) => {
             </Grid2>
 
             {/* Status Selector */}
-            <Grid2 size={{ xs: 5, md: 3 }}>
+            <Grid2 size={{ xs: 12, sm: 5, md: 3 }}>
               <TextField
                 select
                 margin="dense"
@@ -138,7 +137,7 @@ const ReportFilters: React.FC<ReportFiltersProps> = ({ onApplyFilter }) => {
                 value={selectedStatus}
                 onChange={(e) => setSelectedStatus(e.target.value as FilterState['status'])}
                 sx={{
-                  width: { xs: "unset", lg: "520px" },
+                  width: { xs: "100%", lg: "520px" },
                   maxWidth: "100%",
                   borderRadius: "6px",
 
@@ -172,7 +171,7 @@ const ReportFilters: React.FC<ReportFiltersProps> = ({ onApplyFilter }) => {
             </Grid2>
 
             {/* Apply Button */}
-            <Grid2 size={{ xs: 2, md: 4 }}>
+            <Grid2 size={{ xs: 12, sm: 2, md: 4 }}>
               <Button variant="outlined" onClick={handleApplyFilters}
                 sx={{
                   borderRadius: "6px",

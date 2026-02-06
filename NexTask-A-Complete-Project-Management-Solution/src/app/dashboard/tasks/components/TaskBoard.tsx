@@ -255,9 +255,9 @@ const TaskSectionColumn: React.FC<{
     return (
       <Paper
         sx={{
-          minWidth: 388,
-          maxWidth: 388,
-          width: 388,
+          minWidth: 372,
+          maxWidth: 372,
+          width: 372,
           height: 'calc(100vh - 180px)', // Full height columns
           display: 'flex',
           flexDirection: 'column',
@@ -942,7 +942,7 @@ const TaskBoard: React.FC<TaskBoardProps> = ({
     return (
       <Box sx={{ display: 'flex', gap: 2, overflowX: 'auto', pb: 2 }}>
         {[1, 2, 3].map((i) => (
-          <Skeleton key={i} variant="rectangular" width={388} height={775} sx={{ borderRadius: "8px" }} />
+          <Skeleton key={i} variant="rectangular" width={372} height={775} sx={{ borderRadius: "8px" }} />
         ))}
       </Box>
     );
@@ -1009,9 +1009,9 @@ const TaskBoard: React.FC<TaskBoardProps> = ({
             {canManageSections && (
               <Paper
                 sx={{
-                  minWidth: 388,
-                  maxWidth: 388,
-                  width: 388,
+                  minWidth: 372,
+                  maxWidth: 372,
+                  width: 372,
                   height: 'calc(100vh - 180px)',
                   display: 'flex',
                   alignItems: 'center',
@@ -1040,9 +1040,9 @@ const TaskBoard: React.FC<TaskBoardProps> = ({
             <Paper
               sx={{
                 p: 2,
-                minWidth: 388,
-                maxWidth: 388,
-                width: 388,
+                minWidth: 372,
+                maxWidth: 372,
+                width: 372,
                 height: 'calc(100vh - 180px)',
                 flexShrink: 0,
                 boxShadow: 3,
@@ -1059,7 +1059,7 @@ const TaskBoard: React.FC<TaskBoardProps> = ({
             <Paper
               sx={{
                 p: 2,
-                minWidth: 388,
+                minWidth: 372,
                 boxShadow: 3,
                 bgcolor: theme.palette.background.default,
               }}

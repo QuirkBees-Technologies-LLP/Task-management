@@ -31,6 +31,7 @@ const ReportsChart: React.FC<ReportsChartProps> = ({ data }) => {
     const options: ApexOptions = {
       chart: {
         type: 'donut',
+        width: '500px'
       },
       labels,
       colors: [blue[500], orange[300], green[400]], // Custom colors
@@ -54,7 +55,7 @@ const ReportsChart: React.FC<ReportsChartProps> = ({ data }) => {
       plotOptions: {
         pie: {
           donut: {
-            size: '80%',
+            size: '60%',
             labels: {
               show: true,
               total: {

@@ -94,9 +94,10 @@ const PrioritySelect: React.FC<PrioritySelectProps> = ({
               label={displayName}
               size="small"
               sx={{
-                height: '24px',
-                fontSize: '13px',
+                fontSize: '12px',
                 fontWeight: 500,
+                borderRadius: '4px',
+                minWidth: 'fit-content',
                 bgcolor: selectedColors.bg,
                 color: selectedColors.text,
                 border: 'none',
@@ -144,7 +145,7 @@ const PrioritySelect: React.FC<PrioritySelectProps> = ({
           const priorityColors = getPriorityColor(priority);
           const isSelected = value === priority;
           const displayName = getPriorityDisplayName(priority, projectId);
-          
+
           return (
             <MenuItem key={priority} value={priority} selected={isSelected}>
               <ListItemIcon sx={{ minWidth: 36 }}>
@@ -163,9 +164,10 @@ const PrioritySelect: React.FC<PrioritySelectProps> = ({
                     label={displayName}
                     size="small"
                     sx={{
-                      height: '24px',
-                      fontSize: '13px',
+                      fontSize: '12px',
                       fontWeight: 500,
+                      borderRadius: '4px',
+                      minWidth: 'fit-content',
                       bgcolor: priorityColors.bg,
                       color: priorityColors.text,
                       border: 'none',

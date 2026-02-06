@@ -40,6 +40,7 @@ import {
   MenuItem,
   ListItemIcon,
 } from '@mui/material';
+import { getSectionBackgroundColor } from '../utils/sectionColors';
 
 interface TaskSection {
   _id: string;
@@ -210,8 +211,8 @@ const TaskListView: React.FC<TaskListViewProps> = ({
 
     if (assigneeInfo.length === 0 && assigneeIds.length === 0) {
       return (
-        <Avatar sx={{ width: 24, height: 24, bgcolor: theme.palette.action.hover }}>
-          <Typography variant="caption" sx={{ fontSize: '10px' }}>?</Typography>
+        <Avatar sx={{ width: 28, height: 28, bgcolor: theme.palette.action.hover }}>
+          <Typography variant="caption" sx={{ fontSize: '12px' , color:theme.palette.primary.main }}>?</Typography>
         </Avatar>
       );
     }
@@ -359,13 +360,13 @@ const TaskListView: React.FC<TaskListViewProps> = ({
         const sectionTasks = section.tasks || [];
 
         const isCollapsed = collapsedSections.has(section._id);
+        const sectionBgColor = getSectionBackgroundColor(section.name, section._id);
 
         return (
-          <Box key={section._id} sx={{ mb: 3 }}>
+          <Box key={section._id} sx={{ mb: 3, padding: '16px', bgcolor: sectionBgColor , borderRadius: '8px'}}>
             <Box
               onClick={() => toggleSection(section._id)}
               sx={{
-                mb: 1,
                 display: 'flex',
                 alignItems: 'center',
                 gap: 1,
@@ -414,17 +415,17 @@ const TaskListView: React.FC<TaskListViewProps> = ({
             </Box>
 
             {!isCollapsed && (
-              <TableContainer component={Paper} variant="outlined">
-                <Table size="small">
+              <TableContainer component={Paper} variant="outlined" sx={{ borderBottom: 'none' , mt: 1}}>
+                <Table>
                   <TableHead>
                     <TableRow>
-                      <TableCell sx={{ fontWeight: 600, fontSize: '12px', width: 40 }}></TableCell>
-                      <TableCell sx={{ fontWeight: 600, fontSize: '12px' }}>Task Name</TableCell>
-                      <TableCell sx={{ fontWeight: 600, fontSize: '12px' }}>Assignee</TableCell>
-                      <TableCell sx={{ fontWeight: 600, fontSize: '12px' }}>Due Date</TableCell>
-                      <TableCell sx={{ fontWeight: 600, fontSize: '12px' }}>Priority</TableCell>
-                      <TableCell sx={{ fontWeight: 600, fontSize: '12px' }}>Status</TableCell>
-                      <TableCell sx={{ fontWeight: 600, fontSize: '12px', width: 100 }} align="left">
+                      <TableCell sx={{ fontWeight: 600, width: 40 }}></TableCell>
+                      <TableCell sx={{ fontWeight: 600 , minWidth: '160px'}}>Task Name</TableCell>
+                      <TableCell sx={{ fontWeight: 600 }}>Assignee</TableCell>
+                      <TableCell sx={{ fontWeight: 600 , minWidth: '110px'}}>Due Date</TableCell>
+                      <TableCell sx={{ fontWeight: 600 }}>Priority</TableCell>
+                      <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
+                      <TableCell sx={{ fontWeight: 600, width: 100 }} align="left">
                         Actions
                       </TableCell>
                     </TableRow>
@@ -559,9 +560,8 @@ const TaskListView: React.FC<TaskListViewProps> = ({
                                 }}
                                 PaperProps={{
                                   sx: {
-                                    borderRadius: 2,
+                                    borderRadius: '8px',
                                     minWidth: 140,
-                                    boxShadow: '0px 8px 24px rgba(0,0,0,0.12)',
                                   },
                                 }}
                               >
@@ -574,7 +574,7 @@ const TaskListView: React.FC<TaskListViewProps> = ({
                                   <ListItemIcon>
                                     <EditOutlined fontSize="small" />
                                   </ListItemIcon>
-                                  <Typography fontSize={14}>Edit</Typography>
+                                  <Typography>Edit</Typography>
                                 </MenuItem>
 
                                 <MenuItem
@@ -587,7 +587,7 @@ const TaskListView: React.FC<TaskListViewProps> = ({
                                   <ListItemIcon sx={{ color: 'error.main' }}>
                                     <DeleteOutline fontSize="small" />
                                   </ListItemIcon>
-                                  <Typography fontSize={14}>Delete</Typography>
+                                  <Typography>Delete</Typography>
                                 </MenuItem>
                               </Menu>
                             </TableCell>

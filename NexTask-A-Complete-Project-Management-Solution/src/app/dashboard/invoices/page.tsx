@@ -515,10 +515,10 @@ export default function InvoicesFeature() {
                   },
                 })}
               >
-                <TableCell>Invoice</TableCell>
+                <TableCell sx={{minWidth: '240px'}}>Invoice</TableCell>
                 <TableCell>Amount</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell>Due Date</TableCell>
+                <TableCell sx={{minWidth: '150px'}}>Status</TableCell>
+                <TableCell sx={{minWidth: '150px'}}>Due Date</TableCell>
                 <TableCell align="left">Actions</TableCell>
               </TableRow>
             </TableHead>
@@ -567,7 +567,6 @@ export default function InvoicesFeature() {
           </Table>
         </TableContainer>
       </Paper>
-
       {/* Pagination */}
       {totalPages > 1 && (
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>
@@ -581,6 +580,7 @@ export default function InvoicesFeature() {
           />
         </Box>
       )}
+
 
       {/* Add/Edit Invoice Dialog */}
       <InvoiceModal

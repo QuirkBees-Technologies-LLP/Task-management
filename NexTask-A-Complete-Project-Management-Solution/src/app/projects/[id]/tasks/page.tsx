@@ -10,7 +10,7 @@ import {
   Box,
   useTheme,
   CircularProgress,
-          Typography,
+  Typography,
   Paper,
 } from '@mui/material';
 
@@ -107,7 +107,7 @@ export default function ProjectTasksPage() {
 
   const fetchTasks = async () => {
     if (!projectId) return;
-    
+
     setLoading(true);
     try {
       const token = safeLocalStorageGet(accessTokenKey);
@@ -135,7 +135,7 @@ export default function ProjectTasksPage() {
           dueDate: t.dueDate || '',
           attachments: t.attachments || [],
           subtasks: t.subtasks || [],
-          assignee: (t.assignee && Array.isArray(t.assignee)) 
+          assignee: (t.assignee && Array.isArray(t.assignee))
             ? t.assignee.map((id: any) => String(id))
             : (t.assignee ? [String(t.assignee)] : []), // Convert to array format (handle legacy single ID)
         }));
@@ -289,9 +289,9 @@ export default function ProjectTasksPage() {
         console.log('Update response:', response.data);
 
         // Check if the response indicates success
-        const isSuccess = response.status >= 200 && response.status < 300 && 
-                         (response.data?.success !== false && response.data?.success !== undefined ? response.data.success : true);
-        
+        const isSuccess = response.status >= 200 && response.status < 300 &&
+          (response.data?.success !== false && response.data?.success !== undefined ? response.data.success : true);
+
         if (!isSuccess) {
           throw new Error(response.data?.error || 'Failed to update task');
         }
@@ -311,9 +311,9 @@ export default function ProjectTasksPage() {
         setTasks(updatedTasks);
 
         // Update currentTask if it's the same task being edited
-        if (currentTask && 
-            String(currentTask.id) === String(task.id) && 
-            String(currentTask.projectId) === String(taskProjectId)) {
+        if (currentTask &&
+          String(currentTask.id) === String(task.id) &&
+          String(currentTask.projectId) === String(taskProjectId)) {
           const updatedCurrentTask = {
             ...currentTask,
             ...task,
@@ -341,15 +341,15 @@ export default function ProjectTasksPage() {
           { headers: { Authorization: `Bearer ${token}` } }
         );
         console.log('Create response:', response.data);
-        
+
         // Check if the response indicates success
-        const isSuccess = response.status >= 200 && response.status < 300 && 
-                         (response.data?.success !== false && response.data?.success !== undefined ? response.data.success : true);
-        
+        const isSuccess = response.status >= 200 && response.status < 300 &&
+          (response.data?.success !== false && response.data?.success !== undefined ? response.data.success : true);
+
         if (!isSuccess) {
           throw new Error(response.data?.error || 'Failed to create task');
         }
-        
+
         enqueueSnackbar({ message: 'Task created successfully', variant: 'success' });
         // Dispatch event for calendar refresh
         window.dispatchEvent(new CustomEvent('taskCreated'));
@@ -370,7 +370,7 @@ export default function ProjectTasksPage() {
       }
     } catch (error: any) {
       console.error('Error in handleSaveTask:', error);
-      
+
       // Only show error if it's an actual save error
       if (error.response) {
         enqueueSnackbar({
@@ -482,38 +482,103 @@ export default function ProjectTasksPage() {
 
   return (
     <>
-      <PageHeader
-        action={
-          <ToggleButtonGroup
-            value={view}
-            exclusive
-            onChange={(_, newView) => {
-              if (newView !== null) {
-                setView(newView);
-              }
-            }}
-            size="small"
-            sx={{
-              '& .MuiToggleButton-root': {
-                border: `1px solid ${theme.palette.divider}`,
-                px: 1.5,
-                py: 0.5,
-              },
-            }}
-          >
-            <ToggleButton value="board" aria-label="Board view">
-              <Tooltip title="Board View">
+      <Box
+        sx={{
+          backgroundColor: (theme) => theme.palette.background.paper,
+          border: (theme) => `1px solid ${theme.palette.divider}`,
+          borderRadius: "8px",
+          mb: 3,
+        }}
+      >
+        <PageHeader
+          title="Tasks"
+          action={
+            <ToggleButtonGroup
+              value={view}
+              exclusive
+              onChange={(_, newView) => {
+                if (newView !== null) {
+                  setView(newView);
+                }
+              }}
+              size="small"
+              sx={{
+                backgroundColor: theme.palette.mode === 'dark'
+                  ? 'rgba(255,255,255,0.06)'
+                  : 'rgba(0,0,0,0.04)',
+                borderRadius: '8px',
+                p: 0.5,
+                gap: 0.5,
+                '& .MuiToggleButtonGroup-grouped': {
+                  border: 'none',
+                },
+              }}
+            >
+              {/* Board Tab */}
+              <ToggleButton
+                value="board"
+                sx={{
+                  px: 2,
+                  py: 1,
+                  borderRadius: '8px !important',
+                  textTransform: 'none',
+                  display: 'flex',
+                  gap: 1,
+                  fontSize: "14px",
+                  fontWeight: 500,
+                  color: theme.palette.text.secondary,
+
+                  '&.Mui-selected': {
+                    backgroundColor: theme.palette.background.paper,
+                    color: theme.palette.text.primary,
+                    boxShadow: theme.palette.mode === 'dark'
+                      ? '0 0 0 1px rgba(255,255,255,0.08)'
+                      : '0 1px 4px rgba(0,0,0,0.12)',
+                  },
+
+                  '&:hover': {
+                    backgroundColor: theme.palette.action.hover,
+                  },
+                }}
+              >
                 <ViewModule fontSize="small" />
-              </Tooltip>
-            </ToggleButton>
-            <ToggleButton value="list" aria-label="List view">
-              <Tooltip title="List View">
+                Board
+              </ToggleButton>
+
+              {/* List Tab */}
+              <ToggleButton
+                value="list"
+                sx={{
+                  px: 2,
+                  py: 1,
+                  borderRadius: '8px !important',
+                  textTransform: 'none',
+                  display: 'flex',
+                  gap: 1,
+                  fontWeight: 500,
+                  fontSize: "14px",
+                  color: theme.palette.text.secondary,
+
+                  '&.Mui-selected': {
+                    backgroundColor: theme.palette.background.paper,
+                    color: theme.palette.text.primary,
+                    boxShadow: theme.palette.mode === 'dark'
+                      ? '0 0 0 1px rgba(255,255,255,0.08)'
+                      : '0 1px 4px rgba(0,0,0,0.12)',
+                  },
+
+                  '&:hover': {
+                    backgroundColor: theme.palette.action.hover,
+                  },
+                }}
+              >
                 <ViewList fontSize="small" />
-              </Tooltip>
-            </ToggleButton>
-          </ToggleButtonGroup>
-        }
-      />
+                List
+              </ToggleButton>
+            </ToggleButtonGroup>
+          }
+        />
+      </Box>
       <Box sx={{ width: '100%' }}>
         {loading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 400 }}>

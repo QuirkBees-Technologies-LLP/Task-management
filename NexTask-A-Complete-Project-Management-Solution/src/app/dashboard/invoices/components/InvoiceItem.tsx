@@ -123,20 +123,41 @@ export default function InvoiceItem({
 
       {/* ================= AMOUNT ================= */}
       <TableCell>
-        <Stack direction="row" spacing={1} alignItems="center">
-          <Box
-            sx={{
-              width: 8,
-              height: 8,
-              borderRadius: '50%',
-              bgcolor: getStatusDotColor(invoice.status),
-            }}
-          />
-          <Typography fontWeight={600}>
-            {currencySymbol}
-            {formattedAmount}
-          </Typography>
-        </Stack>
+        {(() => {
+          const styles =
+            invoice.status === 'Paid'
+              ? {
+                color: '#22C55E',
+              }
+              : invoice.status === 'Overdue'
+                ? {
+                  color: '#FF3B3B',
+                }
+              : invoice.status === 'Pending'
+                ? {
+                  color: '#FF9800',
+                }
+                : {
+                  color: '#0698E2',
+                };
+
+          return (
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Box
+                sx={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: '50%',
+                  backgroundColor: styles.color,
+                }}
+              />
+              <Typography fontWeight={600}>
+                {currencySymbol}
+                {formattedAmount}
+              </Typography>
+            </Stack>
+          );
+        })()}
       </TableCell>
 
       {/* ================= STATUS ================= */}
@@ -153,9 +174,14 @@ export default function InvoiceItem({
                   bg: 'rgba(239,68,68,0.15)',
                   color: '#FF3B3B',
                 }
-                : {
+              : invoice.status === 'Pending'
+                ? {
                   bg: 'rgba(255,165,0,0.15)',
                   color: '#FF9800',
+                }
+                : {
+                  bg: 'rgba(0,152,226,0.15)',
+                  color: '#0698E2',
                 };
 
           return (

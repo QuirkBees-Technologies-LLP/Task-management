@@ -492,10 +492,10 @@ const StaffManagementPage: React.FC = () => {
                     },
                   })}
                 >
-                  <TableCell>Staff</TableCell>
+                  <TableCell sx={{minWidth: '220px'}}>Staff</TableCell>
                   <TableCell>Email</TableCell>
                   <TableCell>Role</TableCell>
-                  <TableCell>Department</TableCell>
+                  <TableCell sx={{minWidth: '200px'}}>Department</TableCell>
                   <TableCell>Position</TableCell>
                   <TableCell align="left">Actions</TableCell>
                 </TableRow>

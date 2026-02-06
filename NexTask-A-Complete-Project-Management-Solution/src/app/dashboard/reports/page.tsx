@@ -200,7 +200,7 @@ export default function Reports() {
       {/* Content Grid */}
       <Grid2 container spacing={2}>
         {/* Task Completion Chart */}
-        <Grid2 size={{ xs: 12, sm: 7, md: 8 }}>
+        <Grid2 size={{ xs: 12, lg: 8 }}>
           <Paper sx={{ height: 380 }}>
             <CardHeader title={`${title} Completion Rate`} />
             <CardContent>
@@ -210,7 +210,7 @@ export default function Reports() {
         </Grid2>
 
         {/* Reports Status Chart */}
-        <Grid2 size={{ xs: 12, sm: 5, md: 4 }}>
+        <Grid2 size={{ xs: 12, lg: 4 }}>
           <Paper sx={{ height: 380 }}>
             <CardHeader title={`${title} Status`} />
             <CardContent>

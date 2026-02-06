@@ -27,8 +27,8 @@ export const getStatusStyles = (status: string) => {
     case 'draft':
     default:
       return {
-        color: 'rgba(209, 213, 219, 1)',        // neutral gray
-        backgroundColor: 'rgba(209, 213, 219, 0.18)',
+        color: '#0698E2',
+        backgroundColor: 'rgba(0,152,226,0.15)',
       };
   }
 };
@@ -47,15 +47,24 @@ const renderDateWithCalendar = (date?: string) => (
   </Stack>
 );
 
+const getStatusDotColor = (status?: string) => {
+  if (!status) return '#9CA3AF'; // fallback gray
 
-const renderBudgetWithDot = (budget: string | number, color = '#8B5CF6') => (
+  const styles = getStatusStyles(status);
+  return styles.color; // SAME color as status text
+};
+
+const renderBudgetWithDot = (
+  budget: string | number,
+  status?: string
+) => (
   <Stack direction="row" spacing={1} alignItems="center">
     <Box
       sx={{
         width: 8,
         height: 8,
         borderRadius: '50%',
-        backgroundColor: color,
+        backgroundColor: getStatusDotColor(status),
       }}
     />
     <Typography fontSize={13} fontWeight={500}>
@@ -169,7 +178,7 @@ export const contractColumns: ResponsiveTableColumn[] = [
   {
     title: 'Budget',
     key: 'budget',
-    render: ({ budget }: Contract) =>
-      renderBudgetWithDot(budget),
+    render: ({ budget, status }: Contract) =>
+      renderBudgetWithDot(budget, status),
   },
 ];

@@ -90,7 +90,7 @@ const FileAttachmentDialog: React.FC<FileAttachmentDialogProps> = ({
         if (!token) {
           throw new Error('Authentication required');
         }
-        
+
         const response = await fetch('/api/tasks/upload', {
           method: 'POST',
           headers: {
@@ -271,12 +271,71 @@ const FileAttachmentDialog: React.FC<FileAttachmentDialogProps> = ({
         </Tabs>
         {renderTabContent()}
       </DialogContent>
-      <DialogActions>
-        <Button onClick={handleClose}>Cancel</Button>
+
+      <DialogActions
+        sx={{
+          px: 3,
+          py: 2,
+          borderTop: '1px solid',
+          borderColor: 'divider',
+        }}
+      >
+        {/* ================= CLOSE ================= */}
+        <Button
+          onClick={handleClose}
+          variant="outlined"
+          sx={{
+            textTransform: 'none',
+            borderRadius: '8px',
+            px: 3,
+            py: 1.25,
+            fontWeight: 500,
+
+            color: (theme) => theme.palette.text.primary,
+            borderColor: (theme) => theme.palette.divider,
+
+            backgroundColor: 'transparent',
+
+            '&:hover': {
+              backgroundColor: (theme) => theme.palette.action.hover,
+              borderColor: (theme) => theme.palette.text.secondary,
+            },
+          }}
+        >
+          Cancel
+        </Button>
+
+        {/* ================= SAVE ================= */}
         <Button
           onClick={handleUpload}
           variant="contained"
           disabled={!canSubmit() || uploading}
+          sx={{
+            textTransform: 'none',
+            borderRadius: '8px',
+            px: 3,
+            py: 1.25,
+            fontWeight: 500,
+            backgroundColor: (theme) =>
+              theme.palette.mode === 'dark'
+                ? theme.palette.grey[100]
+                : theme.palette.grey[900],
+
+            color: (theme) =>
+              theme.palette.mode === 'dark'
+                ? theme.palette.grey[900]
+                : '#ffffff',
+
+            boxShadow: 'none',
+
+            '&:hover': {
+              backgroundColor: (theme) =>
+                theme.palette.mode === 'dark'
+                  ? theme.palette.grey[200]
+                  : '#000000',
+              boxShadow: 'none',
+            },
+          }}
         >
           {uploading ? 'Uploading...' : 'Attach'}
         </Button>

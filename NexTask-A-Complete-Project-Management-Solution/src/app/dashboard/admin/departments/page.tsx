@@ -523,8 +523,8 @@ const DepartmentsPage: React.FC = () => {
                   },
                 })}
               >
-                <TableCell>Department Name</TableCell>
-                <TableCell>Positions</TableCell>
+                <TableCell sx={{minWidth: '230px'}}>Department Name</TableCell>
+                <TableCell sx={{minWidth: '270px'}}>Positions</TableCell>
                 <TableCell align="left">Actions</TableCell>
               </TableRow>
             </TableHead>
