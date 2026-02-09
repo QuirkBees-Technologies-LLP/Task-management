@@ -61,7 +61,7 @@ export default function InvoicesFeature() {
 
   // Pagination state
   const [page, setPage] = useState<number>(1);
-  const [limit] = useState<number>(5);
+  const [limit] = useState<number>(10);
   const [totalPages, setTotalPages] = useState<number>(1);
   const [invoiceForm, setInvoiceForm] = useState<Partial<Invoice>>({
     invoiceNumber: '',
@@ -569,18 +569,16 @@ export default function InvoicesFeature() {
       </Paper>
 
       {/* Pagination */}
-      {totalPages > 1 && (
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>
-          <Pagination
-            count={totalPages}
-            page={page}
-            onChange={(_, value) => setPage(value)}
-            color="primary"
-            showFirstButton
-            showLastButton
-          />
-        </Box>
-      )}
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>
+        <Pagination
+          count={totalPages}
+          page={page}
+          onChange={(_, value) => setPage(value)}
+          color="primary"
+          showFirstButton
+          showLastButton
+        />
+      </Box>
 
       {/* Add/Edit Invoice Dialog */}
       <InvoiceModal

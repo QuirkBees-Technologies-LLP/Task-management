@@ -8,7 +8,6 @@ import {
   styled,
   Divider,
   Stack,
-  Button,
   ListItemIcon,
   IconButton,
   Menu,
@@ -16,8 +15,9 @@ import {
   Paper,
   CircularProgress,
   Box,
+  Pagination,
 } from '@mui/material';
-import { ExpandMore, AccessTime, MoreVert, VisibilityOffOutlined, VisibilityOutlined, Delete } from '@mui/icons-material';
+import { AccessTime, MoreVert, VisibilityOffOutlined, VisibilityOutlined, Delete } from '@mui/icons-material';
 import { useDispatch, useSelector } from 'react-redux';
 import { useRouter } from 'next/navigation';
 import { loadNotifications, submitMarkAsRead } from '@/redux/slices';
@@ -92,15 +92,16 @@ const Notifications: React.FC = () => {
   const { data: notifications, loading } = useSelector(selectNotifications);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedNotificationId, setSelectedNotificationId] = useState<string | null>(null);
-  const [showAll, setShowAll] = useState(false);
+  const [page, setPage] = useState(1);
+  const limit = 10;
 
   useEffect(() => {
     // Only load notifications if we don't have any cached data
     // This prevents refetching on every route change
     if (!notifications || notifications.length === 0) {
-    dispatch(loadNotifications({ limit: showAll ? 100 : 20 }));
+    dispatch(loadNotifications({ limit: 100 }));
     }
-  }, [dispatch, showAll]); // Removed notifications from deps to prevent refetch
+  }, [dispatch]); // Removed notifications from deps to prevent refetch
 
   const handleMenuClick = (event: React.MouseEvent<HTMLElement>, notificationId: string) => {
     setAnchorEl(event.currentTarget);
@@ -124,7 +125,7 @@ const Notifications: React.FC = () => {
       );
 
       dispatch(submitMarkAsRead({ id: notificationId }));
-      dispatch(loadNotifications({ limit: showAll ? 100 : 20 })); // Refresh list
+      dispatch(loadNotifications({ limit: 100 })); // Refresh list
       handleMenuClose();
       enqueueSnackbar({
         message: 'Notification marked as read',
@@ -150,7 +151,7 @@ const Notifications: React.FC = () => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      dispatch(loadNotifications({ limit: showAll ? 100 : 20 })); // Refresh list
+      dispatch(loadNotifications({ limit: 100 })); // Refresh list
       handleMenuClose();
       enqueueSnackbar({
         message: 'Notification marked as unread',
@@ -175,7 +176,7 @@ const Notifications: React.FC = () => {
       });
 
       enqueueSnackbar({ message: 'Notification deleted', variant: 'success' });
-      dispatch(loadNotifications({ limit: showAll ? 100 : 20 })); // Refresh list
+      dispatch(loadNotifications({ limit: 100 })); // Refresh list
       handleMenuClose();
     } catch (error: any) {
       console.error('Error deleting notification:', error);
@@ -186,7 +187,8 @@ const Notifications: React.FC = () => {
     }
   };
 
-  const displayedNotifications = showAll ? notifications : (notifications || []).slice(0, 5);
+  const totalPages = Math.ceil((notifications?.length || 0) / limit);
+  const displayedNotifications = (notifications || []).slice((page - 1) * limit, page * limit);
 
   if (loading && (!notifications || notifications.length === 0)) {
     return (
@@ -329,13 +331,17 @@ const Notifications: React.FC = () => {
         })}
       </List>
 
-      {/* Show More Button */}
-      {notifications.length > 5 && !showAll && (
-        <Stack alignItems="center" sx={{ py: 1 }}>
-          <Button startIcon={<ExpandMore />} onClick={() => setShowAll(true)}>
-            Show more
-          </Button>
-        </Stack>
+      {totalPages > 1 && (
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2, mb: 1, px: 2 }}>
+          <Pagination
+            count={totalPages}
+            page={page}
+            onChange={(_, value) => setPage(value)}
+            color="primary"
+            showFirstButton
+            showLastButton
+          />
+        </Box>
       )}
     </>
   );
