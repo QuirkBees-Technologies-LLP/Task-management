@@ -1,7 +1,7 @@
 'use client';
 import React, { useState } from 'react';
-import { TextField, Button, Box, Grid2, CircularProgress, Typography, Card, Avatar, Chip, Dialog, IconButton, Select, MenuItem, FormControl } from '@mui/material';
-import { MailOutline, AttachFile } from '@mui/icons-material';
+import { TextField, Button, Box, Grid2, CircularProgress, Typography, Card, Avatar, Chip, Dialog, IconButton, Select, MenuItem, FormControl, Menu, DialogActions, DialogContent, DialogContentText, DialogTitle } from '@mui/material';
+import { MailOutline, AttachFile, MoreVert, Edit, Delete } from '@mui/icons-material';
 import CloseIcon from '@mui/icons-material/Close';
 import { useDispatch, useSelector } from 'react-redux';
 import { submitFeedback } from '@/redux/slices';
@@ -30,6 +30,7 @@ interface FeedbackFormProps {
   mediumpriority?: string;
   department?: string;
   subject?: string;
+  ticketId?: string;
   attachments?: Array<{
     fileName?: string;
     fileUrl?: string;
@@ -51,6 +52,7 @@ const FeedbackForm = (props: FeedbackFormProps) => {
     mediumpriority,
     department,
     subject,
+    ticketId,
     attachments,
   } = props;
   const dispatch = useDispatch();
@@ -60,6 +62,10 @@ const FeedbackForm = (props: FeedbackFormProps) => {
   const [active, setActive] = useState(false);
   const [openModal, setOpenModal] = useState(false);
   const [action, setAction] = useState("");
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [editMode, setEditMode] = useState(false);
+  const [editValues, setEditValues] = useState<any>({});
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const { data: userInfo } = useSelector(selectCurrentUser);
   const isSuperUser = useSelector(selectSuperuser);
@@ -193,9 +199,20 @@ const FeedbackForm = (props: FeedbackFormProps) => {
                 <Avatar src={avatar} sx={{ width: 44, height: 44, borderRadius: 1 }} />
                 <Typography fontWeight={600}>{name}</Typography>
               </Box>
-              <Typography variant="caption" color="text.secondary">
-                {time}
-              </Typography>
+              <Box display="flex" alignItems="center" gap={1}>
+                <Typography variant="caption" color="text.secondary">
+                  {time}
+                </Typography>
+                <IconButton
+                  size="small"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setAnchorEl(e.currentTarget);
+                  }}
+                >
+                  <MoreVert fontSize="small" />
+                </IconButton>
+              </Box>
             </Box>
 
             {/* Message */}

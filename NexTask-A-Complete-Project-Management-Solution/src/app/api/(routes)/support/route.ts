@@ -120,6 +120,7 @@ export async function POST(request: Request) {
       priority: priority || 'medium',
       category: category || 'general',
       status: 'open',
+      read: false,
       assignedTo: assignedTo || null,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -134,14 +135,23 @@ export async function POST(request: Request) {
 
     const result = await ticketsCollection.insertOne(newTicket);
 
-    // Notify org admins that a new support ticket was created
-    if (org_id) {
-      const usersCollection = db.collection('users');
+    // Notify admins that a new support ticket was created
+    const usersCollection = db.collection('users');
 
-      const admins = await usersCollection
+    let admins = [];
+    if (org_id) {
+      // Send to organization admins
+      admins = await usersCollection
         .find({ org_id, role: userRolesServer.admin })
         .toArray();
+    } else {
+      // Send to system admins if no organization
+      admins = await usersCollection
+        .find({ isSystemAdmin: true })
+        .toArray();
+    }
 
+    if (admins.length > 0) {
       const requesterName =
         (contact?.firstName || '') + ' ' + (contact?.lastName || '') ||
         decoded.email ||
@@ -155,7 +165,7 @@ export async function POST(request: Request) {
             userId: admin._id,
             message,
             type: 'info',
-            org_id,
+            org_id: org_id || undefined, // Only set org_id if it exists
           });
         } catch (err) {
           console.error('Error creating support ticket notification for admin:', err);
@@ -183,7 +193,7 @@ export async function PATCH(request: Request) {
 
   try {
     const body = await request.json();
-    const { ticketId, subject, description, priority, status: ticketStatus, category, assignedTo } = body;
+    const { ticketId, subject, description, priority, status: ticketStatus, category, assignedTo, read } = body;
 
     if (!ticketId) {
       return NextResponse.json({ error: 'Ticket ID is required' }, { status: 400 });
@@ -208,6 +218,7 @@ export async function PATCH(request: Request) {
     if (ticketStatus) updateData.status = ticketStatus;
     if (category) updateData.category = category;
     if (assignedTo !== undefined) updateData.assignedTo = assignedTo;
+    if (read !== undefined) updateData.read = read;
 
     const result = await ticketsCollection.updateOne(
       { _id: new ObjectId(ticketId) },

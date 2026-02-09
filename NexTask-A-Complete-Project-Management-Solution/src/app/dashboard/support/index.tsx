@@ -146,6 +146,7 @@ const Feedback = () => {
                   return (
                     <Grid item xs={12} sm={6} lg={4} xl={3} key={ticket._id}>
                       <FeedbackForm
+                        ticketId={ticket._id}
                         name={name}
                         time={timeLabel}
                         subject={ticket.subject}
@@ -153,7 +154,7 @@ const Feedback = () => {
                         status={ticket.status || 'Open'}
                         priority={priorityLabel}
                         department={ticket.category || 'General'}
-                        newticket={ticket.status === 'open' ? 'New Ticket' : undefined}
+                        newticket={ticket.status === 'open' && !ticket.read ? 'New Ticket' : undefined}
                         attachments={ticket.attachments || []}
                       />
                     </Grid>
