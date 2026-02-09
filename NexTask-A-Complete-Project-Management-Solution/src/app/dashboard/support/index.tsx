@@ -156,6 +156,7 @@ const Feedback = () => {
                         department={ticket.category || 'General'}
                         newticket={ticket.status === 'open' && !ticket.read ? 'New Ticket' : undefined}
                         attachments={ticket.attachments || []}
+                        onReload={loadTickets}
                       />
                     </Grid>
                   );

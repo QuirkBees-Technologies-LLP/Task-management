@@ -2,11 +2,11 @@
 import React, { useState } from 'react';
 import { TextField, Button, Box, Grid2, CircularProgress, Typography, Card, Avatar, Chip, Dialog, IconButton, Select, MenuItem, FormControl, Menu, DialogActions, DialogContent, DialogContentText, DialogTitle } from '@mui/material';
 import { MailOutline, AttachFile, MoreVert, Edit, Delete } from '@mui/icons-material';
+import { enqueueSnackbar } from 'notistack';
 import CloseIcon from '@mui/icons-material/Close';
 import { useDispatch, useSelector } from 'react-redux';
 import { submitFeedback } from '@/redux/slices';
 import { selectFeedback, selectCurrentUser, selectSuperuser } from '@/redux/selectors';
-import { enqueueSnackbar } from 'notistack';
 import axios from 'axios';
 
 // Minimum characters required for feedback text.
@@ -37,6 +37,7 @@ interface FeedbackFormProps {
     fileType?: string;
     fileSize?: number;
   }>;
+  onReload?: () => void;
 }
 
 const FeedbackForm = (props: FeedbackFormProps) => {
@@ -161,6 +162,52 @@ const FeedbackForm = (props: FeedbackFormProps) => {
     setAction(event.target.value);
   };
 
+  const handleEditSubmit = async () => {
+    if (!ticketId) return;
+    setSaving(true);
+    try {
+      await axios.patch('/api/support', {
+        ticketId,
+        priority: editValues.priority,
+        status: editValues.status,
+      });
+      enqueueSnackbar({
+        message: 'Ticket updated successfully!',
+        variant: 'success',
+      });
+      setEditMode(false);
+      if (props.onReload) props.onReload();
+    } catch (error: any) {
+      enqueueSnackbar({
+        variant: 'error',
+        message: 'Failed to update ticket.',
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!ticketId) return;
+    setSaving(true);
+    try {
+      await axios.delete(`/api/support?_id=${ticketId}`);
+      enqueueSnackbar({
+        message: 'Ticket deleted successfully!',
+        variant: 'success',
+      });
+      setDeleteDialogOpen(false);
+      if (props.onReload) props.onReload();
+    } catch (error: any) {
+      enqueueSnackbar({
+        variant: 'error',
+        message: 'Failed to delete ticket.',
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   // If user is admin, show ticket display component
   if (isAdmin) {
     return (
@@ -212,6 +259,18 @@ const FeedbackForm = (props: FeedbackFormProps) => {
                 >
                   <MoreVert fontSize="small" />
                 </IconButton>
+                <Menu
+                  anchorEl={anchorEl}
+                  open={Boolean(anchorEl)}
+                  onClose={() => setAnchorEl(null)}
+                >
+                  <MenuItem onClick={() => { setAnchorEl(null); setEditMode(true); setEditValues({ subject: subject || '', description: message || '', priority: priority?.toLowerCase().replace(' priority', '') || 'medium', status: status?.toLowerCase() || 'open', category: department || 'general' }); }}>
+                    <Edit fontSize="small" sx={{ mr: 1 }} /> Edit
+                  </MenuItem>
+                  <MenuItem onClick={() => { setAnchorEl(null); setDeleteDialogOpen(true); }}>
+                    <Delete fontSize="small" sx={{ mr: 1 }} /> Delete
+                  </MenuItem>
+                </Menu>
               </Box>
             </Box>
 
@@ -324,6 +383,80 @@ const FeedbackForm = (props: FeedbackFormProps) => {
               </Box>
             </Box>
           )}
+        </Dialog>
+
+        {/* ================= EDIT MODAL ================= */}
+        <Dialog
+          open={editMode}
+          onClose={() => setEditMode(false)}
+          maxWidth="sm"
+          fullWidth
+          PaperProps={{
+            sx: { borderRadius: 2, p: 3 },
+          }}
+        >
+          <DialogTitle>Edit Support Ticket</DialogTitle>
+          <DialogContent>
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle2" color="text.secondary">Subject</Typography>
+              <Typography>{editValues.subject}</Typography>
+            </Box>
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle2" color="text.secondary">Description</Typography>
+              <Typography>{editValues.description}</Typography>
+            </Box>
+            <FormControl fullWidth margin="dense">
+              <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>Priority</Typography>
+              <Select
+                value={editValues.priority}
+                onChange={(e) => setEditValues({ ...editValues, priority: e.target.value })}
+              >
+                <MenuItem value="low">Low</MenuItem>
+                <MenuItem value="medium">Medium</MenuItem>
+                <MenuItem value="high">High</MenuItem>
+              </Select>
+            </FormControl>
+            <FormControl fullWidth margin="dense">
+              <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>Status</Typography>
+              <Select
+                value={editValues.status}
+                onChange={(e) => setEditValues({ ...editValues, status: e.target.value })}
+              >
+                <MenuItem value="open">Open</MenuItem>
+                <MenuItem value="in progress">In Progress</MenuItem>
+                <MenuItem value="resolved">Resolved</MenuItem>
+                <MenuItem value="closed">Closed</MenuItem>
+              </Select>
+            </FormControl>
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle2" color="text.secondary">Category</Typography>
+              <Typography>{editValues.category}</Typography>
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setEditMode(false)}>Cancel</Button>
+            <Button onClick={handleEditSubmit} variant="contained">Save</Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* ================= DELETE DIALOG ================= */}
+        <Dialog
+          open={deleteDialogOpen}
+          onClose={() => setDeleteDialogOpen(false)}
+          PaperProps={{
+            sx: { borderRadius: 2, p: 3 },
+          }}
+        >
+          <DialogTitle>Delete Support Ticket</DialogTitle>
+          <DialogContent>
+            <DialogContentText>
+              Are you sure you want to delete this support ticket? This action cannot be undone.
+            </DialogContentText>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleDelete} color="error" variant="contained">Delete</Button>
+          </DialogActions>
         </Dialog>
       </>
     );
