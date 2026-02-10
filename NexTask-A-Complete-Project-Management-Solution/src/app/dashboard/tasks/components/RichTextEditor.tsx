@@ -725,7 +725,6 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
       {/* Mention hint */}
       <Box sx={{ mt: 1 }}>
         <Typography variant="caption" sx={{ color: theme.palette.text.secondary, fontSize: '11px' }}>
-          Type @ to mention users
         </Typography>
       </Box>
 
