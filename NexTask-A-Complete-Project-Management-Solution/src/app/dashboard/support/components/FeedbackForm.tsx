@@ -1,13 +1,15 @@
 'use client';
 import React, { useState } from 'react';
-import { TextField, Button, Box, Grid2, CircularProgress, Typography, Card, Avatar, Chip, Dialog, IconButton, Select, MenuItem, FormControl, Menu, DialogActions, DialogContent, DialogContentText, DialogTitle } from '@mui/material';
-import { MailOutline, AttachFile, MoreVert, Edit, Delete } from '@mui/icons-material';
+import { TextField, Button, Box, Grid2, CircularProgress, Typography, Card, Avatar, Chip, Dialog, IconButton, Select, MenuItem, FormControl, Menu, DialogActions, DialogContent, DialogContentText, DialogTitle, InputAdornment } from '@mui/material';
+import { MailOutline, AttachFile, MoreVert, Edit, Delete, Visibility } from '@mui/icons-material';
 import { enqueueSnackbar } from 'notistack';
 import CloseIcon from '@mui/icons-material/Close';
 import { useDispatch, useSelector } from 'react-redux';
 import { submitFeedback } from '@/redux/slices';
 import { selectFeedback, selectCurrentUser, selectSuperuser } from '@/redux/selectors';
 import axios from 'axios';
+import { safeLocalStorageGet } from '@/utils/helpers';
+import { accessTokenKey } from '@/utils/constants';
 
 // Minimum characters required for feedback text.
 const MIN_LENGTH = 20;
@@ -114,6 +116,49 @@ const FeedbackForm = (props: FeedbackFormProps) => {
 
     setSaving(true);
     try {
+      // Upload attachment if one is selected
+      let uploadedAttachment = null;
+      if (attachment) {
+        try {
+          const formData = new FormData();
+          formData.append('file', attachment);
+
+          const token = safeLocalStorageGet(accessTokenKey);
+          if (!token) {
+            throw new Error('Authentication required');
+          }
+
+          const uploadResponse = await fetch('/api/support/upload', {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+            body: formData,
+          });
+
+          if (!uploadResponse.ok) {
+            const errorData = await uploadResponse.json();
+            throw new Error(errorData.error || 'Upload failed');
+          }
+
+          const uploadData = await uploadResponse.json();
+          uploadedAttachment = {
+            fileName: uploadData.fileName,
+            fileUrl: uploadData.fileUrl,
+            fileType: uploadData.fileType,
+            fileSize: uploadData.fileSize,
+          };
+        } catch (uploadError: any) {
+          console.error('Error uploading attachment:', uploadError);
+          enqueueSnackbar({
+            variant: 'error',
+            message: `Failed to upload attachment: ${uploadError.message}`,
+          });
+          setSaving(false);
+          return;
+        }
+      }
+
       const ticketData = {
         subject: 'User Feedback',
         description: values.feedback,
@@ -124,6 +169,7 @@ const FeedbackForm = (props: FeedbackFormProps) => {
           lastName: values.lastName || '',
           email: values.email || '',
         },
+        attachments: uploadedAttachment ? [uploadedAttachment] : [],
       };
 
       console.log('Submitting feedback to /api/support:', ticketData);
@@ -279,6 +325,16 @@ const FeedbackForm = (props: FeedbackFormProps) => {
               {message}
             </Typography>
 
+            {/* Attachment Count */}
+            {attachments && attachments.length > 0 && (
+              <Box mt={1.5} display="flex" alignItems="center" gap={0.5}>
+                <AttachFile sx={{ fontSize: 14, color: 'text.secondary' }} />
+                <Typography variant="caption" color="text.secondary">
+                  +{attachments.length} attachment{attachments.length > 1 ? 's' : ''}
+                </Typography>
+              </Box>
+            )}
+
             {/* Chips */}
             <Box display="flex" gap={1} mt={2} flexWrap="wrap">
               {newticket && <StatusChip label={newticket} bg="rgba(34, 197, 94, 0.2)" color="#22C55E" />}
@@ -368,17 +424,35 @@ const FeedbackForm = (props: FeedbackFormProps) => {
               </Typography>
               <Box display="flex" flexDirection="column" gap={1}>
                 {attachments.map((file, index) => (
-                  <Button
+                  <TextField
                     key={file.fileUrl || `${index}`}
+                    value={file.fileName || `Attachment ${index + 1}`}
                     variant="outlined"
                     size="small"
-                    href={file.fileUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    sx={{ justifyContent: 'flex-start' }}
-                  >
-                    {file.fileName || `Attachment ${index + 1}`}
-                  </Button>
+                    fullWidth
+                    InputProps={{
+                      readOnly: true,
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <IconButton
+                            edge="end"
+                            onClick={() => window.open(file.fileUrl, '_blank', 'noopener,noreferrer')}
+                            size="small"
+                            sx={{ color: 'primary.main' }}
+                          >
+                            <Visibility fontSize="small" />
+                          </IconButton>
+                        </InputAdornment>
+                      ),
+                    }}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        '& fieldset': {
+                          borderColor: 'primary.main',
+                        },
+                      },
+                    }}
+                  />
                 ))}
               </Box>
             </Box>

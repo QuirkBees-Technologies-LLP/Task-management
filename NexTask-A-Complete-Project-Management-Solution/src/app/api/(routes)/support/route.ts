@@ -4,6 +4,7 @@ import clientPromise from '../../lib/mongodb';
 import { DATABASE_NAME } from '../../config';
 import { verifyToken, getOrgIdFromToken, userRolesServer } from '../../helpers';
 import { createNotification } from '../../lib/notification';
+import { addOrgIdToQuery } from '../../lib/orgIdHelper';
 
 // GET: Fetch support tickets
 export async function GET(request: Request) {
@@ -24,13 +25,21 @@ export async function GET(request: Request) {
 
     const query: any = {};
 
-    // NOTE: We intentionally do NOT filter strictly by org_id here to ensure
-    // older tickets (without org_id) and tickets from users without org info
-    // are still visible in the Support UI. Role-based checks still apply below.
-
-    // Regular users only see their own tickets; admins see all tickets.
+    // Regular users only see their own tickets
     if (decoded.role === userRolesServer.regular) {
       query.createdBy = decoded.id;
+    } else if (decoded.role === userRolesServer.admin) {
+      // Check if user is a system admin (superuser)
+      if (decoded.isSystemAdmin) {
+        // Superusers see all tickets (no org filter)
+        // query remains empty
+      } else {
+        // Organization admins see tickets from their organization only
+        const org_id = getOrgIdFromToken(decoded);
+        if (org_id) {
+          query.org_id = org_id instanceof ObjectId ? org_id : new ObjectId(org_id);
+        }
+      }
     }
     if (search) {
       query.$or = [
@@ -120,7 +129,6 @@ export async function POST(request: Request) {
       priority: priority || 'medium',
       category: category || 'general',
       status: 'open',
-      read: false,
       assignedTo: assignedTo || null,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -135,23 +143,14 @@ export async function POST(request: Request) {
 
     const result = await ticketsCollection.insertOne(newTicket);
 
-    // Notify admins that a new support ticket was created
-    const usersCollection = db.collection('users');
-
-    let admins = [];
+    // Notify org admins that a new support ticket was created
     if (org_id) {
-      // Send to organization admins
-      admins = await usersCollection
+      const usersCollection = db.collection('users');
+
+      const admins = await usersCollection
         .find({ org_id, role: userRolesServer.admin })
         .toArray();
-    } else {
-      // Send to system admins if no organization
-      admins = await usersCollection
-        .find({ isSystemAdmin: true })
-        .toArray();
-    }
 
-    if (admins.length > 0) {
       const requesterName =
         (contact?.firstName || '') + ' ' + (contact?.lastName || '') ||
         decoded.email ||
@@ -165,7 +164,7 @@ export async function POST(request: Request) {
             userId: admin._id,
             message,
             type: 'info',
-            org_id: org_id || undefined, // Only set org_id if it exists
+            org_id,
           });
         } catch (err) {
           console.error('Error creating support ticket notification for admin:', err);
@@ -193,7 +192,7 @@ export async function PATCH(request: Request) {
 
   try {
     const body = await request.json();
-    const { ticketId, subject, description, priority, status: ticketStatus, category, assignedTo, read } = body;
+    const { ticketId, subject, description, priority, status: ticketStatus, category, assignedTo, read, attachments } = body;
 
     if (!ticketId) {
       return NextResponse.json({ error: 'Ticket ID is required' }, { status: 400 });
@@ -219,6 +218,7 @@ export async function PATCH(request: Request) {
     if (category) updateData.category = category;
     if (assignedTo !== undefined) updateData.assignedTo = assignedTo;
     if (read !== undefined) updateData.read = read;
+    if (attachments !== undefined) updateData.attachments = Array.isArray(attachments) ? attachments : [];
 
     const result = await ticketsCollection.updateOne(
       { _id: new ObjectId(ticketId) },
