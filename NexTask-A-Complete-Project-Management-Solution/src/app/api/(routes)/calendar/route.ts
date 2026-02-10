@@ -2,24 +2,14 @@ import { NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
 import clientPromise from '../../lib/mongodb';
 import { DATABASE_NAME } from '../../config';
-import { verifyToken, getOrgIdFromToken, requireOrgIdFromToken } from '../../helpers';
-import { addOrgIdToQuery, addOrgIdToDocument } from '../../lib/orgIdHelper';
+import { verifyToken, userRolesServer } from '../../helpers';
 
-// GET: Fetch calendar events and tasks (filtered by organization)
+// GET: Fetch calendar events and tasks
 export async function GET(request: Request) {
   const { decoded, error, status } = await verifyToken(request);
   if (error) return NextResponse.json({ error }, { status });
 
   try {
-    // Get org_id from token for organization scoping
-    const org_id = getOrgIdFromToken(decoded);
-    if (!org_id) {
-      return NextResponse.json(
-        { error: 'Organization ID is required' },
-        { status: 403 }
-      );
-    }
-
     const { searchParams } = new URL(request.url);
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
@@ -31,9 +21,9 @@ export async function GET(request: Request) {
 
     const allEvents: any[] = [];
 
-    // Fetch calendar events filtered by org_id
+    // Fetch calendar events
     const eventsCollection = db.collection('calendarEvents');
-    const query: any = addOrgIdToQuery({}, org_id);
+    const query: any = {};
     if (startDate || endDate) {
       query.startDate = {};
       if (startDate) query.startDate.$gte = new Date(startDate);
@@ -56,53 +46,108 @@ export async function GET(request: Request) {
       });
     });
 
-    // Fetch tasks with due dates if requested (filtered by org_id)
-    if (includeTasks) {
+    // Get current user info for filtering
+    const userId = decoded.id || decoded.user_id;
+    const userObjectId = userId ? new ObjectId(userId) : null;
+    const isAdmin = decoded.role === userRolesServer.admin || decoded.isSystemAdmin === true;
+
+    if (includeTasks && userObjectId) {
       const tasksCollection = db.collection('tasks');
-      const taskQuery: any = addOrgIdToQuery({
-        dueDate: { $exists: true, $ne: null }
-      }, org_id);
+      const projectsCollection = db.collection('projects');
 
-      if (startDate || endDate) {
-        taskQuery.dueDate = {};
-        if (startDate) {
-          const start = new Date(startDate);
-          start.setHours(0, 0, 0, 0);
-          taskQuery.dueDate.$gte = start;
-        }
-        if (endDate) {
-          const end = new Date(endDate);
-          end.setHours(23, 59, 59, 999);
-          taskQuery.dueDate.$lte = end;
-        }
-      }
-
-      const tasks = await tasksCollection
-        .find(taskQuery)
-        .sort({ dueDate: 1 })
+      // 1) Find relevant projects:
+      // - Admins/System admins: all projects.
+      // - Regular users: only projects they are assigned to.
+      const projectFilter: any = isAdmin ? {} : { assignee: userObjectId };
+      const userProjects = await projectsCollection
+        .find(projectFilter)
+        .project({ _id: 1, name: 1, description: 1, status: 1, priority: 1, dueDate: 1 })
         .toArray();
 
-      // Convert tasks to calendar events
-      tasks.forEach((task) => {
-        if (task.dueDate) {
-          const dueDate = new Date(task.dueDate);
+      const projectIds = userProjects.map((p) => p._id as ObjectId);
+
+      // 2) Add project deadline events (based on dueDate only)
+      if (projectIds.length > 0) {
+        const projectDeadlineQuery: any = {
+          _id: { $in: projectIds },
+          dueDate: { $exists: true, $ne: null },
+        };
+
+        const projectsWithDeadlines = await projectsCollection
+          .find(projectDeadlineQuery)
+          .sort({ dueDate: 1 })
+          .toArray();
+
+        // Convert projects to calendar events
+        projectsWithDeadlines.forEach((project) => {
+          if (!project.dueDate) return;
+          const dueDate = new Date(project.dueDate);
+          const start = new Date(dueDate);
+          start.setHours(0, 0, 0, 0);
+          const end = new Date(dueDate);
+          end.setHours(23, 59, 59, 999);
+
           allEvents.push({
-            _id: task._id.toString(),
-            title: task.title,
+            _id: `project-${project._id.toString()}`,
+            title: project.name || 'Untitled Project',
+            description: project.description || '',
+            startDate: start,
+            endDate: end,
+            allDay: true,
+            eventType: 'project',
+            projectId: project._id.toString(),
+            status: project.status || '',
+            priority: project.priority || '',
+          });
+        });
+      }
+
+      // 3) Add task deadline events for tasks belonging to the user's projects (based on dueDate only)
+      if (projectIds.length > 0) {
+        const taskQuery: any = {
+          dueDate: { $exists: true, $ne: null },
+          projectId: { $in: projectIds },
+        };
+
+        const tasks = await tasksCollection
+          .find(taskQuery)
+          .sort({ dueDate: 1 })
+          .toArray();
+
+        // Convert tasks to calendar events
+        tasks.forEach((task) => {
+          if (!task.dueDate) return;
+          const dueDate = new Date(task.dueDate);
+          const start = new Date(dueDate);
+          start.setHours(0, 0, 0, 0);
+          const end = new Date(dueDate);
+          end.setHours(23, 59, 59, 999);
+
+          allEvents.push({
+            _id: `task-${task._id.toString()}`,
+            title: task.title || 'Untitled Task',
             description: task.description || '',
-            startDate: dueDate,
-            endDate: dueDate,
+            startDate: start,
+            endDate: end,
             allDay: true,
             eventType: 'task',
             taskId: task._id.toString(),
             projectId: task.projectId?.toString() || '',
             status: task.status || '',
             priority: task.priority || '',
-            assignee: task.assignee?.toString() || '',
+            assignee: Array.isArray(task.assignee)
+              ? task.assignee.map((a: any) => a.toString()).join(', ')
+              : (task.assignee?.toString() || ''),
           });
-        }
-      });
+        });
+      }
     }
+
+    console.log(
+      `[Calendar API] Total events: ${allEvents.length} (Calendar: ${events.length}, Tasks+Projects: ${
+        includeTasks ? 'included' : 'skipped'
+      })`
+    );
 
     return NextResponse.json(
       {
@@ -117,15 +162,12 @@ export async function GET(request: Request) {
   }
 }
 
-// POST: Create calendar event (with org_id)
+// POST: Create calendar event
 export async function POST(request: Request) {
   const { decoded, error, status } = await verifyToken(request);
   if (error) return NextResponse.json({ error }, { status });
 
   try {
-    // Get org_id from token - required for organization scoping
-    const org_id = requireOrgIdFromToken(decoded);
-
     const body = await request.json();
     const { title, description, startDate, endDate, type, location, attendees } = body;
 
@@ -140,8 +182,7 @@ export async function POST(request: Request) {
     const db = client.db(DATABASE_NAME);
     const eventsCollection = db.collection('calendarEvents');
 
-    // Create event with org_id
-    const newEvent = addOrgIdToDocument({
+    const newEvent = {
       title,
       description: description || '',
       startDate: new Date(startDate),
@@ -152,7 +193,7 @@ export async function POST(request: Request) {
       createdAt: new Date(),
       updatedAt: new Date(),
       createdBy: decoded.id,
-    }, org_id);
+    };
 
     const result = await eventsCollection.insertOne(newEvent);
 
@@ -169,15 +210,12 @@ export async function POST(request: Request) {
   }
 }
 
-// PATCH: Update calendar event (with org_id check)
+// PATCH: Update calendar event
 export async function PATCH(request: Request) {
   const { decoded, error, status } = await verifyToken(request);
   if (error) return NextResponse.json({ error }, { status });
 
   try {
-    // Get org_id from token - required for organization scoping
-    const org_id = requireOrgIdFromToken(decoded);
-
     const body = await request.json();
     const { eventId, title, description, startDate, endDate, type, location, attendees } = body;
 
@@ -189,12 +227,12 @@ export async function PATCH(request: Request) {
     const db = client.db(DATABASE_NAME);
     const eventsCollection = db.collection('calendarEvents');
 
-    // Verify event exists in the same organization
-    const existingEvent = await eventsCollection.findOne(
-      addOrgIdToQuery({ _id: new ObjectId(eventId) }, org_id)
-    );
+    // Verify event exists
+    const existingEvent = await eventsCollection.findOne({
+      _id: new ObjectId(eventId)
+    });
     if (!existingEvent) {
-      return NextResponse.json({ error: 'Event not found in your organization' }, { status: 404 });
+      return NextResponse.json({ error: 'Event not found' }, { status: 404 });
     }
 
     const updateData: any = { updatedAt: new Date() };
@@ -207,7 +245,7 @@ export async function PATCH(request: Request) {
     if (attendees) updateData.attendees = attendees;
 
     const result = await eventsCollection.updateOne(
-      addOrgIdToQuery({ _id: new ObjectId(eventId) }, org_id),
+      { _id: new ObjectId(eventId) },
       { $set: updateData }
     );
 
@@ -222,15 +260,12 @@ export async function PATCH(request: Request) {
   }
 }
 
-// DELETE: Delete calendar event (with org_id check)
+// DELETE: Delete calendar event
 export async function DELETE(request: Request) {
   const { decoded, error, status } = await verifyToken(request);
   if (error) return NextResponse.json({ error }, { status });
 
   try {
-    // Get org_id from token - required for organization scoping
-    const org_id = requireOrgIdFromToken(decoded);
-
     const { searchParams } = new URL(request.url);
     const eventId = searchParams.get('_id');
 
@@ -242,17 +277,17 @@ export async function DELETE(request: Request) {
     const db = client.db(DATABASE_NAME);
     const eventsCollection = db.collection('calendarEvents');
 
-    // Verify event exists in the same organization
-    const existingEvent = await eventsCollection.findOne(
-      addOrgIdToQuery({ _id: new ObjectId(eventId) }, org_id)
-    );
+    // Verify event exists
+    const existingEvent = await eventsCollection.findOne({
+      _id: new ObjectId(eventId)
+    });
     if (!existingEvent) {
-      return NextResponse.json({ error: 'Event not found in your organization' }, { status: 404 });
+      return NextResponse.json({ error: 'Event not found' }, { status: 404 });
     }
 
-    const result = await eventsCollection.deleteOne(
-      addOrgIdToQuery({ _id: new ObjectId(eventId) }, org_id)
-    );
+    const result = await eventsCollection.deleteOne({
+      _id: new ObjectId(eventId)
+    });
 
     if (result.deletedCount === 0) {
       return NextResponse.json({ error: 'Event not found' }, { status: 404 });
