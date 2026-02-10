@@ -70,7 +70,19 @@ const DynamicBreadcrumbs = ({ inDashboard = true, mb = 2, omitLabels = [] }: Dyn
 
   const generateBreadcrumbs = useCallback(() => {
     const pathSegments = pathname.split('/').filter(Boolean);
-    
+
+    // Detect project tasks paths so we can optionally hide breadcrumbs
+    const isProjectTasksPath =
+      (pathSegments.length >= 3 && pathSegments[0] === 'projects' && pathSegments[2] === 'tasks') ||
+      (pathSegments.length >= 4 && pathSegments[0] === 'dashboard' && pathSegments[1] === 'projects' && pathSegments[3] === 'tasks');
+
+    // If we're on a project tasks page and the project name is not yet loaded,
+    // avoid showing an ugly MongoDB ObjectId in the breadcrumb.
+    if (isProjectTasksPath && !projectName) {
+      setBreadcrumbs([]);
+      return;
+    }
+
     // Filter out 'dashboard' from breadcrumb labels - Dashboard should NEVER appear in breadcrumbs
     // Use case-insensitive filtering to catch any variations
     const filteredSegments = pathSegments.filter(segment => 
@@ -93,7 +105,7 @@ const DynamicBreadcrumbs = ({ inDashboard = true, mb = 2, omitLabels = [] }: Dyn
       }
 
       const href = '/' + hrefSegments.join('/');
-      
+
       // Replace project ID with project name if available
       // Handle both /projects/[id]/tasks and /dashboard/projects/[id]/tasks
       let label = segment;
