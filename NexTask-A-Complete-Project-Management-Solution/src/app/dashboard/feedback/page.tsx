@@ -4,11 +4,14 @@ import PageHeader from '@/components/PageHeader';
 import { Button, Paper } from '@mui/material';
 import { MailOutline } from '@mui/icons-material';
 import { mailtoLink } from './helpers';
-import { enqueueSnackbar } from 'notistack';
+import { useSelector } from 'react-redux';
+import { selectCurrentUser } from '@/redux/selectors';
 
 const Feedback = () => {
+  const { data: userInfo } = useSelector(selectCurrentUser);
+
   const handleNewFeedback = () => {
-    enqueueSnackbar('Feedback submitted', { variant: 'success' });
+    // Feedback submission is now handled in the FeedbackForm component
   };
 
   return (
@@ -24,7 +27,7 @@ const Feedback = () => {
         }
       />
       <Paper sx={{ p: 2 }}>
-        <FeedbackForm onSubmit={handleNewFeedback} />
+        <FeedbackForm userInfo={userInfo} onSubmit={handleNewFeedback} />
       </Paper>
     </>
   );
