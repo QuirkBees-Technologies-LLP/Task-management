@@ -25,6 +25,7 @@ import {
   Grid,
   Tooltip,
   TextField,
+  Pagination,
 } from '@mui/material';
 import { AddOutlined, CalendarMonthOutlined, DeleteOutline, EditOutlined, InfoOutlined, MoreVert, Search, TaskOutlined } from '@mui/icons-material';
 import ProjectModal from './components/ProjectModal';
@@ -63,6 +64,8 @@ export default function Projects() {
 
   const [dataSource, setDataSource] = useState<ProjectWithStats[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const [deleteOpen, setDeleteOpen] = useState<boolean>(false);
   const [selectedProjectForDelete, setSelectedProjectForDelete] = useState<Project | null>(null);
 
@@ -87,7 +90,7 @@ export default function Projects() {
 
   useEffect(() => {
     fetchProjects();
-  }, []);
+  }, [page]);
 
   const fetchProjects = async () => {
     setLoading(true);
@@ -98,11 +101,12 @@ export default function Projects() {
         return;
       }
 
-      const response = await axios.get('/api/projects?limit=1000', {
+      const response = await axios.get(`/api/projects?page=${page}&limit=10`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
       if (response.data.success) {
+        setTotalPages(response.data.pagination?.totalPages || 1);
         const rawProjects = response.data.projects || [];
 
         const projects: ProjectWithStats[] = rawProjects.map((p: any) => ({
@@ -714,6 +718,17 @@ export default function Projects() {
           ))}
         </Grid2>
       )}
+
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>
+        <Pagination
+          count={totalPages}
+          page={page}
+          onChange={(_, value) => setPage(value)}
+          color="primary"
+          showFirstButton
+          showLastButton
+        />
+      </Box>
 
       {/* Context Menu */}
       <Menu

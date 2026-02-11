@@ -69,7 +69,7 @@ const ResponsiveTable: React.FC<ResponsiveTableProps> = ({
 }) => {
   const theme = useTheme();
   const isSmallScreen = useMediaQuery(theme.breakpoints.down('md'));
-  const [rowsPerPage, setRowsPerPage] = useState<number>(5);
+  const [rowsPerPage, setRowsPerPage] = useState<number>(10);
   const [page, setPage] = useState<number>(0);
   const [listPage, setListPage] = useState<number>(1);
   // Ensure data is always an array
@@ -138,7 +138,7 @@ const ResponsiveTable: React.FC<ResponsiveTableProps> = ({
         />
       ) : (
         <TablePagination
-          rowsPerPageOptions={[5, 10]}
+          rowsPerPageOptions={[10, 25, 50]}
           component="div"
           count={safeData.length}
           rowsPerPage={rowsPerPage}

@@ -476,15 +476,53 @@ function* deleteUserSaga({ payload }) {
 }
 
 function* sendFeedback({ payload }) {
-  const { formData, setValues, setAttachment } = payload;
+  const { formData, values, attachment, setValues, setAttachment } = payload;
   try {
-    yield call(axios.post, '/api/feedback', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
+    // 1) Send legacy feedback email (keeps existing behaviour)
+    if (formData) {
+      yield call(axios.post, '/api/feedback', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+    }
+
+    // 2) Upload attachment for support ticket (if any)
+    const attachments: any[] = [];
+    if (attachment) {
+      const uploadFormData = new FormData();
+      uploadFormData.append('file', attachment);
+
+      const uploadResponse = yield call(axios.post, '/api/tasks/upload', uploadFormData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      const { fileUrl, fileName, fileType, fileSize } = uploadResponse.data || {};
+      if (fileUrl) {
+        attachments.push({ fileUrl, fileName, fileType, fileSize });
+      }
+    }
+
+    // 3) Create support ticket so admins can see it in Support UI
+    const payloadBody: any = {
+      subject: values?.feedback?.slice(0, 80) || 'Support request',
+      description: values?.feedback || '',
+      priority: 'medium',
+      category: 'feedback',
+      contact: {
+        firstName: values?.firstName || '',
+        lastName: values?.lastName || '',
+        email: values?.email || '',
       },
-    });
+      attachments,
+    };
+
+    yield call(axios.post, '/api/support', payloadBody);
+
     enqueueSnackbar({
-      message: 'Feedback sent successfully!',
+      message: 'Support ticket submitted successfully!',
       variant: 'success',
     });
     setValues({

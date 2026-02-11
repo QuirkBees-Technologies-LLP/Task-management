@@ -1,6 +1,6 @@
 'use client';
 import React, { useEffect, useState } from 'react';
-import { Button, Chip, Paper, Stack, useMediaQuery, useTheme, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, Typography, Box, TextField } from '@mui/material';
+import { Button, Chip, Paper, Stack, useMediaQuery, useTheme, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, Typography, Box, TextField, Pagination } from '@mui/material';
 import { Add as AddIcon, Edit, DeleteOutline, Visibility, Search, AddOutlined } from '@mui/icons-material';
 import ContractDetails from './components/ContractDetails';
 import ContractForm from './components/ContractForm';
@@ -25,6 +25,8 @@ export default function Contracts() {
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);
+  const [page, setPage] = useState<number>(1);
+  const [totalPages, setTotalPages] = useState<number>(1);
   const [selectedContract, setSelectedContract] = useState<Contract | undefined>(undefined);
   const [isFormOpen, setIsFormOpen] = useState<boolean>(false);
   const [open, setOpen] = useState<boolean>(false);
@@ -33,7 +35,7 @@ export default function Contracts() {
 
   useEffect(() => {
     fetchContracts();
-  }, []);
+  }, [page]);
 
   const fetchContracts = async () => {
     setLoading(true);
@@ -41,11 +43,12 @@ export default function Contracts() {
       const token = safeLocalStorageGet(accessTokenKey);
       if (!token) return;
 
-      const response = await axios.get('/api/contracts?limit=1000', {
+      const response = await axios.get(`/api/contracts?page=${page}&limit=10`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
       if (response.data.success) {
+        setTotalPages(response.data.pagination?.totalPages || 1);
         const formattedContracts = (response.data.contracts || []).map((c: any) => ({
           ...c,
           id: c._id,
@@ -376,6 +379,17 @@ export default function Contracts() {
           )}
         />
       </Paper>
+
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>
+        <Pagination
+          count={totalPages}
+          page={page}
+          onChange={(_, value) => setPage(value)}
+          color="primary"
+          showFirstButton
+          showLastButton
+        />
+      </Box>
 
       <ContractDetails open={open} onClose={() => setOpen(false)} contract={selectedContract} />
 

@@ -64,13 +64,29 @@ export async function GET(request: Request) {
       query.org_id = org_id;
     }
 
-    // Fetch all users in the organization
+    if (myUser?.email) {
+      query.email = { $ne: myUser.email };
+    }
+
+    const page = parseInt(searchParams.get('page') || '0', 10);
+    const limit = parseInt(searchParams.get('limit') || '0', 10);
+
+    if (page > 0 && limit > 0) {
+      const totalCount = await usersCollection.countDocuments(query);
+      const totalPages = Math.ceil(totalCount / limit);
+      const skip = (page - 1) * limit;
+
+      const users = await usersCollection.find(query).skip(skip).limit(limit).toArray();
+
+      return NextResponse.json(
+        { users, pagination: { totalPages, currentPage: page, totalCount } },
+        { status: 200 }
+      );
+    }
+
     const users = await usersCollection.find(query).toArray();
 
-    // Filter out current user
-    const filteredUsers = users.filter((user) => user.email !== myUser?.email);
-
-    return NextResponse.json(filteredUsers, { status: 200 });
+    return NextResponse.json(users, { status: 200 });
   } catch (error) {
     console.error('Error fetching user(s):', error);
     return NextResponse.json({ error: 'Failed to fetch user(s)' }, { status: 500 });

@@ -9,6 +9,7 @@ import {
   ListItemText,
   Menu,
   MenuItem,
+  Pagination,
   Paper,
   Stack,
   TextField,
@@ -41,13 +42,15 @@ const ClientManagement: React.FC = () => {
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
   const [menuClientId, setMenuClientId] = useState<string | null>(null);
+  const [page, setPage] = useState<number>(1);
+  const [totalPages, setTotalPages] = useState<number>(1);
 
   // Derived States
   const isMenuOpen = Boolean(menuAnchorEl);
 
   useEffect(() => {
     fetchClients();
-  }, []);
+  }, [page]);
 
   const fetchClients = async () => {
     setLoading(true);
@@ -58,7 +61,7 @@ const ClientManagement: React.FC = () => {
         return;
       }
 
-      const response = await axios.get('/api/clients?limit=1000', {
+      const response = await axios.get(`/api/clients?page=${page}&limit=10`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -71,6 +74,7 @@ const ClientManagement: React.FC = () => {
           projectsCount: c.projectsCount || 0,
         }));
         setDataSource(convertedClients);
+        setTotalPages(response.data.pagination?.totalPages || 1);
       }
     } catch (error: any) {
       console.error('Error fetching clients:', error);
@@ -371,6 +375,17 @@ const ClientManagement: React.FC = () => {
           loading={loading}
         />
       </Paper>
+
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>
+        <Pagination
+          count={totalPages}
+          page={page}
+          onChange={(_, value) => setPage(value)}
+          color="primary"
+          showFirstButton
+          showLastButton
+        />
+      </Box>
 
       {/* Add/Edit Client Modal */}
       <ClientModal

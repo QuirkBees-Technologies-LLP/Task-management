@@ -19,7 +19,6 @@ import Loader from '@/components/Loader';
 
 interface LayoutProps {
   children: ReactNode;
-  pageTitle?: string;
 }
 
 export default function Layout({ children }: LayoutProps) {

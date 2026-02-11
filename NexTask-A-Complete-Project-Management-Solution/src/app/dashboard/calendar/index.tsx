@@ -52,7 +52,7 @@ interface CalendarEvent extends Event {
   title?: string;
   start?: Date;
   end?: Date;
-  eventType?: 'task' | 'calendar';
+  eventType?: 'task' | 'project' | 'calendar';
   taskId?: string;
   projectId?: string;
   status?: string;
@@ -148,6 +148,12 @@ const Calendar = () => {
         const calendarEvents: CalendarEvent[] = response.data.events.map((event: any) => {
           const startDate = new Date(event.startDate || event.start);
           const endDate = event.endDate ? new Date(event.endDate) : new Date(event.end || startDate);
+          
+          // Ensure all-day events span the full day
+          if (event.allDay !== false) {
+            startDate.setHours(0, 0, 0, 0);
+            endDate.setHours(23, 59, 59, 999);
+          }
 
           return {
             title: event.title,
@@ -155,14 +161,20 @@ const Calendar = () => {
             end: endDate,
             allDay: event.allDay !== false,
             eventType: event.eventType || 'calendar',
-            taskId: event.taskId || event._id,
-            projectId: event.projectId,
+            taskId: event.taskId || (event.eventType === 'task' ? event._id?.replace('task-', '') : undefined),
+            projectId: event.projectId || (event.eventType === 'project' ? event._id?.replace('project-', '') : undefined),
             status: event.status,
             priority: event.priority,
             assignee: event.assignee,
             description: event.description,
             resource: event,
           };
+        });
+
+        console.log(`[Calendar] Loaded ${calendarEvents.length} events:`, {
+          tasks: calendarEvents.filter(e => e.eventType === 'task').length,
+          projects: calendarEvents.filter(e => e.eventType === 'project').length,
+          calendar: calendarEvents.filter(e => e.eventType === 'calendar').length,
         });
 
         setEvents(calendarEvents);
@@ -247,6 +259,9 @@ const Calendar = () => {
       };
       setEditingTask(task);
       setTaskDialogOpen(true);
+    } else if (event.eventType === 'project' && event.projectId) {
+      // Navigate to project page or show project details
+      router.push(`/projects/${event.projectId}`);
     } else {
       setSelectedEvent(event);
     }
@@ -371,6 +386,21 @@ const Calendar = () => {
           borderRadius: '6px',
           padding: '2px 6px',
           border: `2px solid ${statusColor.bg}`,
+          fontWeight: 500,
+          fontSize: '12px',
+        },
+      };
+    }
+
+    if (event.eventType === 'project') {
+      // Style for project deadlines
+      return {
+        style: {
+          backgroundColor: theme.palette.info.light || '#E3F2FD',
+          color: theme.palette.info.dark || '#1976D2',
+          borderRadius: '6px',
+          padding: '2px 6px',
+          border: `2px solid ${theme.palette.info.main || '#2196F3'}`,
           fontWeight: 500,
           fontSize: '12px',
         },
@@ -522,35 +552,72 @@ const Calendar = () => {
               <CircularProgress />
             </Box>
           )}
-          <BigCalendar
-            localizer={localizer}
-            events={events}
-            startAccessor="start"
-            endAccessor="end"
-            date={currentDate}
-            view={view}
-            onView={(v) => setView(v as 'month' | 'week' | 'day')}
-            onNavigate={(date) => setCurrentDate(date)}
-            onSelectSlot={handleSelectSlot}
-            onSelectEvent={handleSelectEvent}
-            selectable
-            style={{
-              height: '100%',
-              borderRadius: 12,
-              backgroundColor: theme.palette.background.default,
-            }}
-            eventPropGetter={eventPropGetter}
-            tooltipAccessor={(event) => {
-              const e = event as CalendarEvent;
-              if (e.eventType === 'task') {
-                return `${e.title} - ${e.priority || 'Medium'} priority`;
+          <Box sx={{ position: 'relative', height: '100%' }}>
+            <style>{`
+              /* Ensure multiple events on same day are visible */
+              .rbc-event {
+                margin-bottom: 2px !important;
+                min-height: 20px !important;
+                overflow: visible !important;
               }
-              return e.title as string;
-            }}
-            components={{
-              toolbar: () => null,
-            }}
-          />
+              .rbc-event-content {
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+              }
+              .rbc-day-slot .rbc-events-container {
+                margin-right: 0 !important;
+              }
+              .rbc-month-view .rbc-day-bg {
+                position: relative;
+              }
+              .rbc-month-view .rbc-event {
+                position: relative;
+                margin: 1px 0;
+                padding: 2px 4px;
+                border-radius: 3px;
+                font-size: 11px;
+                line-height: 1.2;
+              }
+              .rbc-agenda-view .rbc-event {
+                margin-bottom: 4px;
+              }
+            `}</style>
+            <BigCalendar
+              localizer={localizer}
+              events={events}
+              startAccessor="start"
+              endAccessor="end"
+              date={currentDate}
+              view={view}
+              onView={(v) => setView(v as 'month' | 'week' | 'day')}
+              onNavigate={(date) => setCurrentDate(date)}
+              onSelectSlot={handleSelectSlot}
+              onSelectEvent={handleSelectEvent}
+              selectable
+              style={{
+                height: '100%',
+                borderRadius: 12,
+                backgroundColor: theme.palette.background.default,
+              }}
+              eventPropGetter={eventPropGetter}
+              tooltipAccessor={(event) => {
+                const e = event as CalendarEvent;
+                if (e.eventType === 'task') {
+                  return `${e.title} - ${e.priority || 'Medium'} priority`;
+                }
+                if (e.eventType === 'project') {
+                  return `${e.title} - Project Deadline`;
+                }
+                return e.title as string;
+              }}
+              components={{
+                toolbar: () => null,
+              }}
+              popup
+              popupOffset={{ x: 10, y: 10 }}
+            />
+          </Box>
         </CardContent>
       </Card>
 

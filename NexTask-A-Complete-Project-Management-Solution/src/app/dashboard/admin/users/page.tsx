@@ -26,6 +26,7 @@ import {
   CircularProgress,
   Stack,
   Chip,
+  Pagination,
 } from '@mui/material';
 import {
   EditOutlined,
@@ -58,6 +59,8 @@ const AdminUsersPage: React.FC = () => {
   const { data: currentUser } = useSelector(selectCurrentUser);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -71,7 +74,7 @@ const AdminUsersPage: React.FC = () => {
       return;
     }
     fetchUsers();
-  }, [currentUser, router]);
+  }, [currentUser, router, page]);
 
   const fetchUsers = async () => {
     try {
@@ -81,13 +84,14 @@ const AdminUsersPage: React.FC = () => {
         return;
       }
 
-      const response = await axios.get('/api/users', {
+      const response = await axios.get(`/api/users?page=${page}&limit=10`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
 
-      setUsers(response.data);
+      setUsers(response.data.users);
+      setTotalPages(response.data.pagination?.totalPages ?? 1);
     } catch (error: any) {
       console.error('Error fetching users:', error);
       enqueueSnackbar({
@@ -285,6 +289,16 @@ const AdminUsersPage: React.FC = () => {
             </Table>
           </TableContainer>
         </Paper>
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>
+          <Pagination
+            count={totalPages}
+            page={page}
+            onChange={(_, value) => setPage(value)}
+            color="primary"
+            showFirstButton
+            showLastButton
+          />
+        </Box>
       </Box>
 
       {/* Edit Role Dialog */}
