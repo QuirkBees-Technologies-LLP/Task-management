@@ -488,7 +488,7 @@ function* sendFeedback({ payload }) {
     }
 
     // 2) Upload attachment for support ticket (if any)
-    let attachments: any[] = [];
+    const attachments: any[] = [];
     if (attachment) {
       const uploadFormData = new FormData();
       uploadFormData.append('file', attachment);

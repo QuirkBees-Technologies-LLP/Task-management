@@ -400,7 +400,6 @@ const TaskSectionColumn: React.FC<{
                 ? 'rgba(25, 118, 210, 0.15)' // More prominent blue tint in dark mode
                 : 'rgba(25, 118, 210, 0.08)' // More prominent blue tint in light mode
               : sectionBgColor, // Use section background color
-            borderRadius: 1,
             border: isOver
               ? `2px dashed ${theme.palette.primary.main}`
               : `2px solid transparent`,
