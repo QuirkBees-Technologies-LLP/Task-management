@@ -7,7 +7,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://192.168.1.4:3000', //use your pc ip here
+        target: 'http://192.168.1.13:3000', //use your pc ip here
         changeOrigin: true,
         secure: false,
       },

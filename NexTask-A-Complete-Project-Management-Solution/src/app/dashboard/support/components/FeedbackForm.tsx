@@ -288,9 +288,20 @@ const FeedbackForm = (props: FeedbackFormProps) => {
           <Box>
             {/* Header */}
             <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={2}>
-              <Box display="flex" gap={2} alignItems="center">
+              <Box display="flex" gap={1.5} alignItems="center">
                 <Avatar src={avatar} sx={{ width: 44, height: 44, borderRadius: 1 }} />
-                <Typography fontWeight={600}>{name}</Typography>
+                <Typography
+                  fontWeight={600}
+                  sx={{
+                    width: '120px',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    display: 'block',
+                  }}
+                >
+                  {name}
+                </Typography>
               </Box>
               <Box display="flex" alignItems="center" gap={1}>
                 <Typography variant="caption" color="text.secondary">
