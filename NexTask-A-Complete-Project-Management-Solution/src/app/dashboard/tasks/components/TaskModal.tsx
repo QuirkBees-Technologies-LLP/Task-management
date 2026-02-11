@@ -45,7 +45,7 @@ import StatusSelect from './StatusSelect';
 import { getStatusOptions } from '../utils/statusColors';
 import { jwtDecode } from 'jwt-decode';
 
-function TaskDialog({ open, onClose, onSave, task, projects, saving = false }: TaskDialogProps) {
+function TaskDialog({ open, onClose, onSave, task, projects, saving = false, restrictProjectId }: TaskDialogProps) {
   const theme = useTheme();
   const router = useRouter();
   const [editedTask, setEditedTask] = useState<Task | null>(null);
@@ -119,6 +119,7 @@ function TaskDialog({ open, onClose, onSave, task, projects, saving = false }: T
         attachments: task.attachments || [],
         subtasks: task.subtasks || [],
         assignee: task.assignee || [], // Initialize assignee array
+        projectId: restrictProjectId || task.projectId, // Use restricted project if provided
       });
 
       // Store previous status correctly based on current completion state
@@ -149,7 +150,7 @@ function TaskDialog({ open, onClose, onSave, task, projects, saving = false }: T
         description: '',
         status: defaultStatus,
         priority: 'Medium',
-        projectId: '',
+        projectId: restrictProjectId || '', // Use restricted project if provided
         dueDate: '',
         attachments: [],
         subtasks: [],
@@ -158,7 +159,7 @@ function TaskDialog({ open, onClose, onSave, task, projects, saving = false }: T
       setPreviousStatus(defaultStatus);
       setLiked(false);
     }
-  }, [task]);
+  }, [task, restrictProjectId]);
 
   // Fetch users for assignee dropdown
   useEffect(() => {
@@ -241,6 +242,11 @@ function TaskDialog({ open, onClose, onSave, task, projects, saving = false }: T
     e: React.ChangeEvent<HTMLInputElement | { name?: string; value: unknown }>
   ) => {
     const { name, value } = e.target;
+
+    // Prevent changing projectId when restricted
+    if (name === 'projectId' && restrictProjectId) {
+      return;
+    }
 
     // Validate due date - must be a future date
     if (name === 'dueDate') {
@@ -659,8 +665,12 @@ function TaskDialog({ open, onClose, onSave, task, projects, saving = false }: T
             fullWidth
             value={String(editedTask.projectId || '')}
             onChange={handleChange}
+            disabled={!!restrictProjectId}
           >
-            {projects.map((project) => (
+            {(restrictProjectId
+              ? projects.filter((project) => String(project.id) === String(restrictProjectId))
+              : projects
+            ).map((project) => (
               <MenuItem key={project.id} value={String(project.id || '')}>
                 {project.name || 'Unnamed Project'}
               </MenuItem>

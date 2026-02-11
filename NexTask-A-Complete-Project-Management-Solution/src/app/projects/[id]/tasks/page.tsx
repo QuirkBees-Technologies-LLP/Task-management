@@ -618,6 +618,7 @@ export default function ProjectTasksPage() {
         task={currentTask}
         projects={projects}
         saving={savingTask}
+        restrictProjectId={projectId}
       />
 
       <DeleteDialog
