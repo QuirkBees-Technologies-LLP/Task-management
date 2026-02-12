@@ -1,6 +1,15 @@
 import { useState } from "react";
-import { Form, Input, Button, Card, Alert, App } from "antd";
-import { EyeInvisibleOutlined, EyeTwoTone } from "@ant-design/icons";
+import {
+  Box,
+  Card,
+  TextField,
+  Button,
+  Alert,
+  Snackbar,
+  IconButton,
+  InputAdornment,
+} from "@mui/material";
+import { Visibility, VisibilityOff } from "@mui/icons-material";
 import carImage from "../assets/images/car-one.jpeg";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
@@ -8,79 +17,77 @@ import { useAuth } from "../contexts/AuthContext";
 const Login = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [snack, setSnack] = useState({ open: false, message: "", type: "success" });
+  const [showPassword, setShowPassword] = useState(false);
+
   const navigate = useNavigate();
   const { login } = useAuth();
-  const { message } = App.useApp();
 
-  // Email validation function
+  /* -------------------- Validators (unchanged) -------------------- */
   const validateEmail = (email) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
   };
 
-  // Password validation function
   const validatePassword = (password) => {
     const errors = [];
 
     if (!/[a-zA-Z]/.test(password)) {
       errors.push("At least one letter (a-z or A-Z)");
     }
-
     if (!/[0-9]/.test(password)) {
       errors.push("At least one number (0-9)");
     }
-
     if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
       errors.push("At least one special character (like @, #, !, $, etc.)");
     }
 
-    return {
-      isValid: errors.length === 0,
-      errors: errors,
-    };
+    return { isValid: errors.length === 0, errors };
   };
 
-  const onFinish = async (values) => {
+  /* -------------------- Submit (unchanged logic) -------------------- */
+  const onFinish = async (e) => {
+    e.preventDefault();
+
+    const form = new FormData(e.currentTarget);
+    const email = form.get("email");
+    const password = form.get("password");
+
     try {
       setError("");
 
-      // Validate email format
-      if (!validateEmail(values.email)) {
-        message.error("Please enter a valid email address");
+      if (!validateEmail(email)) {
+        setSnack({ open: true, message: "Please enter a valid email address", type: "error" });
         return;
       }
-      // Validate password
-      const passwordValidation = validatePassword(values.password);
+
+      const passwordValidation = validatePassword(password);
       if (!passwordValidation.isValid) {
-        message.error(passwordValidation.errors[0]);
+        setSnack({
+          open: true,
+          message: passwordValidation.errors[0],
+          type: "error",
+        });
         return;
       }
 
       setLoading(true);
-      await login({
-        email: values.email,
-        password: values.password,
-      });
+      await login({ email, password });
 
-      message.success("Login successful!");
-      navigate("/dashboard"); // Redirect to dashboard page
+      setSnack({ open: true, message: "Login successful!", type: "success" });
+      navigate("/dashboard");
     } catch (error) {
-      console.error("Login error:", error);
-
       if (error.response?.status === 423) {
-        // Account locked
         setError(error.response.data.error);
-        message.error(error.response.data.error);
+        setSnack({ open: true, message: error.response.data.error, type: "error" });
       } else if (error.response?.status === 401) {
-        // Invalid credentials
         setError("Invalid email or password");
-        message.error("Invalid email or password");
+        setSnack({ open: true, message: "Invalid email or password", type: "error" });
       } else {
-        // Other errors
-        const errorMessage =
+        const msg =
           error.response?.data?.error || "Login failed. Please try again.";
-        setError(errorMessage);
-        message.error(errorMessage);
+        setError(msg);
+        setSnack({ open: true, message: msg, type: "error" });
       }
     } finally {
       setLoading(false);
@@ -88,19 +95,19 @@ const Login = () => {
   };
 
   return (
-    <div style={{ display: "flex", height: "100vh" }}>
-      {/* Left side image */}
-      <div style={{ flex: 1 }}>
+    <Box sx={{ display: "flex", height: "100vh" }}>
+      {/* Left image */}
+      <Box sx={{ flex: 1 }}>
         <img
           src={carImage}
           alt="Login Illustration"
           style={{ width: "100%", height: "100%", objectFit: "cover" }}
         />
-      </div>
+      </Box>
 
-      {/* Right side login form */}
-      <div
-        style={{
+      {/* Right form */}
+      <Box
+        sx={{
           flex: 1,
           display: "flex",
           alignItems: "center",
@@ -108,59 +115,63 @@ const Login = () => {
           background: "#F9FAFC",
         }}
       >
-        <Card className="login_card" style={{ width: "400px" }}>
-          <div className="login_logo">
+        <Card className="login_card" sx={{ width: 400, p: 3 }}>
+          <Box className="login_logo" sx={{ textAlign: "center", mb: 2 }}>
             <img src="src/assets/images/logo.png" alt="" />
-          </div>
+          </Box>
 
           {error && (
-            <Alert
-              message={error}
-              type="error"
-              showIcon
-              style={{ marginBottom: 16 }}
-            />
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {error}
+            </Alert>
           )}
 
-          <Form name="login" onFinish={onFinish} layout="vertical">
-            <Form.Item
+          <Box component="form" onSubmit={onFinish}>
+            <TextField
               name="email"
               label="Email Address"
-              rules={[
-                { required: true, message: "Please enter your email address" },
-                {
-                  pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-                  message: "Please enter a valid email address",
-                },
-              ]}
-            >
-              <Input placeholder="Enter your email address" type="email" />
-            </Form.Item>
+              placeholder="Enter your email address"
+              type="email"
+              fullWidth
+              margin="normal"
+              required
+            />
 
-            <Form.Item
+            <TextField
               name="password"
               label="Password"
-              rules={[
-                { required: true, message: "Please enter your password" },
-              ]}
-            >
-              <Input.Password
-                placeholder="Enter your password"
-                iconRender={(visible) =>
-                  visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />
-                }
-              />
-            </Form.Item>
+              placeholder="Enter your password"
+              type={showPassword ? "text" : "password"}
+              fullWidth
+              margin="normal"
+              required
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      onClick={() => setShowPassword((v) => !v)}
+                      edge="end"
+                    >
+                      {showPassword ? <Visibility /> : <VisibilityOff />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
+            />
 
-            <Form.Item className="login_btn">
-              <Button type="primary" htmlType="submit" block loading={loading}>
-                {loading ? "Logging in..." : "Login"}
-              </Button>
-            </Form.Item>
+            <Button
+              type="submit"
+              variant="contained"
+              fullWidth
+              disabled={loading}
+              sx={{ mt: 2 }}
+            >
+              {loading ? "Logging in..." : "Login"}
+            </Button>
 
             <Link
               style={{
-                marginBottom: "10px",
+                marginTop: 10,
                 display: "block",
                 fontSize: "14px",
                 color: "#000",
@@ -168,10 +179,21 @@ const Login = () => {
             >
               Forgot your password?
             </Link>
-          </Form>
+          </Box>
         </Card>
-      </div>
-    </div>
+      </Box>
+
+      {/* Snackbar (AntD message replacement) */}
+      <Snackbar
+        open={snack.open}
+        autoHideDuration={3000}
+        onClose={() => setSnack({ ...snack, open: false })}
+      >
+        <Alert severity={snack.type} variant="filled">
+          {snack.message}
+        </Alert>
+      </Snackbar>
+    </Box>
   );
 };
 

@@ -1,26 +1,31 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Card,
-  Table,
+  DataGrid,
+  GridToolbarContainer,
+  GridToolbarColumnsButton,
+  GridToolbarFilterButton,
+  GridToolbarDensitySelector,
+  GridToolbarExport,
+} from "@mui/x-data-grid";
+import {
   Button,
-  Row,
-  Col,
-  message,
-  Space,
-  Popconfirm,
-  Switch,
+  Box,
   Typography,
-} from "antd";
-
-import { PlusOutlined } from "@ant-design/icons";
-import { Pencil, Trash } from "lucide-react";
+  Switch,
+  IconButton,
+  Tooltip,
+  Alert,
+  Snackbar,
+} from "@mui/material";
+import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon from "@mui/icons-material/Delete";
+import AddIcon from "@mui/icons-material/Add";
 import { organizationAPI } from "../services/api";
 import OrganizationFormModal from "../components/OrganizationFormModal";
 import DebouncedSearch from "../components/debouncedSearch";
 import CommonSelect from "../components/CommonSelect";
 import { plansAPI } from "../services/api";
 
-const { Title } = Typography;
 const PAGE_SIZE = 10;
 
 const Organisation = () => {
@@ -41,6 +46,11 @@ const Organisation = () => {
     pageSize: PAGE_SIZE,
     total: 0,
   });
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "success",
+  });
 
   /* -------------------- Fetch -------------------- */
   const fetchOrganizations = useCallback(
@@ -49,7 +59,7 @@ const Organisation = () => {
       pageSize = PAGE_SIZE,
       searchTerm = "",
       plan = "",
-      status = ""
+      status = "",
     ) => {
       try {
         setLoading(true);
@@ -60,7 +70,23 @@ const Organisation = () => {
           plan,
           status,
         });
-        setData(res.data?.organizations ?? []);
+        // Transform data for DataGrid with safe owner access
+        const transformedData = (res.data?.organizations ?? []).map((org) => ({
+          id: org._id,
+          _id: org._id,
+          name: org.name || "",
+          ownerName:
+            `${org.owner?.firstName || ""} ${org.owner?.lastName || ""}`.trim() ||
+            "N/A",
+          ownerEmail: org.owner?.email || "N/A",
+          status: org.status || "inactive", // ✅ Always define status
+          planId: org.planId || null,
+          slug: org.slug || "",
+          owner: org.owner || {},
+          ...org,
+        }));
+
+        setData(transformedData);
         setPaginationState((prev) => ({
           ...prev,
           current: res.data?.pagination?.page ?? page,
@@ -68,28 +94,32 @@ const Organisation = () => {
           total: res.data?.pagination?.total ?? 0,
         }));
       } catch {
-        message.error("Failed to load organizations");
+        setSnackbar({
+          open: true,
+          message: "Failed to load organizations",
+          severity: "error",
+        });
       } finally {
         setLoading(false);
       }
     },
-    []
+    [],
   );
 
   useEffect(() => {
     fetchOrganizations();
   }, [fetchOrganizations]);
 
-  // ✅ Search handler
+  // Search handler
   const handleSearch = useCallback(
     (value) => {
-      setSearchTerm(value); // store for pagination
+      setSearchTerm(value);
       fetchOrganizations(
         1,
         paginationState.pageSize,
         value,
         selectedPlanName,
-        selectedStatus
+        selectedStatus,
       );
     },
     [
@@ -97,23 +127,21 @@ const Organisation = () => {
       paginationState.pageSize,
       selectedPlanName,
       selectedStatus,
-    ]
+    ],
   );
 
-  // ✅ Plan filter handler
+  // Plan filter handler
   const handlePlanFilter = useCallback(
     (planId) => {
       const planName = planId ? plansMap[planId] : null;
-
-      setSelectedPlanId(planId); // for Select
-      setSelectedPlanName(planName); // for API
-
+      setSelectedPlanId(planId);
+      setSelectedPlanName(planName);
       fetchOrganizations(
         1,
         paginationState.pageSize,
         searchTerm,
         planName,
-        selectedStatus
+        selectedStatus,
       );
     },
     [
@@ -122,60 +150,62 @@ const Organisation = () => {
       paginationState.pageSize,
       searchTerm,
       selectedStatus,
-    ]
+    ],
   );
-  /* -------------------- Status Filter Handler -------------------- */
+
+  // Status filter handler
   const handleStatusFilter = useCallback(
     (status) => {
       setSelectedStatus(status);
-
       fetchOrganizations(
         1,
         paginationState.pageSize,
         searchTerm,
         selectedPlanName,
-        status
+        status,
       );
     },
-    [fetchOrganizations, paginationState.pageSize, searchTerm, selectedPlanName]
+    [
+      fetchOrganizations,
+      paginationState.pageSize,
+      searchTerm,
+      selectedPlanName,
+    ],
   );
 
   /* -------------------- Load Plans Map -------------------- */
-
   useEffect(() => {
     const loadPlans = async () => {
       try {
         const res = await plansAPI.list();
         const plans = res.data?.plans ?? [];
-
         const map = {};
         plans.forEach((p) => {
           map[p._id] = p.plan_name;
         });
-
         setPlansMap(map);
       } catch (err) {
         console.error("Failed to load plans for mapping", err);
       }
     };
-
     loadPlans();
   }, []);
 
-  // ✅ Table pagination handler
-  const handleTableChange = useCallback(
-    (pagination) => {
+  // Table pagination handler
+  const handlePaginationModelChange = useCallback(
+    (newPaginationModel) => {
       fetchOrganizations(
-        pagination.current,
-        pagination.pageSize,
+        newPaginationModel.page + 1, // DataGrid is 0-indexed
+        newPaginationModel.pageSize,
         searchTerm,
         selectedPlanName,
-        selectedStatus
+        selectedStatus,
       );
     },
-    [fetchOrganizations, searchTerm, selectedPlanName, selectedStatus]
+    [fetchOrganizations, searchTerm, selectedPlanName, selectedStatus],
   );
-  /* -------------------- Submit -------------------- */
+
+  /* -------------------- Submit, Delete, Edit handlers (same as before) -------------------- */
   const handleSubmit = useCallback(
     async (values, form) => {
       try {
@@ -194,28 +224,33 @@ const Organisation = () => {
 
         if (isEditing) {
           await organizationAPI.update(editInitialValues._id, payload);
-          message.success("Organization updated successfully");
+          setSnackbar({
+            open: true,
+            message: "Organization updated successfully",
+            severity: "success",
+          });
         } else {
           await organizationAPI.create(payload);
-          message.success("Organization created successfully");
+          setSnackbar({
+            open: true,
+            message: "Organization created successfully",
+            severity: "success",
+          });
         }
 
-        form.resetFields();
+        form.resetFields?.();
         setOpen(false);
         setEditInitialValues(null);
-
         fetchOrganizations(
           paginationState.current,
           paginationState.pageSize,
           searchTerm,
-          selectedPlanName
+          selectedPlanName,
         );
       } catch (error) {
         const backendError = error?.response?.data?.error;
-
-        // Handle duplicate slug error at form level
         if (backendError === "Organization with this slug already exists") {
-          form.setFields([
+          form.setFields?.([
             {
               name: "slug",
               errors: [
@@ -224,7 +259,11 @@ const Organisation = () => {
             },
           ]);
         } else {
-          message.error(error?.response?.data?.message || "Operation failed");
+          setSnackbar({
+            open: true,
+            message: error?.response?.data?.message || "Operation failed",
+            severity: "error",
+          });
         }
       } finally {
         setSubmitLoading(false);
@@ -237,211 +276,274 @@ const Organisation = () => {
       paginationState,
       searchTerm,
       selectedPlanName,
-    ]
+    ],
   );
 
-  /* -------------------- Modals -------------------- */
   const openCreateModal = () => {
     setIsEditing(false);
     setEditInitialValues(null);
     setOpen(true);
   };
 
-  const openEditModal = (record) => {
+  const openEditModal = useCallback((row) => {
     setIsEditing(true);
     setEditInitialValues({
-      _id: record._id,
-      name: record.name,
-      slug: record.slug,
-      firstName: record.owner.firstName,
-      lastName: record.owner.lastName,
-      email: record.owner.email,
-      planId: record.planId,
+      _id: row._id,
+      name: row.name,
+      slug: row.slug,
+      firstName: row.owner?.firstName || "",
+      lastName: row.owner?.lastName || "",
+      email: row.owner?.email || "",
+      planId: row.planId,
     });
     setOpen(true);
+  }, []);
+
+  const handleDelete = useCallback(
+    async (row) => {
+      try {
+        await organizationAPI.delete(row._id);
+        setSnackbar({
+          open: true,
+          message: "Organization deleted successfully",
+          severity: "success",
+        });
+        fetchOrganizations(paginationState.current, paginationState.pageSize);
+      } catch {
+        setSnackbar({
+          open: true,
+          message: "Failed to delete organization",
+          severity: "error",
+        });
+      }
+    },
+    [fetchOrganizations, paginationState],
+  );
+
+  const handleStatusToggle = useCallback(
+    async (row) => {
+      try {
+        setToggleLoading(true);
+        const newStatus = row.status === "active" ? "inactive" : "active";
+        await organizationAPI.updateStatus(row._id, { status: newStatus });
+        setSnackbar({
+          open: true,
+          message: `Organization ${newStatus === "active" ? "activated" : "deactivated"} successfully`,
+          severity: "success",
+        });
+        fetchOrganizations(paginationState.current, paginationState.pageSize);
+      } catch {
+        setSnackbar({
+          open: true,
+          message: "Failed to update status",
+          severity: "error",
+        });
+      } finally {
+        setToggleLoading(false);
+      }
+    },
+    [fetchOrganizations, paginationState],
+  );
+
+  const handleSnackbarClose = () => {
+    setSnackbar({ ...snackbar, open: false });
   };
 
-  /* -------------------- Delete -------------------- */
-  const handleDelete = async (record) => {
-    try {
-      await organizationAPI.delete(record._id);
-      message.success("Organization deleted successfully");
-      fetchOrganizations(paginationState.current, paginationState.pageSize);
-    } catch {
-      message.error("Failed to delete organization");
-    }
-  };
+  // DataGrid Columns with safe access
+  // Replace the columns useMemo with this corrected version:
 
-  /* -------------------- Columns -------------------- */
   const columns = useMemo(
     () => [
       {
-        title: "Organization Name",
-        dataIndex: "name",
-        render: (text) => <span>{text}</span>, // normal font
+        field: "name",
+        headerName: "Organization Name",
+        flex: 1,
+        minWidth: 200,
       },
-
       {
-        title: "Owner Name",
-        key: "ownerName",
-        render: (_, record) => (
-          <span style={{ color: "#595959" }}>
-            {`${record.owner.firstName || ""} ${
-              record.owner.lastName || ""
-            }`.trim()}
-          </span>
-        ),
-      },
-
-      {
-        title: "Owner Email",
-        dataIndex: "ownerEmail",
-        render: (_, record) => (
-          <a href={`mailto:${record.owner.email}`}>{record.owner.email}</a>
+        field: "ownerName",
+        headerName: "Owner Name",
+        flex: 1,
+        minWidth: 150,
+        renderCell: (params) => (
+          <Typography sx={{ color: "text.secondary" }}>
+            {params.value || "N/A"}
+          </Typography>
         ),
       },
       {
-        title: "Status",
-        dataIndex: "status",
-        render: (status, record) => (
-          <Switch
-            checked={status === "active"}
-            checkedChildren="Active"
-            unCheckedChildren="Inactive"
-            loading={toggleLoading}
-            onClick={async () => {
-              try {
-                setToggleLoading(true);
-                const newStatus = status === "active" ? "inactive" : "active";
-                await organizationAPI.updateStatus(record._id, {
-                  status: newStatus,
-                });
-                message.success(
-                  `Organization ${
-                    newStatus === "active" ? "activated" : "deactivated"
-                  } successfully`
-                );
-                fetchOrganizations(
-                  paginationState.current,
-                  paginationState.pageSize
-                );
-              } catch {
-                message.error("Failed to update status");
-              } finally {
-                setToggleLoading(false);
-              }
+        field: "ownerEmail",
+        headerName: "Owner Email",
+        flex: 1,
+        minWidth: 200,
+        renderCell: (params) => (
+          <Typography
+            component="a"
+            href={`mailto:${params.value}`}
+            sx={{
+              color: "primary.main",
+              textDecoration: "none",
+              "&:hover": { textDecoration: "underline" },
             }}
-          />
+          >
+            {params.value || "N/A"}
+          </Typography>
         ),
       },
       {
-        title: "Actions",
-        render: (_, record) => (
-          <Space size="middle">
-            <Button
-              type="text"
-              icon={<Pencil size={18} />}
-              onClick={() => openEditModal(record)}
+        field: "status",
+        headerName: "Status",
+        width: 120,
+        sortable: false,
+        renderCell: (params) => {
+          // Safe status access in renderCell
+          const status = params.row.status || "inactive";
+          return (
+            <Switch
+              checked={status === "active"}
+              onChange={() => handleStatusToggle(params.row)}
+              disabled={toggleLoading}
+              size="small"
             />
-            <Popconfirm
-              title="Delete this organization?"
-              onConfirm={() => handleDelete(record)}
-            >
-              <Button type="text" icon={<Trash size={18} />} danger />
-            </Popconfirm>
-          </Space>
+          );
+        },
+        // REMOVED valueGetter - not needed with renderCell
+      },
+      {
+        field: "actions",
+        headerName: "Actions",
+        width: 100,
+        sortable: false,
+        align: "right",
+        headerAlign: "right",
+        renderCell: (params) => (
+          <Box sx={{ display: "flex", gap: 0.5 }}>
+            <Tooltip title="Edit">
+              <IconButton
+                size="small"
+                onClick={() => openEditModal(params.row)}
+                color="primary"
+              >
+                <EditIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Delete">
+              <IconButton
+                size="small"
+                onClick={() => handleDelete(params.row)}
+                color="error"
+              >
+                <DeleteIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </Box>
         ),
       },
     ],
-    [toggleLoading, fetchOrganizations, paginationState]
+    [toggleLoading, handleStatusToggle, openEditModal, handleDelete],
   );
 
-  return (
-    <div>
-      {/* Header */}
-      <Row
-        justify="space-between"
-        align="middle"
-        style={{ marginBottom: 20, gap: "10px" }}
-      >
-        <Col>
-          <Title level={3} style={{ margin: 0 }}>
-            Organisation Management
-          </Title>
-        </Col>
-        <Col>
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={openCreateModal}
-          >
-            Add Organisation
-          </Button>
-        </Col>
-      </Row>
-      {/* Search Bar */}
-      <Row style={{ marginBottom: 16 }}>
-        <Col>
-          <DebouncedSearch
-            placeholder="Search"
-            onSearch={handleSearch}
-            className="search_data"
-          />
-        </Col>
-        <Col>
-          <CommonSelect
-            value={selectedPlanId}
-            onChange={handlePlanFilter}
-            placeholder="Filter by plan"
-            allowClear
-            fetcher={async () => {
-              const res = await plansAPI.list();
-              return res.data?.plans || [];
-            }}
-            mapOption={(plan) => ({
-              label: plan.plan_name,
-              value: plan._id,
-            })}
-            filterFn={(plan) => plan.status === "active"} // optional
-          />
-        </Col>
-        <Col>
-          <CommonSelect
-            value={selectedStatus}
-            onChange={handleStatusFilter}
-            placeholder="Filter by status"
-            allowClear
-            showSearch={false}
-            fetcher={async () => [
-              { label: "Active", value: "active" },
-              { label: "Inactive", value: "inactive" },
-            ]}
-            mapOption={(item) => item}
-          />
-        </Col>
-      </Row>
+  function CustomToolbar() {
+    return (
+      <GridToolbarContainer>
+        <GridToolbarColumnsButton />
+        <GridToolbarFilterButton />
+        <GridToolbarDensitySelector />
+        <GridToolbarExport />
+      </GridToolbarContainer>
+    );
+  }
 
-      {/* Table */}
-      <Card variant={false} style={{ boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}>
-        <Table
-          rowKey="_id"
-          loading={loading}
-          columns={columns}
-          dataSource={data}
-          pagination={{
-            current: paginationState.current,
-            pageSize: paginationState.pageSize,
-            total: paginationState.total,
-            showSizeChanger: true,
-            showTotal: (total, range) => `${range[0]}–${range[1]} of ${total}`,
-            pageSizeOptions: ["5", "10", "20", "50"],
+  return (
+    <Box sx={{ height: 700, width: "100%" }}>
+      {/* Header */}
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          mb: 2,
+          pb: 2,
+        }}
+      >
+        <Typography variant="h4" component="h1">
+          Organization Management
+        </Typography>
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={openCreateModal}
+        >
+          Add Organization
+        </Button>
+      </Box>
+
+      {/* Filters */}
+      <Box
+        sx={{
+          display: "flex",
+          gap: 2,
+          mb: 2,
+          flexWrap: "wrap",
+          alignItems: "center",
+        }}
+      >
+        <DebouncedSearch placeholder="Search" onSearch={handleSearch} />
+        <CommonSelect
+          value={selectedPlanId}
+          onChange={handlePlanFilter}
+          placeholder="Filter by plan"
+          allowClear
+          fetcher={async () => {
+            const res = await plansAPI.list();
+            return res.data?.plans || [];
           }}
-          onChange={handleTableChange}
-          bordered
-          scroll={{ x: 800 }}
-          rowClassName={() => "hover-row"} // for hover effect
+          mapOption={(plan) => ({
+            label: plan.plan_name,
+            value: plan._id,
+          })}
+          filterFn={(plan) => plan.status === "active"}
         />
-      </Card>
+        <CommonSelect
+          value={selectedStatus}
+          onChange={handleStatusFilter}
+          placeholder="Filter by status"
+          allowClear
+          showSearch={false}
+          fetcher={async () => [
+            { label: "Active", value: "active" },
+            { label: "Inactive", value: "inactive" },
+          ]}
+          mapOption={(item) => item}
+        />
+      </Box>
+
+      {/* DataGrid */}
+      <DataGrid
+        rows={data}
+        columns={columns}
+        loading={loading}
+        paginationMode="server"
+        paginationModel={{
+          page: paginationState.current - 1,
+          pageSize: paginationState.pageSize,
+        }}
+        paginationNavigationTimeout={0}
+        pageSizeOptions={[5, 10, 20, 50]}
+        rowCount={paginationState.total}
+        onPaginationModelChange={handlePaginationModelChange}
+        slots={{ toolbar: CustomToolbar }}
+        sx={{
+          boxShadow: 2,
+          border: 1,
+          borderColor: "grey.400",
+          "& .MuiDataGrid-cell:hover": {
+            color: "primary.main",
+          },
+        }}
+        getRowId={(row) => row.id}
+        disableRowSelectionOnClick
+      />
 
       {/* Modal */}
       <OrganizationFormModal
@@ -452,14 +554,22 @@ const Organisation = () => {
         onSubmit={handleSubmit}
       />
 
-      {/* Optional: Add hover effect via style */}
-      <style>{`
-        .hover-row:hover {
-          background-color: #f5f5f5;
-          transition: background-color 0.2s;
-        }
-      `}</style>
-    </div>
+      {/* Snackbar */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={handleSnackbarClose}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+      >
+        <Alert
+          onClose={handleSnackbarClose}
+          severity={snackbar.severity}
+          sx={{ width: "100%" }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
+    </Box>
   );
 };
 
