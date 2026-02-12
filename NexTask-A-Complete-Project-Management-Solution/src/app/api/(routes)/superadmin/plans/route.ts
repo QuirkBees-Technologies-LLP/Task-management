@@ -159,16 +159,36 @@ export async function POST(request: Request) {
     const plansCollection = db.collection('plans');
 
     const now = new Date();
+
+    // Normalize billing period (values are lower-case: 'monthly', 'yearly')
+    const normalizedBillingPeriod = Array.isArray(billing_period) ? billing_period : [];
+    const hasMonthly = normalizedBillingPeriod.includes('monthly');
+    const hasYearly = normalizedBillingPeriod.includes('yearly');
+
     const newPlan = {
       plan_name,
       description: description || '',
       plan_type: Array.isArray(plan_type) ? plan_type : [],
       trial_type: Array.isArray(trial_type) ? trial_type : [],
       price: {
-        monthly: price.monthly !== undefined ? Number(price.monthly) : null,
-        yearly: price.yearly !== undefined ? Number(price.yearly) : null,
+        // Only store monthly price if Monthly billing period is enabled
+        monthly:
+          hasMonthly &&
+          price.monthly !== undefined &&
+          price.monthly !== null &&
+          price.monthly !== ''
+            ? Number(price.monthly)
+            : null,
+        // Only store yearly price if Yearly billing period is enabled
+        yearly:
+          hasYearly &&
+          price.yearly !== undefined &&
+          price.yearly !== null &&
+          price.yearly !== ''
+            ? Number(price.yearly)
+            : null,
       },
-      billing_period: Array.isArray(billing_period) ? billing_period : [],
+      billing_period: normalizedBillingPeriod,
       users_allowed: users_allowed !== undefined ? Number(users_allowed) : null,
       organizations_allowed: organizations_allowed !== undefined ? Number(organizations_allowed) : null,
       best_for: best_for || '',

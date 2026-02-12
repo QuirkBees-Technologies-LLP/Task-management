@@ -60,17 +60,31 @@ const PlansFormModal = ({
     if (!open) return;
 
     if (initialValues) {
-      const billingPeriod = Array.isArray(initialValues.billing_period)
-        ? initialValues.billing_period[0]
-        : initialValues.billing_period;
+      const billingArray = Array.isArray(initialValues.billing_period)
+        ? initialValues.billing_period
+        : initialValues.billing_period
+        ? [initialValues.billing_period]
+        : [];
+
+      let billingPeriod = billingArray[0] || undefined;
+
+      // If both monthly and yearly are enabled, map to "both" for the UI
+      if (billingArray.includes("monthly") && billingArray.includes("yearly")) {
+        billingPeriod = "both";
+      }
 
       form.setFieldsValue({
         ...initialValues,
+        billing_period: billingPeriod,
         price: {
           monthly:
-            billingPeriod === "monthly" ? initialValues.price?.monthly || 0 : 0,
+            billingPeriod === "monthly" || billingPeriod === "both"
+              ? initialValues.price?.monthly || 0
+              : 0,
           yearly:
-            billingPeriod === "yearly" ? initialValues.price?.yearly || 0 : 0,
+            billingPeriod === "yearly" || billingPeriod === "both"
+              ? initialValues.price?.yearly || 0
+              : 0,
         },
         features: initialValues.features ?? [],
         mark_as_popular: Boolean(initialValues.mark_as_popular),
@@ -106,16 +120,23 @@ const PlansFormModal = ({
             ? values.billing_period[0]
             : values.billing_period;
 
+          let billingPeriodArray = [];
+          if (billingPeriod === "both") {
+            billingPeriodArray = ["monthly", "yearly"];
+          } else if (billingPeriod) {
+            billingPeriodArray = [billingPeriod];
+          }
+
           const payload = {
             ...values,
-            billing_period: billingPeriod ? [billingPeriod] : [],
+            billing_period: billingPeriodArray,
             price: {
               monthly:
-                billingPeriod === "monthly"
+                billingPeriod === "monthly" || billingPeriod === "both"
                   ? Number(values.price?.monthly || 0)
                   : 0,
               yearly:
-                billingPeriod === "yearly"
+                billingPeriod === "yearly" || billingPeriod === "both"
                   ? Number(values.price?.yearly || 0)
                   : 0,
             },
@@ -223,6 +244,7 @@ const PlansFormModal = ({
             options={[
               { label: "Monthly", value: "monthly" },
               { label: "Yearly", value: "yearly" },
+              { label: "Both", value: "both" },
             ]}
           />
         </Form.Item>

@@ -22,6 +22,7 @@ import {
 } from '@mui/material';
 import { appbarHeight, navRoutes } from '@/utils/constants';
 import Logo from '../Logo';
+import { PersonAddOutlined } from '@mui/icons-material';
 
 interface HeaderProps {
   isAuthHeader?: boolean;
@@ -127,8 +128,14 @@ const Header: React.FC<HeaderProps> = ({ isAuthHeader = false }) => {
                   sx={{
                     flexGrow: 0,
                     display: { xs: 'none', sm: 'none', md: 'flex' },
+                    gap: 1,
                   }}
                 >
+                  <Link href={'/signup'}>
+                    <Button variant="outlined" startIcon={<PersonAddOutlined />}>
+                      Sign Up
+                    </Button>
+                  </Link>
                   <Link href={'/login'}>
                     <Button variant="contained">Login</Button>
                   </Link>
@@ -175,7 +182,12 @@ const Header: React.FC<HeaderProps> = ({ isAuthHeader = false }) => {
           </MenuItem>
         ))}
         <Divider />
-        <Box sx={{ px: 1 }}>
+        <Box sx={{ px: 1, display: 'flex', flexDirection: 'column', gap: 1 }}>
+          <Link href={'/signup'}>
+            <Button variant="outlined" fullWidth startIcon={<PersonAddOutlined />}>
+              Sign Up
+            </Button>
+          </Link>
           <Link href={'/login'}>
             <Button variant="contained" fullWidth>
               Login

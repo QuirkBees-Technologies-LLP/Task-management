@@ -71,6 +71,16 @@ export async function PATCH(
     const db = client.db(DATABASE_NAME);
     const plansCollection = db.collection('plans');
 
+    // Fetch existing plan to preserve values when partially updating
+    const existingPlan = await plansCollection.findOne({
+      _id: new ObjectId(id),
+      deletedAt: null,
+    });
+
+    if (!existingPlan) {
+      return NextResponse.json({ message: 'Plan not found' }, { status: 404 });
+    }
+
     const updateData: any = {
       updatedAt: new Date(),
     };
@@ -87,16 +97,43 @@ export async function PATCH(
     if (body.trial_type !== undefined) {
       updateData.trial_type = Array.isArray(body.trial_type) ? body.trial_type : [];
     }
+
+    // Determine effective billing period for price rules (values are lower-case)
+    const newBillingPeriod =
+      body.billing_period !== undefined
+        ? Array.isArray(body.billing_period)
+          ? body.billing_period
+          : []
+        : existingPlan.billing_period || [];
+    const hasMonthly = newBillingPeriod.includes('monthly');
+    const hasYearly = newBillingPeriod.includes('yearly');
+
     if (body.price !== undefined) {
       if (typeof body.price === 'object' && !Array.isArray(body.price)) {
+        // Preserve existing price values and only update provided fields,
+        // but also respect the effective billing period
+        const existingPrice = existingPlan.price || { monthly: null, yearly: null };
         updateData.price = {
-          monthly: body.price.monthly !== undefined ? Number(body.price.monthly) : null,
-          yearly: body.price.yearly !== undefined ? Number(body.price.yearly) : null,
+          monthly: hasMonthly
+            ? body.price.monthly !== undefined
+              ? body.price.monthly !== null && body.price.monthly !== ''
+                ? Number(body.price.monthly)
+                : null
+              : existingPrice.monthly
+            : null, // If Monthly is not enabled, force null
+          yearly: hasYearly
+            ? body.price.yearly !== undefined
+              ? body.price.yearly !== null && body.price.yearly !== ''
+                ? Number(body.price.yearly)
+                : null
+              : existingPrice.yearly
+            : null, // If Yearly is not enabled, force null
         };
       }
     }
+
     if (body.billing_period !== undefined) {
-      updateData.billing_period = Array.isArray(body.billing_period) ? body.billing_period : [];
+      updateData.billing_period = newBillingPeriod;
     }
     if (body.users_allowed !== undefined) {
       updateData.users_allowed = body.users_allowed !== null ? Number(body.users_allowed) : null;

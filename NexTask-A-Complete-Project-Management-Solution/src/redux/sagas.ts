@@ -145,20 +145,58 @@ function* userLogin({ payload }: any) {
 
 function* postNewUser({ payload }: any) {
   try {
-    yield call(axios.post, '/api/auth/signup', {
-      ...payload.formData,
+    const response = yield call(axios.post, '/api/auth/signup', {
+      firstName: payload.formData.firstName,
+      lastName: payload.formData.lastName,
+      email: payload.formData.email,
+      password: payload.formData.password,
+      organizationName: payload.formData.organizationName,
+      planId: payload.formData.planId,
     });
 
-    yield put(signupSuccess());
-    payload?.router.push('/login');
-    enqueueSnackbar({
-      message: 'Please check your email to activate account!',
-      variant: 'info',
-    });
-    enqueueSnackbar({
-      message: 'Account created successfully!',
-      variant: 'success',
-    });
+    // New signup endpoint returns token and user info
+    if (response.data.success && response.data.token) {
+      // Store token in localStorage
+      localStorage.setItem(accessTokenKey, response.data.token);
+      
+      // Auto-login the user
+      yield put(loginSuccess({
+        user: response.data.user,
+        token: response.data.token,
+      }));
+      
+      // Fetch user info
+      yield put(fetchUserInfo());
+      
+      // Redirect to dashboard
+      if (payload?.router) {
+        payload.router.push('/dashboard/projects');
+      } else {
+        navigateTo('/dashboard/projects');
+      }
+      
+      enqueueSnackbar({
+        message: 'Organization and account created successfully! Welcome to NexTask!',
+        variant: 'success',
+      });
+      
+      enqueueSnackbar({
+        message: 'You have 15 days free trial. Please check your email to confirm your account.',
+        variant: 'info',
+      });
+    } else {
+      // Fallback for old response format (shouldn't happen with new endpoint)
+      yield put(signupSuccess());
+      payload?.router.push('/login');
+      enqueueSnackbar({
+        message: 'Please check your email to activate account!',
+        variant: 'info',
+      });
+      enqueueSnackbar({
+        message: 'Account created successfully!',
+        variant: 'success',
+      });
+    }
   } catch (error: any) {
     yield put(signupFailure(error.message));
     handleErrorMessage(error);
