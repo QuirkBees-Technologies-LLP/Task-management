@@ -16,16 +16,29 @@ import {
   Grid,
   InputAdornment,
 } from "@mui/material";
-  InputNumber,
-  Row,
-  Col,
-} from "antd";
-import { useEffect, useState } from "react";
+
+import { useEffect, useState, useCallback } from "react";
+
 import {
   Delete as DeleteIcon,
   Add as AddIcon,
 } from "@mui/icons-material";
-import { useEffect, useState, useCallback } from "react";
+
+const defaultFormState = {
+  plan_name: "",
+  description: "",
+  plan_type: "",
+  trial_type: "",
+  price: { monthly: 0, yearly: 0 },
+  billing_period: "",
+  users_allowed: 1,
+  organizations_allowed: 1,
+  best_for: "",
+  access_level: "",
+  features: [],
+  status: "active",
+  mark_as_popular: false,
+};
 
 const PlansFormModal = ({
   open,
@@ -34,29 +47,15 @@ const PlansFormModal = ({
   onCancel,
   onSubmit,
 }) => {
-  const [formData, setFormData] = useState({
-    plan_name: "",
-    description: "",
-    plan_type: "",
-    trial_type: "",
-    price: { monthly: 0, yearly: 0 },
-    billing_period: "",
-    users_allowed: 1,
-    organizations_allowed: 1,
-    best_for: "",
-    access_level: "",
-    features: [],
-    status: "active",
-    mark_as_popular: false,
-  });
+  const [formData, setFormData] = useState(defaultFormState);
   const [errors, setErrors] = useState({});
   const [features, setFeatures] = useState([]);
 
-  // Validation functions (same as Antd rules)
+  /* -------------------- Validation -------------------- */
+
   const validateForm = useCallback((data) => {
     const newErrors = {};
 
-    // Plan name
     if (!data.plan_name?.trim()) {
       newErrors.plan_name = "Plan name is required";
     } else if (!/^[A-Za-z0-9\s]+$/.test(data.plan_name)) {
@@ -65,12 +64,10 @@ const PlansFormModal = ({
       newErrors.plan_name = "Maximum 50 characters allowed";
     }
 
-    // Description
     if (data.description?.length > 200) {
       newErrors.description = "Max 200 characters";
     }
 
-    // Required fields
     const requiredFields = {
       plan_type: "Plan type is required",
       trial_type: "Trial type is required",
@@ -87,239 +84,158 @@ const PlansFormModal = ({
       }
     });
 
-    // Price validation
     if (data.price?.monthly <= 0) {
-      newErrors["price.monthly"] = "Value must be greater than 0";
+      newErrors["price.monthly"] = "Must be greater than 0";
     }
+
     if (data.price?.yearly <= 0) {
-      newErrors["price.yearly"] = "Value must be greater than 0";
+      newErrors["price.yearly"] = "Must be greater than 0";
     }
 
-    // Integer validation
-    if (!Number.isInteger(Number(data.users_allowed)) || Number(data.users_allowed) <= 0) {
-      newErrors.users_allowed = "Only whole numbers greater than 0";
-    }
-    if (!Number.isInteger(Number(data.organizations_allowed)) || Number(data.organizations_allowed) <= 0) {
-      newErrors.organizations_allowed = "Only whole numbers greater than 0";
+    if (!Number.isInteger(Number(data.users_allowed)) || data.users_allowed <= 0) {
+      newErrors.users_allowed = "Only whole numbers > 0";
     }
 
-    // Features validation
-    if (!data.features?.length || data.features.some(f => !f?.trim())) {
+    if (
+      !Number.isInteger(Number(data.organizations_allowed)) ||
+      data.organizations_allowed <= 0
+    ) {
+      newErrors.organizations_allowed = "Only whole numbers > 0";
+    }
+
+    if (!data.features?.length || data.features.some((f) => !f?.trim())) {
       newErrors.features = "At least one feature is required";
     }
 
     return newErrors;
   }, []);
 
-  // Set initial values
+  /* -------------------- Effects -------------------- */
+
   useEffect(() => {
     if (!open) {
-      setFormData({
-        plan_name: "",
-        description: "",
-        plan_type: "",
-        trial_type: "",
-        price: { monthly: 0, yearly: 0 },
-        billing_period: "",
-        users_allowed: 1,
-        organizations_allowed: 1,
-        best_for: "",
-        access_level: "",
-        features: [],
-        status: "active",
-        mark_as_popular: false,
-      });
+      setFormData(defaultFormState);
       setFeatures([]);
       setErrors({});
       return;
     }
 
     if (initialValues) {
-      const billingArray = Array.isArray(initialValues.billing_period)
-        ? initialValues.billing_period
-        : initialValues.billing_period
-        ? [initialValues.billing_period]
-        : [];
-
-      let billingPeriod = billingArray[0] || undefined;
-
-      // If both monthly and yearly are enabled, map to "both" for the UI
-      if (billingArray.includes("monthly") && billingArray.includes("yearly")) {
-        billingPeriod = "both";
-      }
-
-      const newData = {
+      setFormData({
+        ...defaultFormState,
         ...initialValues,
-        billing_period: billingPeriod,
         price: {
-          monthly: billingPeriod === "monthly" ? initialValues.price?.monthly || 0 : 0,
-          yearly: billingPeriod === "yearly" ? initialValues.price?.yearly || 0 : 0,
-          monthly:
-            billingPeriod === "monthly" || billingPeriod === "both"
-              ? initialValues.price?.monthly || 0
-              : 0,
-          yearly:
-            billingPeriod === "yearly" || billingPeriod === "both"
-              ? initialValues.price?.yearly || 0
-              : 0,
+          monthly: initialValues.price?.monthly || 0,
+          yearly: initialValues.price?.yearly || 0,
         },
-        features: initialValues.features ?? [],
+        features: initialValues.features || [],
+        status: initialValues.status || "active",
         mark_as_popular: Boolean(initialValues.mark_as_popular),
-        status: initialValues.status ?? "active",
-      };
-      setFormData(newData);
-      setFeatures(initialValues.features ?? []);
+      });
+
+      setFeatures(initialValues.features || []);
     }
   }, [open, initialValues]);
 
-  // Input handlers
+  /* -------------------- Handlers -------------------- */
+
   const handleInputChange = useCallback((field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
+
     if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: "" }));
+      setErrors((prev) => ({ ...prev, [field]: "" }));
     }
   }, [errors]);
 
   const handlePriceChange = useCallback((period, value) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      price: { ...prev.price, [period]: Number(value) || 0 }
+      price: {
+        ...prev.price,
+        [period]: Number(value) || 0,
+      },
     }));
-    if (errors[`price.${period}`]) {
-      setErrors(prev => ({ ...prev, [`price.${period}`]: "" }));
-    }
-  }, [errors]);
+  }, []);
 
-  // Feature handlers
-  const addFeature = useCallback(() => {
-    const newFeatures = [...features, ""];
-    setFeatures(newFeatures);
-    setFormData(prev => ({ ...prev, features: newFeatures }));
-  }, [features]);
+  const addFeature = () => {
+    const updated = [...features, ""];
+    setFeatures(updated);
+    setFormData((p) => ({ ...p, features: updated }));
+  };
 
-  const removeFeature = useCallback((index) => {
-    const newFeatures = features.filter((_, i) => i !== index);
-    setFeatures(newFeatures);
-    setFormData(prev => ({ ...prev, features: newFeatures }));
-  }, [features]);
+  const removeFeature = (index) => {
+    const updated = features.filter((_, i) => i !== index);
+    setFeatures(updated);
+    setFormData((p) => ({ ...p, features: updated }));
+  };
 
-  const updateFeature = useCallback((index, value) => {
-    const newFeatures = [...features];
-    newFeatures[index] = value;
-    setFeatures(newFeatures);
-    setFormData(prev => ({ ...prev, features: newFeatures }));
-  }, [features]);
+  const updateFeature = (index, value) => {
+    const updated = [...features];
+    updated[index] = value;
+
+    setFeatures(updated);
+    setFormData((p) => ({ ...p, features: updated }));
+  };
+
+  /* -------------------- Submit -------------------- */
 
   const handleSubmit = useCallback(() => {
     const validationErrors = validateForm(formData);
+
     setErrors(validationErrors);
 
-    if (Object.keys(validationErrors).length > 0) {
-      return;
-    }
-
-    const billingPeriod = Array.isArray(formData.billing_period)
-      ? formData.billing_period[0]
-      : formData.billing_period;
+    if (Object.keys(validationErrors).length > 0) return;
 
     const payload = {
       ...formData,
-      billing_period: billingPeriod ? [billingPeriod] : [],
       price: {
-        monthly: billingPeriod === "monthly" ? Number(formData.price?.monthly || 0) : 0,
-        yearly: billingPeriod === "yearly" ? Number(formData.price?.yearly || 0) : 0,
+        monthly: Number(formData.price.monthly || 0),
+        yearly: Number(formData.price.yearly || 0),
       },
     };
 
-    onSubmit(payload, { 
-      resetFields: () => {
-        setFormData({
-          plan_name: "",
-          description: "",
-          plan_type: "",
-          trial_type: "",
-          price: { monthly: 0, yearly: 0 },
-          billing_period: "",
-          users_allowed: 1,
-          organizations_allowed: 1,
-          best_for: "",
-          access_level: "",
-          features: [],
-          status: "active",
-          mark_as_popular: false,
-        });
-        setFeatures([]);
-      } 
-    });
+    onSubmit(payload);
+
   }, [formData, validateForm, onSubmit]);
+
+  /* -------------------- UI -------------------- */
 
   return (
     <Dialog open={open} onClose={onCancel} maxWidth="md" fullWidth>
-      <DialogTitle>{initialValues ? "Edit Plan" : "Create Plan"}</DialogTitle>
+      <DialogTitle>
+        {initialValues ? "Edit Plan" : "Create Plan"}
+      </DialogTitle>
+
       <DialogContent sx={{ p: 3 }}>
-        <Box sx={{ mt: 1 }}>
+        <Box>
+
           {/* Plan Name */}
           <TextField
-            value={formData.plan_name}
-            onChange={(e) => handleInputChange("plan_name", e.target.value)}
-            label="Plan Name"
             fullWidth
             margin="normal"
+            label="Plan Name"
+            value={formData.plan_name}
+            onChange={(e) =>
+              handleInputChange("plan_name", e.target.value)
+            }
             error={!!errors.plan_name}
             helperText={errors.plan_name}
-            placeholder="Enter plan name"
             required
           />
-          let billingPeriodArray = [];
-          if (billingPeriod === "both") {
-            billingPeriodArray = ["monthly", "yearly"];
-          } else if (billingPeriod) {
-            billingPeriodArray = [billingPeriod];
-          }
-
-          const payload = {
-            ...values,
-            billing_period: billingPeriodArray,
-            price: {
-              monthly:
-                billingPeriod === "monthly" || billingPeriod === "both"
-                  ? Number(values.price?.monthly || 0)
-                  : 0,
-              yearly:
-                billingPeriod === "yearly" || billingPeriod === "both"
-                  ? Number(values.price?.yearly || 0)
-                  : 0,
-            },
-          };
-
-          onSubmit(payload, form);
-        }}
-      >
-        {/* Plan Name */}
-        <Form.Item
-          name="plan_name"
-          label="Plan Name"
-          rules={[
-            { required: true, message: "Plan name is required" },
-            nameRule,
-            { max: 50, message: "Maximum 50 characters allowed" },
-          ]}
-        >
-          <Input placeholder="Enter plan name" />
-        </Form.Item>
 
           {/* Description */}
           <TextField
-            value={formData.description}
-            onChange={(e) => handleInputChange("description", e.target.value)}
-            label="Description"
             fullWidth
             margin="normal"
+            label="Description"
             multiline
             rows={3}
+            value={formData.description}
+            onChange={(e) =>
+              handleInputChange("description", e.target.value)
+            }
             error={!!errors.description}
             helperText={errors.description}
-            placeholder="Enter description"
           />
 
           {/* Plan Type */}
@@ -327,17 +243,14 @@ const PlansFormModal = ({
             <InputLabel>Plan Type</InputLabel>
             <Select
               value={formData.plan_type}
-              onChange={(e) => handleInputChange("plan_type", e.target.value)}
               label="Plan Type"
+              onChange={(e) =>
+                handleInputChange("plan_type", e.target.value)
+              }
             >
               <MenuItem value="basic">Basic</MenuItem>
               <MenuItem value="pro">Pro</MenuItem>
             </Select>
-            {errors.plan_type && (
-              <Typography variant="caption" color="error">
-                {errors.plan_type}
-              </Typography>
-            )}
           </FormControl>
 
           {/* Trial Type */}
@@ -345,52 +258,57 @@ const PlansFormModal = ({
             <InputLabel>Trial Type</InputLabel>
             <Select
               value={formData.trial_type}
-              onChange={(e) => handleInputChange("trial_type", e.target.value)}
               label="Trial Type"
+              onChange={(e) =>
+                handleInputChange("trial_type", e.target.value)
+              }
             >
               <MenuItem value="free">Free</MenuItem>
               <MenuItem value="paid">Paid</MenuItem>
             </Select>
-            {errors.trial_type && (
-              <Typography variant="caption" color="error">
-                {errors.trial_type}
-              </Typography>
-            )}
           </FormControl>
 
           {/* Price */}
-          <Box sx={{ mt: 2 }}>
-            <Typography variant="subtitle2" gutterBottom sx={{ color: 'red' }}>
+          <Box mt={2}>
+            <Typography variant="subtitle2" color="error">
               * Price
             </Typography>
+
             <Grid container spacing={2}>
               <Grid item xs={6}>
                 <TextField
-                  value={formData.price.monthly}
-                  onChange={(e) => handlePriceChange("monthly", e.target.value)}
-                  label="Monthly Price"
-                  type="number"
                   fullWidth
-                  error={!!errors["price.monthly"]}
-                  helperText={errors["price.monthly"]}
-                  inputProps={{ min: 1, step: "1" }}
+                  type="number"
+                  label="Monthly"
+                  value={formData.price.monthly}
+                  onChange={(e) =>
+                    handlePriceChange("monthly", e.target.value)
+                  }
                   InputProps={{
-                    startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        $
+                      </InputAdornment>
+                    ),
                   }}
                 />
               </Grid>
+
               <Grid item xs={6}>
                 <TextField
-                  value={formData.price.yearly}
-                  onChange={(e) => handlePriceChange("yearly", e.target.value)}
-                  label="Yearly Price"
-                  type="number"
                   fullWidth
-                  error={!!errors["price.yearly"]}
-                  helperText={errors["price.yearly"]}
-                  inputProps={{ min: 1, step: "1" }}
+                  type="number"
+                  label="Yearly"
+                  value={formData.price.yearly}
+                  onChange={(e) =>
+                    handlePriceChange("yearly", e.target.value)
+                  }
                   InputProps={{
-                    startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        $
+                      </InputAdornment>
+                    ),
                   }}
                 />
               </Grid>
@@ -398,182 +316,170 @@ const PlansFormModal = ({
           </Box>
 
           {/* Billing Period */}
-          <FormControl fullWidth margin="normal" error={!!errors.billing_period}>
+          <FormControl fullWidth margin="normal">
             <InputLabel>Billing Period</InputLabel>
             <Select
               value={formData.billing_period}
-              onChange={(e) => handleInputChange("billing_period", e.target.value)}
               label="Billing Period"
+              onChange={(e) =>
+                handleInputChange("billing_period", e.target.value)
+              }
             >
               <MenuItem value="monthly">Monthly</MenuItem>
               <MenuItem value="yearly">Yearly</MenuItem>
+              <MenuItem value="both">Both</MenuItem>
             </Select>
-            {errors.billing_period && (
-              <Typography variant="caption" color="error">
-                {errors.billing_period}
-              </Typography>
-            )}
           </FormControl>
 
-          {/* Users Allowed */}
+          {/* Users */}
           <TextField
-            value={formData.users_allowed}
-            onChange={(e) => handleInputChange("users_allowed", Number(e.target.value))}
+            fullWidth
+            margin="normal"
+            type="number"
             label="Users Allowed"
-            type="number"
-            fullWidth
-            margin="normal"
-            error={!!errors.users_allowed}
-            helperText={errors.users_allowed}
-            inputProps={{ min: 1, step: "1" }}
+            value={formData.users_allowed}
+            onChange={(e) =>
+              handleInputChange("users_allowed", Number(e.target.value))
+            }
           />
-        {/* Billing Period */}
-        <Form.Item
-          name="billing_period"
-          label="Billing Period"
-          rules={[{ required: true }]}
-        >
-          <Select
-            options={[
-              { label: "Monthly", value: "monthly" },
-              { label: "Yearly", value: "yearly" },
-              { label: "Both", value: "both" },
-            ]}
-          />
-        </Form.Item>
 
-        {/* Users Allowed */}
-        <Form.Item
-          name="users_allowed"
-          label="Users Allowed"
-          rules={[{ required: true }, positiveNumberRule, integerRule]}
-        >
-          <InputNumber min={1} style={{ width: "100%" }}   precision={0} />
-        </Form.Item>
-
-          {/* Organizations Allowed */}
+          {/* Organisations */}
           <TextField
-            value={formData.organizations_allowed}
-            onChange={(e) => handleInputChange("organizations_allowed", Number(e.target.value))}
-            label="Organizations Allowed"
-            type="number"
             fullWidth
             margin="normal"
-            error={!!errors.organizations_allowed}
-            helperText={errors.organizations_allowed}
-            inputProps={{ min: 1, step: "1" }}
+            type="number"
+            label="Organizations Allowed"
+            value={formData.organizations_allowed}
+            onChange={(e) =>
+              handleInputChange(
+                "organizations_allowed",
+                Number(e.target.value)
+              )
+            }
           />
 
           {/* Best For */}
           <TextField
-            value={formData.best_for}
-            onChange={(e) => handleInputChange("best_for", e.target.value)}
-            label="Best For"
             fullWidth
             margin="normal"
-            error={!!errors.best_for}
-            helperText={errors.best_for}
-            placeholder="e.g. Startups / Teams / 10 users"
+            label="Best For"
+            value={formData.best_for}
+            onChange={(e) =>
+              handleInputChange("best_for", e.target.value)
+            }
           />
 
-          {/* Access Level */}
-          <FormControl fullWidth margin="normal" error={!!errors.access_level}>
+          {/* Access */}
+          <FormControl fullWidth margin="normal">
             <InputLabel>Access Level</InputLabel>
             <Select
               value={formData.access_level}
-              onChange={(e) => handleInputChange("access_level", e.target.value)}
               label="Access Level"
+              onChange={(e) =>
+                handleInputChange("access_level", e.target.value)
+              }
             >
               <MenuItem value="basic">Basic</MenuItem>
               <MenuItem value="core">Core</MenuItem>
             </Select>
-            {errors.access_level && (
-              <Typography variant="caption" color="error">
-                {errors.access_level}
-              </Typography>
-            )}
           </FormControl>
 
           {/* Features */}
-          <Box sx={{ mt: 2 }}>
-            <Typography variant="subtitle2" gutterBottom sx={{ color: 'red' }}>
+          <Box mt={2}>
+            <Typography variant="subtitle2" color="error">
               * Features
             </Typography>
-            {features.map((feature, index) => (
-              <Box key={index} sx={{ display: "flex", gap: 1, mb: 1, alignItems: "flex-end" }}>
+
+            {features.map((f, i) => (
+              <Box
+                key={i}
+                display="flex"
+                gap={1}
+                alignItems="center"
+                mb={1}
+              >
                 <TextField
                   fullWidth
-                  value={feature}
-                  onChange={(e) => updateFeature(index, e.target.value)}
-                  placeholder="Enter feature"
-                  error={!!errors.features}
-                  helperText={errors.features}
-                  sx={{ flex: 1 }}
+                  value={f}
+                  onChange={(e) =>
+                    updateFeature(i, e.target.value)
+                  }
                 />
+
                 <IconButton
                   color="error"
-                  onClick={() => removeFeature(index)}
-                  size="small"
+                  onClick={() => removeFeature(i)}
                 >
                   <DeleteIcon />
                 </IconButton>
               </Box>
             ))}
+
             <Button
-              type="button"
+              fullWidth
               variant="outlined"
               startIcon={<AddIcon />}
               onClick={addFeature}
-              fullWidth
-              sx={{ mt: 1 }}
             >
               Add Feature
             </Button>
           </Box>
 
           {/* Status */}
-          <FormControl fullWidth margin="normal" error={!!errors.status}>
+          <FormControl fullWidth margin="normal">
             <InputLabel>Status</InputLabel>
             <Select
               value={formData.status}
-              onChange={(e) => handleInputChange("status", e.target.value)}
               label="Status"
+              onChange={(e) =>
+                handleInputChange("status", e.target.value)
+              }
             >
               <MenuItem value="active">Active</MenuItem>
               <MenuItem value="inactive">Inactive</MenuItem>
             </Select>
-            {errors.status && (
-              <Typography variant="caption" color="error">
-                {errors.status}
-              </Typography>
-            )}
           </FormControl>
 
-          {/* Mark as Popular */}
+          {/* Popular */}
           <FormControlLabel
             control={
               <Switch
                 checked={formData.mark_as_popular}
-                onChange={(e) => handleInputChange("mark_as_popular", e.target.checked)}
+                onChange={(e) =>
+                  handleInputChange(
+                    "mark_as_popular",
+                    e.target.checked
+                  )
+                }
               />
             }
             label="Mark as Popular"
-            sx={{ mt: 2 }}
           />
 
-          {/* Submit Buttons */}
-          <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 3, gap: 2 }}>
+          {/* Buttons */}
+          <Box
+            display="flex"
+            justifyContent="flex-end"
+            gap={2}
+            mt={3}
+          >
             <Button onClick={onCancel} disabled={loading}>
               Cancel
             </Button>
+
             <Button
               variant="contained"
               onClick={handleSubmit}
               disabled={loading}
             >
-              {loading ? "Saving..." : initialValues ? "Update Plan" : "Create Plan"}
+              {loading
+                ? "Saving..."
+                : initialValues
+                ? "Update Plan"
+                : "Create Plan"}
             </Button>
           </Box>
+
         </Box>
       </DialogContent>
     </Dialog>

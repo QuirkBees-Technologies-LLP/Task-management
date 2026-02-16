@@ -13,8 +13,8 @@
     "@ant-design/icons": "^6.1.0",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
-    "@mui/icons-material": "^7.3.7",
-    "@mui/material": "^7.3.7",
+    "@mui/icons-material": "^7.3.8",
+    "@mui/material": "^7.3.8",
     "@mui/x-data-grid": "^8.27.0",
     "antd": "^6.2.3",
     "axios": "^1.13.2",
@@ -37,5 +37,3 @@
     "vite": "^7.2.4"
   }
 }
-
-

@@ -1,6 +1,5 @@
 import axios from 'axios';
 import { getToken } from '../utils/authStorage';
-import { message } from 'antd';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 /* ----------------------------------------------------
@@ -38,9 +37,12 @@ api.interceptors.response.use(
   (error) => {
     const errorMessage = error?.response?.data?.error || '';
     if (errorMessage === "Invalid or expired token") {
-      message.error("Session expired. Please login again.");
+      // Use a simple browser alert instead of Ant Design message
+      if (typeof window !== 'undefined') {
+        window.alert("Session expired. Please login again.");
+      }
       localStorage.clear();
-      window.location.replace('/login'); 
+      window.location.replace('/login');
     }
     return Promise.reject(error);
   }

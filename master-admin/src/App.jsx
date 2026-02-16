@@ -1,62 +1,79 @@
-import './App.css';
+import "./App.css";
 import { Routes, Route, Navigate } from "react-router-dom";
-import AppLayout from './components/AppLayout';
-import Login from './pages/Login';
-import { ConfigProvider, App as AntdApp } from 'antd';
-import Dashboard from './pages/Dashboard';
-import ProtectedRoute from './components/ProtectedRoute';
-import PublicRoutes from './components/PublicRoutes';
-import Organisation from './pages/Organisation';
-import Plans from './pages/Plans';
+import AppLayout from "./components/AppLayout";
+import Login from "./pages/Login";
+import ProtectedRoute from "./components/ProtectedRoute";
+import PublicRoutes from "./components/PublicRoutes";
+import Organisation from "./pages/Organisation";
+import Plans from "./pages/Plans";
+import Dashboard from "./pages/Dashboard";
+import { CssBaseline, ThemeProvider, createTheme } from "@mui/material";
 
+const theme = createTheme({
+  palette: {
+    primary: {
+      main: "#203165",
+    },
+    secondary: {
+      main: "#ff781e",
+    },
+  },
+  typography: {
+    fontFamily: '"Poppins", sans-serif',
+  },
+});
 
 function App() {
-
   return (
-    // <AuthProvider>
-      <ConfigProvider
-        theme={{
-          "token": {
-            "colorPrimary": "#203165",
-            "colorInfo": "#203165",
-            "colorLink": "#ff781e",
-            "boxShadow": "\n\n",
-            "boxShadowSecondary": "\n\n"
-          },
-          "components": {
-            "Typography": {
-              "fontFamilyCode": "\"Poppins\", sans-serif"
-            }
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <Routes>
+        {/* Auth Pages */}
+        <Route
+          path="/login"
+          element={
+            <PublicRoutes>
+              <Login />
+            </PublicRoutes>
           }
-        }}
-      >
-        <AntdApp>
-          <Routes>
-          {/* Auth Pages */}
-          <Route path="/login" element={<PublicRoutes><Login /></PublicRoutes>} />
+        />
 
-          {/* Protected / App Pages */}
-          <Route path="/dashboard" element={
+        {/* Protected / App Pages */}
+        <Route
+          path="/dashboard"
+          element={
             <ProtectedRoute>
-              <AppLayout><Dashboard /></AppLayout>
+              <AppLayout>
+                <Dashboard />
+              </AppLayout>
             </ProtectedRoute>
-          } />
-            <Route path="/organisation" element={
+          }
+        />
+        <Route
+          path="/organisation"
+          element={
             <ProtectedRoute>
-              <AppLayout><Organisation /></AppLayout>
+              <AppLayout>
+                <Organisation />
+              </AppLayout>
             </ProtectedRoute>
-          } />
-            <Route path="/plans" element={
+          }
+        />
+        <Route
+          path="/plans"
+          element={
             <ProtectedRoute>
-              <AppLayout><Plans /></AppLayout>
+              <AppLayout>
+                <Plans />
+              </AppLayout>
             </ProtectedRoute>
-          } />
-          {/* Default route → redirect to login */}
-          <Route path="/" element={<Navigate to="/login" />} />
-          </Routes>
-        </AntdApp>
-      </ConfigProvider>
-    // </AuthProvider>
+          }
+        />
+
+        {/* Default route → redirect to login */}
+        <Route path="/" element={<Navigate to="/login" />} />
+      </Routes>
+    </ThemeProvider>
   );
 }
 

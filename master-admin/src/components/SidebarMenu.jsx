@@ -1,28 +1,32 @@
-import { Layout, Menu } from "antd";
-import { SettingOutlined } from "@ant-design/icons";
+import { Box, List, ListItemButton, ListItemIcon, ListItemText } from "@mui/material";
 import { Link, useLocation } from "react-router-dom";
-import { Calendar, House, Building } from "lucide-react";
-
-const { Sider } = Layout;
+import { Calendar, Building } from "lucide-react";
 
 const SidebarMenu = ({ collapsed, isSmallScreen }) => {
   const location = useLocation();
 
   // Determine selected key based on current path
   const getSelectedKey = () => {
-    if (location.pathname === "/dashboard") return "1";
-    if (location.pathname === "/organisation") return "2";
-    if (location.pathname === "/plans") return "3";
+    if (location.pathname === "/organisation") return "1";
+    if (location.pathname === "/plans") return "2";
     return "1";
   };
 
+  const sidebarWidth = collapsed ? (isSmallScreen ? 0 : 80) : 240;
+
   return (
-    <Sider
+    <Box
       className={`sidebar${isSmallScreen ? " sidebar-mobile" : ""}`}
-      trigger={null}
-      collapsible
-      collapsed={collapsed}
-      collapsedWidth={isSmallScreen ? 0 : 80}
+      sx={{
+        width: sidebarWidth,
+        flexShrink: 0,
+        transition: "width 0.2s ease-in-out",
+        overflowX: "hidden",
+        bgcolor: "primary.main",
+        color: "common.white",
+        display: sidebarWidth === 0 ? "none" : "flex",
+        flexDirection: "column",
+      }}
     >
       <div className="logo">
         {collapsed ? (
@@ -32,34 +36,30 @@ const SidebarMenu = ({ collapsed, isSmallScreen }) => {
         )}
       </div>
 
-      <Menu
-        theme="dark"
-        mode="inline"
-        selectedKeys={[getSelectedKey()]}
-        items={[
-          {
-            key: "1",
-            icon: <House size={18} />,
-            label: <Link to="/dashboard">Dashboard</Link>,
-          },
-          {
-            key: "2",
-            icon: <Building size={18} />,
-            label: <Link to="/organisation">Organisation</Link>,
-          },
-          {
-            key: "3",
-            icon: <Calendar size={18} />, // Use any icon for Plans
-            label: <Link to="/plans">Plans</Link>,
-          },
-          {
-            key: "4",
-            icon: <SettingOutlined />,
-            label: "Settings",
-          },
-        ]}
-      />
-    </Sider>
+      <List component="nav" sx={{ mt: 1 }}>
+        <ListItemButton
+          component={Link}
+          to="/organisation"
+          selected={getSelectedKey() === "1"}
+        >
+          <ListItemIcon sx={{ color: "inherit", minWidth: 32 }}>
+            <Building size={18} />
+          </ListItemIcon>
+          <ListItemText primary="Organisation" />
+        </ListItemButton>
+
+        <ListItemButton
+          component={Link}
+          to="/plans"
+          selected={getSelectedKey() === "2"}
+        >
+          <ListItemIcon sx={{ color: "inherit", minWidth: 32 }}>
+            <Calendar size={18} />
+          </ListItemIcon>
+          <ListItemText primary="Plans" />
+        </ListItemButton>
+      </List>
+    </Box>
   );
 };
 
