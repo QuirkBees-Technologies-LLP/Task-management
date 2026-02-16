@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
 import clientPromise from '../../lib/mongodb';
 import { DATABASE_NAME, JWT_SECRET, senderEmail, tokenExpiryLong } from '../../config';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import { userRolesServer, verifyToken, extractPublicId, requireOrgIdFromToken, getOrgIdFromToken } from '../../helpers';
 import { sendEmail } from '../../lib/email';
 import { emailTemplateVariables } from '@/utils/constants';

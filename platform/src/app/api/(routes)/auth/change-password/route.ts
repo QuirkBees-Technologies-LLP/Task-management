@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import clientPromise from '../../../lib/mongodb';
 import { DATABASE_NAME } from '../../../config';
 import { ObjectId } from 'mongodb';

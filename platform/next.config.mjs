@@ -6,7 +6,7 @@ const packageJson = JSON.parse(readFileSync('./package.json', 'utf-8'));
 // List of Node.js-only packages that should not be bundled
 const serverOnlyPackages = [
   'jsonwebtoken',
-  'bcrypt',
+  'bcryptjs',
   'mongoose',
   'nodemailer',
   'formidable',

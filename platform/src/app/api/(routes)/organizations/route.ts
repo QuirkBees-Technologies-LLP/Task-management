@@ -5,7 +5,7 @@ import { DATABASE_NAME, JWT_SECRET, senderEmail, tokenExpiryLong } from '../../c
 import { verifyToken, userRolesServer } from '../../helpers';
 import { ensureOrganizationIndexes, validateSlug, normalizeSlug } from '../../lib/organizations';
 import { resolvePlanNameToId, resolvePlanSearchToIds } from '../../lib/planResolver';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { sendEmail } from '../../lib/email';
 import { emailTemplateVariables } from '@/utils/constants';

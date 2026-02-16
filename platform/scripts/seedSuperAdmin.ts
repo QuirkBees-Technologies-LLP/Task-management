@@ -17,11 +17,11 @@
  * - Does NOT auto-run on app start
  */
 
-import { MongoClient } from 'mongodb';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 import * as fs from 'fs';
+import { MongoClient } from 'mongodb';
 
 // Load environment variables from .env.local first, then .env
 const envLocalPath = path.resolve(process.cwd(), '.env.local');
