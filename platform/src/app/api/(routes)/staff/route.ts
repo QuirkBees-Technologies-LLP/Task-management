@@ -163,8 +163,28 @@ export async function POST(request: Request) {
     if (existingUser) {
       return NextResponse.json({ error: 'User with this email already exists in your organization' }, { status: 400 });
     }
+    const organizationsCollection = db.collection('organizations');
+    const plansCollection = db.collection('plans');
 
-    // Hash the password for authentication
+    const organization = await organizationsCollection.findOne({ _id: new ObjectId(org_id) });
+
+    if (organization && organization.planId) {
+      const plan = await plansCollection.findOne({ _id: new ObjectId(organization.planId) });
+
+      if (plan && typeof plan.users_allowed === 'number' && plan.users_allowed >= 0) {
+        const currentStaffCount = await usersCollection.countDocuments({ org_id: org_id });
+
+        if (currentStaffCount >= plan.users_allowed) {
+          return NextResponse.json(
+            { 
+              error: `Plan limit reached. Your plan allows ${plan.users_allowed} users. Please upgrade to add more staff.` 
+            },
+            { status: 403 }
+          );
+        }
+      }
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const newStaff: any = addOrgIdToDocument({

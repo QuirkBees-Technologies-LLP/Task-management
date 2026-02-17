@@ -139,7 +139,8 @@ const StaffManagementPage: React.FC = () => {
 
   const handleMenuClose = () => {
     setAnchorEl(null);
-    setSelectedStaff(null);
+    // Do NOT clear selectedStaff here, as it's needed for the menu actions (Edit/Delete)
+    // It will be updated when opening the menu for another user
   };
 
   useEffect(() => {
@@ -661,59 +662,7 @@ const StaffManagementPage: React.FC = () => {
                           <MoreVert fontSize="small" />
                         </IconButton>
                       </TableCell>
-                      <Menu
-                        anchorEl={anchorEl}
-                        open={open}
-                        onClose={handleMenuClose}
-                        anchorOrigin={{
-                          vertical: 'bottom',
-                          horizontal: 'right',
-                        }}
-                        transformOrigin={{
-                          vertical: 'top',
-                          horizontal: 'right',
-                        }}
-                        PaperProps={{
-                          sx: (theme) => ({
-                            borderRadius: '8px',
-                            minWidth: 160,
-                            bgcolor:
-                              theme.palette.mode === 'dark'
-                                ? '#111827'
-                                : '#FFFFFF',
-                            border: `1px solid ${theme.palette.mode === 'dark' ? '#1F2937' : '#E5E7EB'
-                              }`,
-                          }),
-                        }}
-                      >
-                        {/* Edit */}
-                        <MenuItem
-                          onClick={() => {
-                            handleMenuClose();
-                            handleOpenEdit(selectedStaff);
-                          }}
-                          sx={{
-                            gap: 1.5,
-                          }}
-                        >
-                          Edit
-                        </MenuItem>
 
-                        {/* Delete */}
-                        <MenuItem
-                          onClick={() => {
-                            handleMenuClose();
-                            setSelectedStaff(selectedStaff);
-                            setDeleteDialogOpen(true); // existing delete dialog
-                          }}
-                          sx={{
-                            gap: 1.5,
-                            color: 'error.main',
-                          }}
-                        >
-                          Delete
-                        </MenuItem>
-                      </Menu>
                     </TableRow>
                   ))
                 )}
@@ -733,6 +682,65 @@ const StaffManagementPage: React.FC = () => {
           />
         </Box>
       </Box >
+
+      {/* Action Menu - Moved outside loop to prevent "Delete Yourself" bug */}
+      <Menu
+        anchorEl={anchorEl}
+        open={open}
+        onClose={handleMenuClose}
+        anchorOrigin={{
+          vertical: 'bottom',
+          horizontal: 'right',
+        }}
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'right',
+        }}
+        PaperProps={{
+          sx: (theme) => ({
+            borderRadius: '8px',
+            minWidth: 160,
+            bgcolor:
+              theme.palette.mode === 'dark'
+                ? '#111827'
+                : '#FFFFFF',
+            border: `1px solid ${theme.palette.mode === 'dark' ? '#1F2937' : '#E5E7EB'
+              }`,
+          }),
+        }}
+      >
+        {/* Edit */}
+        <MenuItem
+          onClick={() => {
+            handleMenuClose();
+            if (selectedStaff) {
+              handleOpenEdit(selectedStaff);
+            }
+          }}
+          sx={{
+            gap: 1.5,
+            color: 'text.primary',
+          }}
+        >
+          Edit
+        </MenuItem>
+
+        {/* Delete */}
+        <MenuItem
+          onClick={() => {
+            handleMenuClose();
+            // selectedStaff is ALREADY set by handleMenuOpen, and we DON'T clear it in handleMenuClose anymore
+            // So we can safely use it here.
+            setDeleteDialogOpen(true);
+          }}
+          sx={{
+            gap: 1.5,
+            color: 'error.main',
+          }}
+        >
+          Delete
+        </MenuItem>
+      </Menu>
 
       {/* Create/Edit Dialog */}
       < Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth >
