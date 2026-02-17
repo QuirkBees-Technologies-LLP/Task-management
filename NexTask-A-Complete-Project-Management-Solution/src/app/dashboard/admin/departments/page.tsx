@@ -523,8 +523,8 @@ const DepartmentsPage: React.FC = () => {
                   },
                 })}
               >
-                <TableCell sx={{minWidth: '230px'}}>Department Name</TableCell>
-                <TableCell sx={{minWidth: '270px'}}>Positions</TableCell>
+                <TableCell sx={{ minWidth: '230px' }}>Department Name</TableCell>
+                <TableCell sx={{ minWidth: '270px' }}>Positions</TableCell>
                 <TableCell align="left">Actions</TableCell>
               </TableRow>
             </TableHead>
@@ -675,18 +675,18 @@ const DepartmentsPage: React.FC = () => {
           </MenuItem>
         </Menu>
 
-        {/* ================= PAGINATION ================= */}
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>
-          <Pagination
-            count={totalPages}
-            page={page}
-            onChange={(_, newPage) => setPage(newPage)}
-            color="primary"
-            showFirstButton
-            showLastButton
-          />
-        </Box>
       </Paper>
+      {/* ================= PAGINATION ================= */}
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>
+        <Pagination
+          count={totalPages}
+          page={page}
+          onChange={(_, newPage) => setPage(newPage)}
+          color="primary"
+          showFirstButton
+          showLastButton
+        />
+      </Box>
 
       {/* Create/Edit Dialog */}
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>

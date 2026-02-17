@@ -719,17 +719,6 @@ export default function Projects() {
         </Grid2>
       )}
 
-      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>
-        <Pagination
-          count={totalPages}
-          page={page}
-          onChange={(_, value) => setPage(value)}
-          color="primary"
-          showFirstButton
-          showLastButton
-        />
-      </Box>
-
       {/* Context Menu */}
       <Menu
         anchorEl={menuAnchorEl}
