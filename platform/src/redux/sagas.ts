@@ -152,6 +152,7 @@ function* postNewUser({ payload }: any) {
       password: payload.formData.password,
       organizationName: payload.formData.organizationName,
       planId: payload.formData.planId,
+      billingPeriod: payload.formData.billingPeriod, // Added billingPeriod
     });
 
     // New signup endpoint returns token and user info
@@ -168,22 +169,33 @@ function* postNewUser({ payload }: any) {
       // Fetch user info
       yield put(fetchUserInfo());
       
-      // Redirect to dashboard
-      if (payload?.router) {
-        payload.router.push('/dashboard/projects');
-      } else {
-        navigateTo('/dashboard/projects');
-      }
-      
       enqueueSnackbar({
-        message: 'Organization and account created successfully! Welcome to NexTask!',
+        message: 'Organization and account created successfully!',
         variant: 'success',
       });
-      
-      enqueueSnackbar({
-        message: 'You have 15 days free trial. Please check your email to confirm your account.',
-        variant: 'info',
-      });
+
+      // Redirect to Stripe Checkout if URL is provided
+      if (response.data.checkoutUrl) {
+          enqueueSnackbar({
+            message: 'Redirecting to payment...',
+            variant: 'info',
+          });
+          // Small delay to let snackbar show
+          yield new Promise(resolve => setTimeout(resolve, 1500));
+          window.location.href = response.data.checkoutUrl;
+      } else {
+        // Fallback or free tier (if applicable)
+        if (payload?.router) {
+            payload.router.push('/dashboard/projects');
+        } else {
+            navigateTo('/dashboard/projects');
+        }
+        
+        enqueueSnackbar({
+            message: 'Welcome to NexTask!',
+            variant: 'success',
+        });
+      }
     } else {
       // Fallback for old response format (shouldn't happen with new endpoint)
       yield put(signupSuccess());

@@ -8,3 +8,10 @@ export const senderEmail = process.env.NEXT_PUBLIC_SENDER_EMAIL;
 
 export const tokenExpiry = '1d';
 export const tokenExpiryLong = '7d';
+
+export const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
+export const STRIPE_PUBLISHABLE_KEY = process.env.STRIPE_PUB_KEY || process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+export const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
+export const STRIPE_SUCCESS_URL = process.env.STRIPE_SUCCESS_URL;
+export const STRIPE_CANCEL_URL = process.env.STRIPE_CANCEL_URL;
+export const STRIPE_COUPON_TOKEN = process.env.STRIPE_COUPON_TOKEN;

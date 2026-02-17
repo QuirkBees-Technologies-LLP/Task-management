@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import clientPromise from '../../../lib/mongodb';
 import { DATABASE_NAME } from '../../../config';
 import { verifySystemAdmin } from '../../../helpers';
+import { stripe } from '@/utils/stripe';
 
 // GET /api/superadmin/plans?page=&limit=
 export async function GET(request: Request) {
@@ -109,7 +110,7 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const {
+    let {
       plan_name,
       description,
       plan_type = [],
@@ -124,6 +125,22 @@ export async function POST(request: Request) {
       mark_as_popular = false,
       status = 'active',
     } = body;
+
+    // Normalize potential string inputs to arrays
+    if (typeof plan_type === 'string') plan_type = [plan_type];
+    if (typeof trial_type === 'string') trial_type = [trial_type];
+    
+    // Handle 'both' or string conversion for billing_period
+    if (typeof billing_period === 'string') {
+        if (billing_period === 'both') {
+            billing_period = ['monthly', 'yearly'];
+        } else {
+            billing_period = [billing_period];
+        }
+    }
+
+    if (typeof access_level === 'string') access_level = [access_level];
+    if (typeof features === 'string') features = [features];
 
     if (!plan_name || typeof plan_name !== 'string') {
       return NextResponse.json({ message: 'Plan name is required' }, { status: 400 });
@@ -199,7 +216,69 @@ export async function POST(request: Request) {
       createdAt: now,
       updatedAt: now,
       deletedAt: null,
+      stripe_product_id: '',
+      stripe_price_ids: {
+        monthly: null,
+        yearly: null,
+      },
     };
+
+    // Integrate Stripe: Create Product and Prices
+    if (stripe) {
+      try {
+        // 1. Create Product
+        const stripeProduct = await stripe.products.create({
+          name: plan_name,
+          description: description || undefined,
+          metadata: {
+            plan_type: Array.isArray(plan_type) ? plan_type.join(',') : '',
+            features: Array.isArray(features) ? features.join(',').substring(0, 500) : '',
+          },
+        });
+
+        newPlan.stripe_product_id = stripeProduct.id;
+
+        // 2. Create Prices
+        // Monthly
+        if (newPlan.price.monthly) {
+          const monthlyPrice = await stripe.prices.create({
+            product: stripeProduct.id,
+            unit_amount: Math.round(newPlan.price.monthly * 100), // cents
+            currency: 'usd', // Defaulting to USD, make dynamic if needed
+            recurring: { interval: 'month' },
+            metadata: {
+              plan_type: 'monthly',
+            },
+          });
+          // @ts-ignore
+          newPlan.stripe_price_ids.monthly = monthlyPrice.id;
+        }
+
+        // Yearly
+        if (newPlan.price.yearly) {
+          const yearlyPrice = await stripe.prices.create({
+            product: stripeProduct.id,
+            unit_amount: Math.round(newPlan.price.yearly * 100), // cents
+            currency: 'usd',
+            recurring: { interval: 'year' },
+            metadata: {
+              plan_type: 'yearly',
+            },
+          });
+          // @ts-ignore
+          newPlan.stripe_price_ids.yearly = yearlyPrice.id;
+        }
+
+      } catch (stripeError: any) {
+        console.error('Error creating Stripe product/prices:', stripeError);
+        // Option: return error and abort plan creation? 
+        // For now, valid to return error so manual clean up isn't needed.
+        return NextResponse.json(
+          { message: `Failed to create Stripe resources: ${stripeError.message}` },
+          { status: 500 }
+        );
+      }
+    }
 
     const result = await plansCollection.insertOne(newPlan);
 

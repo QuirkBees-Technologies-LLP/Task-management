@@ -161,6 +161,7 @@ const Plans = () => {
           organizations_allowed: Number(
             values.organizations_allowed || 0,
           ),
+          best_for: values.best_for || "",
         };
 
         if (isEditing && editInitialValues?._id) {

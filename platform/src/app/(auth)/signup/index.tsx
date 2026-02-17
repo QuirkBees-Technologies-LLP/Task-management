@@ -46,6 +46,7 @@ interface FormData {
   confirmPassword: string;
   organizationName: string;
   planId: string;
+  billingPeriod: 'monthly' | 'yearly';
 }
 
 interface Errors {
@@ -66,6 +67,7 @@ const initialFormData: FormData = {
   confirmPassword: '',
   organizationName: '',
   planId: '',
+  billingPeriod: 'monthly',
 };
 
 const initialErrors: Errors = {
@@ -303,9 +305,50 @@ const SignupPage: React.FC = () => {
         {/* Plan Selection */}
         <Box sx={{ mb: 3 }}>
           <FormControl component="fieldset" error={Boolean(errors.planId)} fullWidth>
-            <FormLabel component="legend" sx={{ mb: 2, fontWeight: 'bold' }}>
-              Select a Plan <span style={{ color: 'red' }}>*</span>
-            </FormLabel>
+            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+              <FormLabel component="legend" sx={{ fontWeight: 'bold', mb: 0 }}>
+                Select a Plan <span style={{ color: 'red' }}>*</span>
+              </FormLabel>
+              
+              {/* Billing Period Toggle */}
+              <Box 
+                sx={{ 
+                  display: 'flex', 
+                  bgcolor: 'background.paper', 
+                  borderRadius: 1, 
+                  border: 1, 
+                  borderColor: 'divider',
+                  p: 0.5 
+                }}
+              >
+                <Button
+                  size="small"
+                  variant={formData.billingPeriod === 'monthly' ? 'contained' : 'text'}
+                  onClick={() => setFormData({ ...formData, billingPeriod: 'monthly' })}
+                  sx={{ 
+                    textTransform: 'none', 
+                    borderRadius: 1,
+                    minWidth: 80,
+                    boxShadow: 'none'
+                  }}
+                >
+                  Monthly
+                </Button>
+                <Button
+                  size="small"
+                  variant={formData.billingPeriod === 'yearly' ? 'contained' : 'text'}
+                  onClick={() => setFormData({ ...formData, billingPeriod: 'yearly' })}
+                  sx={{ 
+                    textTransform: 'none', 
+                    borderRadius: 1,
+                    minWidth: 80,
+                    boxShadow: 'none'
+                  }}
+                >
+                  Yearly
+                </Button>
+              </Box>
+            </Box>
             {loadingPlans ? (
               <Box display="flex" justifyContent="center" py={3}>
                 <CircularProgress size={24} />
@@ -365,14 +408,25 @@ const SignupPage: React.FC = () => {
                               </Typography>
                             )}
                             <Box display="flex" gap={2} alignItems="center">
-                              {plan.price.monthly !== null && (
+                              {formData.billingPeriod === 'monthly' && plan.price.monthly !== null && (
                                 <Typography variant="body1" fontWeight="bold">
                                   ${plan.price.monthly}/month
                                 </Typography>
                               )}
-                              {plan.price.yearly !== null && (
-                                <Typography variant="body2" color="text.secondary">
-                                  or ${plan.price.yearly}/year
+                              {formData.billingPeriod === 'yearly' && plan.price.yearly !== null && (
+                                <Typography variant="body1" fontWeight="bold">
+                                  ${plan.price.yearly}/year
+                                </Typography>
+                              )}
+                              {/* Show the other price as secondary info if desired, or hide it */}
+                              {formData.billingPeriod === 'monthly' && plan.price.yearly !== null && (
+                                <Typography variant="caption" color="text.secondary">
+                                  (or ${plan.price.yearly}/year)
+                                </Typography>
+                              )}
+                               {formData.billingPeriod === 'yearly' && plan.price.monthly !== null && (
+                                <Typography variant="caption" color="text.secondary">
+                                  (or ${plan.price.monthly}/month)
                                 </Typography>
                               )}
                             </Box>

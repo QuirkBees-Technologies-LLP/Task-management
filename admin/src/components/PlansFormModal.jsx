@@ -84,11 +84,14 @@ const PlansFormModal = ({
       }
     });
 
-    if (data.price?.monthly <= 0) {
+    const isMonthly = data.billing_period === "monthly" || data.billing_period === "both";
+    const isYearly = data.billing_period === "yearly" || data.billing_period === "both";
+
+    if (isMonthly && data.price?.monthly <= 0) {
       newErrors["price.monthly"] = "Must be greater than 0";
     }
 
-    if (data.price?.yearly <= 0) {
+    if (isYearly && data.price?.yearly <= 0) {
       newErrors["price.yearly"] = "Must be greater than 0";
     }
 
@@ -121,9 +124,26 @@ const PlansFormModal = ({
     }
 
     if (initialValues) {
+      let bp = "";
+      if (
+        Array.isArray(initialValues.billing_period) &&
+        initialValues.billing_period.length > 0
+      ) {
+        if (
+          initialValues.billing_period.includes("monthly") &&
+          initialValues.billing_period.includes("yearly")
+        ) {
+          bp = "both";
+        } else {
+          bp = initialValues.billing_period[0];
+        }
+      }
+
       setFormData({
         ...defaultFormState,
         ...initialValues,
+        best_for: initialValues.best_for || "",
+        billing_period: bp,
         price: {
           monthly: initialValues.price?.monthly || 0,
           yearly: initialValues.price?.yearly || 0,

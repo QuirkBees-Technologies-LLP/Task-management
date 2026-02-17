@@ -10,26 +10,32 @@ import { sendEmail } from '@/utils/sendEmail';
 import { getEmailTemplate } from '@/utils/emailTemplates';
 import { userRolesServer } from '@/app/api/helpers';
 import { validateSlug, normalizeSlug, ensureOrganizationIndexes } from '../../../lib/organizations';
+import { stripe } from '@/utils/stripe';
 
 /**
  * Public Signup API
  * POST /api/auth/signup
  * 
- * Creates a new organization with owner user and 15-day trial
- * Required fields: firstName, lastName, email, password, organizationName, planId
- * Optional fields: slug (auto-generated from organizationName if not provided)
+ * Creates a new organization with owner user.
+ * Initiates Stripe Checkout for payment/trial.
+ * Status starts as 'pending_payment'.
  */
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { firstName, lastName, email, password, organizationName, slug, planId } = body;
+    const { firstName, lastName, email, password, organizationName, slug, planId, billingPeriod } = body;
 
     // Validate required fields
-    if (!firstName || !lastName || !email || !password || !organizationName || !planId) {
+    if (!firstName || !lastName || !email || !password || !organizationName || !planId || !billingPeriod) {
       return NextResponse.json(
-        { error: 'All fields are required: firstName, lastName, email, password, organizationName, and planId' },
+        { error: 'All fields are required: firstName, lastName, email, password, organizationName, planId, and billingPeriod' },
         { status: 400 }
       );
+    }
+
+    // Validate billingPeriod
+    if (!['monthly', 'yearly'].includes(billingPeriod)) {
+        return NextResponse.json({ error: 'Invalid billing period. Must be "monthly" or "yearly"' }, { status: 400 });
     }
 
     // Validate email format
@@ -86,6 +92,16 @@ export async function POST(request: Request) {
       );
     }
 
+    // Get Stripe Price ID
+    // @ts-ignore
+    const stripePriceId = plan.stripe_price_ids?.[billingPeriod];
+    if (!stripePriceId) {
+        return NextResponse.json(
+            { error: `Price not found for ${billingPeriod} billing.` },
+            { status: 400 }
+        );
+    }
+
     // Generate or normalize slug
     let normalizedSlug: string;
     if (slug) {
@@ -120,13 +136,14 @@ export async function POST(request: Request) {
     // Hash the password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Calculate trial dates (15 days from now)
+    // Initial Trial Setup (Will be overwritten by Webhook)
     const trialStartDate = new Date();
-    const trialEndDate = new Date();
+    // Default 15 days, but real source of truth will be Stripe Webhook
+    const trialEndDate = new Date(); 
     trialEndDate.setDate(trialEndDate.getDate() + 15);
 
     // Create owner user first (with Admin role)
-    const ADMIN_ROLE = 'Admin'; // Must be exactly 'Admin'
+    const ADMIN_ROLE = 'Admin'; 
     const ownerUser = {
       firstName,
       lastName,
@@ -156,17 +173,18 @@ export async function POST(request: Request) {
     }
 
     // Create organization
+    // Status is 'pending_payment' until Stripe Webhook activates it
     const newOrganization = {
       name: organizationName,
       slug: normalizedSlug,
       slug_history: [normalizedSlug],
-      status: 'trialing', // Organization starts in trialing status
+      status: 'pending_payment', 
       ownerId,
       planId: new ObjectId(planId),
       planName: plan.plan_name || '',
       trialStartDate,
-      trialEndDate,
-      planStartDate: null, // Will be set when trial converts to paid
+      trialEndDate: null, // Set by webhook
+      planStartDate: null, 
       planEndDate: null,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -192,22 +210,67 @@ export async function POST(request: Request) {
       );
     }
 
+    const org_id = orgResult.insertedId;
+
     // Update user with org_id
     try {
       await usersCollection.updateOne(
         { _id: ownerId },
         {
           $set: {
-            organizationId: orgResult.insertedId,
-            org_id: orgResult.insertedId,
-            // Keep role as Admin - don't overwrite it
+            organizationId: org_id,
+            org_id: org_id,
           },
         }
       );
     } catch (updateError) {
       console.error('Error updating user with organization ID:', updateError);
-      // Don't fail the signup if this update fails - the org was created successfully
     }
+
+    // Create Stripe Checkout Session
+    let checkoutUrl = '';
+    try {
+        const origin = request.headers.get('origin') || 'http://localhost:3000'; // Fallback
+        
+        const session = await stripe.checkout.sessions.create({
+            mode: 'subscription',
+            customer_email: email,
+            line_items: [
+                {
+                    price: stripePriceId,
+                    quantity: 1,
+                },
+            ],
+            subscription_data: {
+                trial_period_days: 15, // Enforce 15-day trial
+                metadata: {
+                    orgId: org_id.toString(),
+                    userId: ownerId.toString(),
+                }
+            },
+            metadata: {
+                orgId: org_id.toString(),
+                userId: ownerId.toString(),
+            },
+            success_url: `${origin}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
+            cancel_url: `${origin}/payment/failed`,
+        });
+        
+        if (session.url) {
+            checkoutUrl = session.url;
+        } else {
+            throw new Error("Failed to generate checkout URL");
+        }
+
+    } catch (stripeError: any) {
+        console.error("Stripe Checkout Error:", stripeError);
+        // Rollback? Or allow them to retry payment? 
+        // For now, let's rollback to keep state clean
+        await usersCollection.deleteOne({ _id: ownerId });
+        await organizationsCollection.deleteOne({ _id: org_id });
+        return NextResponse.json({ error: 'Failed to initiate payment session' }, { status: 500 });
+    }
+
 
     // Ensure organization indexes
     try {
@@ -216,8 +279,7 @@ export async function POST(request: Request) {
       console.warn('Error ensuring organization indexes:', indexError);
     }
 
-    // Generate JWT token with org_id for immediate login
-    const org_id = orgResult.insertedId;
+    // Generate JWT token with org_id 
     const tokenPayload = {
       id: ownerId.toString(),
       user_id: ownerId.toString(),
@@ -236,51 +298,49 @@ export async function POST(request: Request) {
     const confirmationToken = jwt.sign({ email }, JWT_SECRET!, { expiresIn: '1d' });
     const confirmationLink = `${request.headers.get('origin')}/confirm-email?token=${confirmationToken}`;
 
-    // Fetch and send confirmation email
-    try {
-      const emailTemplate = await templatesCollection.findOne({
-        emailType: 'emailConfirm',
-      });
+    // Fetch and send confirmation email - Non-blocking
+    (async () => {
+        try {
+          const emailTemplate = await templatesCollection.findOne({
+            emailType: 'emailConfirm',
+          });
+    
+          let emailHtml = '';
+          if (!emailTemplate) {
+            emailHtml = EMAIL_CONFIRMATION_TEXT.replace(
+              emailTemplateVariables.firstName,
+              firstName
+            ).replace(emailTemplateVariables.btnLink, confirmationLink);
+          } else {
+            emailHtml = emailTemplate.htmlString
+              .replace(emailTemplateVariables.firstName, firstName)
+              .replace(emailTemplateVariables.btnLink, confirmationLink);
+          }
+    
+          await sendEmailLib({
+            to: email,
+            subject: emailTemplate?.name ?? 'Confirm Your Email',
+            html: emailHtml,
+          });
+          
+           // Send welcome email
+           const welcomeEmailHtml = getEmailTemplate('welcome', {
+             name: `${firstName} ${lastName}`,
+           });
+           await sendEmail(email, 'Welcome to NexTask!', welcomeEmailHtml);
 
-      let emailHtml = '';
-      if (!emailTemplate) {
-        emailHtml = EMAIL_CONFIRMATION_TEXT.replace(
-          emailTemplateVariables.firstName,
-          firstName
-        ).replace(emailTemplateVariables.btnLink, confirmationLink);
-      } else {
-        emailHtml = emailTemplate.htmlString
-          .replace(emailTemplateVariables.firstName, firstName)
-          .replace(emailTemplateVariables.btnLink, confirmationLink);
-      }
+        } catch (emailError) {
+          console.error('Error sending emails (background):', emailError);
+        }
+    })();
 
-      await sendEmailLib({
-        to: email,
-        subject: emailTemplate?.name ?? 'Confirm Your Email',
-        html: emailHtml,
-      });
-    } catch (emailError) {
-      console.error('Error sending confirmation email:', emailError);
-      // Don't fail signup if email fails
-    }
-
-    // Send welcome email
-    try {
-      const welcomeEmailHtml = getEmailTemplate('welcome', {
-        name: `${firstName} ${lastName}`,
-      });
-      await sendEmail(email, 'Welcome to NexTask!', welcomeEmailHtml);
-    } catch (emailError) {
-      console.error('Error sending welcome email:', emailError);
-      // Don't fail signup if welcome email fails
-    }
-
-    // Return success with token and user/org info
+    // Return success with token and checkoutUrl
     return NextResponse.json(
       {
         success: true,
-        message: 'Organization and account created successfully. You can now access your dashboard.',
+        message: 'Account created. Please complete payment to activate.',
         token,
+        checkoutUrl, // Frontend should redirect here
         user: {
           id: ownerId.toString(),
           email,
@@ -293,8 +353,7 @@ export async function POST(request: Request) {
           id: org_id.toString(),
           name: organizationName,
           slug: normalizedSlug,
-          status: 'trialing',
-          trialEndDate: trialEndDate.toISOString(),
+          status: 'pending_payment',
         },
       },
       { status: 201 }
