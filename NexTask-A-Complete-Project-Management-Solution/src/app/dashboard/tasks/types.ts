@@ -65,6 +65,7 @@ export interface TaskDialogProps {
   task: Task | null;
   projects: Project[];
   saving?: boolean;
+  restrictProjectId?: string; // When provided, only show this project in the dropdown and disable it
 }
 
 export interface TaskBoardProps {

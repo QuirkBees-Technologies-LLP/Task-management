@@ -61,6 +61,36 @@ interface CalendarEvent extends Event {
   description?: string;
 }
 
+// Check if due date is today
+const isDueToday = (date?: Date): boolean => {
+  if (!date) return false;
+  try {
+    const today = new Date();
+    const dueDate = new Date(date);
+    
+    if (isNaN(dueDate.getTime())) return false;
+    
+    // Normalize both dates to start of day for accurate comparison
+    today.setHours(0, 0, 0, 0);
+    dueDate.setHours(0, 0, 0, 0);
+    
+    return (
+      today.getFullYear() === dueDate.getFullYear() &&
+      today.getMonth() === dueDate.getMonth() &&
+      today.getDate() === dueDate.getDate()
+    );
+  } catch {
+    return false;
+  }
+};
+
+// Check if task is completed
+const isTaskCompleted = (status?: string): boolean => {
+  if (!status) return false;
+  const statusLower = status.toLowerCase();
+  return statusLower.includes('done') || statusLower.includes('completed');
+};
+
 const Calendar = () => {
   const theme = useTheme();
   const router = useRouter();
@@ -260,8 +290,8 @@ const Calendar = () => {
       setEditingTask(task);
       setTaskDialogOpen(true);
     } else if (event.eventType === 'project' && event.projectId) {
-      // Navigate to project page or show project details
-      router.push(`/projects/${event.projectId}`);
+      // Navigate to project details page
+      router.push(`/projects/${event.projectId}/full-details`);
     } else {
       setSelectedEvent(event);
     }
@@ -378,15 +408,32 @@ const Calendar = () => {
     if (event.eventType === 'task') {
       const priorityColor = getPriorityColor(event.priority || 'Medium');
       const statusColor = getStatusColor(event.status || 'Todo');
+      
+      // Check if task is due today and not completed
+      const taskDueToday = isDueToday(event.start);
+      const isCompleted = isTaskCompleted(event.status);
+      const shouldHighlightRed = taskDueToday && !isCompleted;
 
       return {
         style: {
-          backgroundColor: priorityColor.bg,
-          color: priorityColor.text,
+          backgroundColor: shouldHighlightRed
+            ? theme.palette.mode === 'dark'
+              ? 'rgba(127, 29, 29, 0.8)' // Dark red background for dark mode
+              : 'rgba(254, 242, 242, 0.95)' // Light red background for light mode
+            : priorityColor.bg,
+          color: shouldHighlightRed
+            ? theme.palette.mode === 'dark'
+              ? '#f87171' // Lighter red text for dark mode
+              : '#ef4444' // Red text for light mode
+            : priorityColor.text,
           borderRadius: '6px',
           padding: '2px 6px',
-          border: `2px solid ${statusColor.bg}`,
-          fontWeight: 500,
+          border: shouldHighlightRed
+            ? theme.palette.mode === 'dark'
+              ? '2px solid rgba(220, 38, 38, 0.8)' // Darker red border for dark mode
+              : '2px solid rgba(254, 202, 202, 0.8)' // Light red border for light mode
+            : `2px solid ${statusColor.bg}`,
+          fontWeight: shouldHighlightRed ? 600 : 500,
           fontSize: '12px',
         },
       };

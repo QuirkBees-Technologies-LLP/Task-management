@@ -64,7 +64,6 @@ const FeedbackForm = (props: FeedbackFormProps) => {
   const [attachment, setAttachment] = useState<File | null>(null);
   const [active, setActive] = useState(false);
   const [openModal, setOpenModal] = useState(false);
-  const [action, setAction] = useState("");
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [editMode, setEditMode] = useState(false);
   const [editValues, setEditValues] = useState<any>({});
@@ -202,10 +201,6 @@ const FeedbackForm = (props: FeedbackFormProps) => {
   const handleClose = () => {
     setActive(false);
     setOpenModal(false);
-  };
-
-  const handleChange = (event: any) => {
-    setAction(event.target.value);
   };
 
   const handleEditSubmit = async () => {
@@ -387,38 +382,13 @@ const FeedbackForm = (props: FeedbackFormProps) => {
           </Box>
 
           {/* User Info */}
-          <Box display="flex" alignItems="center" justifyContent="space-between" flexWrap="wrap" gap={2} mt={3}>
-            <Box display="flex" gap={2}>
-              <Avatar src={avatar} sx={{ width: 44, height: 44, borderRadius: 1 }} />
-              <Box>
-                <Typography fontWeight={600}>{name}</Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {time}
-                </Typography>
-              </Box>
-            </Box>
-            <Box display="flex" justifyContent="flex-end">
-              <FormControl size="small">
-                <Select
-                  value={action}
-                  onChange={handleChange}
-                  displayEmpty
-                  sx={{
-                    minWidth: 160,
-                    borderRadius: 1,
-                    "& .MuiSelect-select": {
-                      padding: "8px 12px",
-                    },
-                  }}
-                >
-                  <MenuItem value="" disabled>
-                    Ticket Action
-                  </MenuItem>
-                  <MenuItem value="progress">Mark as In Progress</MenuItem>
-                  <MenuItem value="resolve">Resolve Ticket</MenuItem>
-                  <MenuItem value="close">Close Ticket</MenuItem>
-                </Select>
-              </FormControl>
+          <Box display="flex" alignItems="center" gap={2} mt={3}>
+            <Avatar src={avatar} sx={{ width: 44, height: 44, borderRadius: 1 }} />
+            <Box>
+              <Typography fontWeight={600}>{name}</Typography>
+              <Typography variant="caption" color="text.secondary">
+                {time}
+              </Typography>
             </Box>
           </Box>
 
