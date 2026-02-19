@@ -22,6 +22,7 @@ import axios from 'axios';
 import { safeLocalStorageGet } from '@/utils/helpers';
 import { accessTokenKey } from '@/utils/constants';
 import { enqueueSnackbar } from 'notistack';
+import AddonSection from './AddonSection';
 
 interface SubscriptionData {
   id: string;
@@ -42,14 +43,34 @@ const SubscriptionSettings: React.FC = () => {
 
   const [loading, setLoading] = useState<boolean>(true);
   const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
+  const [organization, setOrganization] = useState<any>(null); // Store full org object for addons
   const [openCancelDialog, setOpenCancelDialog] = useState(false);
   const [processing, setProcessing] = useState(false);
 
   useEffect(() => {
     if (isAdmin) {
       fetchSubscription();
+      fetchOrganization();
     }
   }, [isAdmin]);
+
+  const fetchOrganization = async () => {
+    try {
+        const token = safeLocalStorageGet(accessTokenKey);
+        if (!token) return;
+        
+        if (currentUser?.org_id) {
+            const response = await axios.get(`/api/organizations/${currentUser.org_id}`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (response.data && response.data.organization) {
+                setOrganization(response.data.organization);
+            }
+        }
+    } catch (error) {
+        console.error("Error fetching organization:", error);
+    }
+  };
 
   const fetchSubscription = async () => {
     setLoading(true);
@@ -221,6 +242,9 @@ const SubscriptionSettings: React.FC = () => {
                 </Button>
             )}
         </Box>
+
+        {organization && <AddonSection organization={organization} />}
+
       </Stack>
 
       {/* Cancel Confirmation Dialog */}

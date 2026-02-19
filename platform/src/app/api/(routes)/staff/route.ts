@@ -171,16 +171,32 @@ export async function POST(request: Request) {
     if (organization && organization.planId) {
       const plan = await plansCollection.findOne({ _id: new ObjectId(organization.planId) });
 
-      if (plan && typeof plan.users_allowed === 'number' && plan.users_allowed >= 0) {
-        const currentStaffCount = await usersCollection.countDocuments({ org_id: org_id });
+      if (plan) {
+        let maxUsers = typeof plan.users_allowed === 'number' ? plan.users_allowed : 0;
+        const isUnlimited = maxUsers === -1;
 
-        if (currentStaffCount >= plan.users_allowed) {
-          return NextResponse.json(
-            { 
-              error: `Plan limit reached. Your plan allows ${plan.users_allowed} users. Please upgrade to add more staff.` 
-            },
-            { status: 403 }
-          );
+        if (!isUnlimited) {
+            if (organization.addons && Array.isArray(organization.addons)) {
+                const activeAddons = organization.addons.filter((addon: any) => addon.status === 'active');
+                if (activeAddons.length > 0) {
+                    const addonPlanIds = activeAddons.map((addon: any) => new ObjectId(addon.planId));
+                    const addonPlans = await plansCollection.find({ _id: { $in: addonPlanIds } }).toArray();
+                    
+                    const addonLimit = addonPlans.reduce((sum, p) => sum + (p.users_allowed || 0), 0);
+                    maxUsers += addonLimit;
+                }
+            }
+
+            const currentStaffCount = await usersCollection.countDocuments({ org_id: org_id });
+
+            if (currentStaffCount >= maxUsers) {
+                return NextResponse.json(
+                    {
+                    error: `Plan limit reached. Your plan allows ${maxUsers} users. Please purchase an Add-on to add more staff.`
+                    },
+                    { status: 403 }
+                );
+            }
         }
       }
     }

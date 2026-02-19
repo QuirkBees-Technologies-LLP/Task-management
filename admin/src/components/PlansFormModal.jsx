@@ -26,6 +26,7 @@ import {
 
 const defaultFormState = {
   plan_name: "",
+  type: "normal", // 'normal' | 'add-on'
   description: "",
   plan_type: "",
   trial_type: "",
@@ -69,14 +70,17 @@ const PlansFormModal = ({
     }
 
     const requiredFields = {
-      plan_type: "Plan type is required",
-      trial_type: "Trial type is required",
+      plan_type: "Plan classification is required",
       billing_period: "Billing period is required",
       users_allowed: "Users allowed is required",
       organizations_allowed: "Organizations allowed is required",
-      best_for: "Best for is required",
-      access_level: "Access level is required",
     };
+
+    if (data.type === 'normal') {
+        requiredFields.trial_type = "Trial type is required";
+        requiredFields.access_level = "Access level is required";
+        requiredFields.best_for = "Best for is required";
+    }
 
     Object.entries(requiredFields).forEach(([key, message]) => {
       if (!data[key]?.toString().trim()) {
@@ -95,18 +99,20 @@ const PlansFormModal = ({
       newErrors["price.yearly"] = "Must be greater than 0";
     }
 
-    if (!Number.isInteger(Number(data.users_allowed)) || data.users_allowed <= 0) {
-      newErrors.users_allowed = "Only whole numbers > 0";
+    
+    if (!Number.isInteger(Number(data.users_allowed))) {
+         newErrors.users_allowed = "Must be a whole number";
+    } else if (data.users_allowed === 0) {
+         newErrors.users_allowed = "Must be non-zero (-1 for unlimited)";
     }
 
     if (
-      !Number.isInteger(Number(data.organizations_allowed)) ||
-      data.organizations_allowed <= 0
+      !Number.isInteger(Number(data.organizations_allowed))
     ) {
-      newErrors.organizations_allowed = "Only whole numbers > 0";
+      newErrors.organizations_allowed = "Must be a whole number";
     }
 
-    if (!data.features?.length || data.features.some((f) => !f?.trim())) {
+    if (data.type === "normal" && (!data.features?.length || data.features.some((f) => !f?.trim()))) {
       newErrors.features = "At least one feature is required";
     }
 
@@ -142,6 +148,7 @@ const PlansFormModal = ({
       setFormData({
         ...defaultFormState,
         ...initialValues,
+        type: initialValues.type || "normal",
         best_for: initialValues.best_for || "",
         billing_period: bp,
         price: {
@@ -208,10 +215,16 @@ const PlansFormModal = ({
 
     const payload = {
       ...formData,
+      type: formData.type,
       price: {
         monthly: Number(formData.price.monthly || 0),
         yearly: Number(formData.price.yearly || 0),
       },
+      ...(formData.type === 'add-on' ? {
+          trial_type: [],
+          access_level: [],
+          best_for: '',
+      } : {})
     };
 
     onSubmit(payload);
@@ -242,6 +255,17 @@ const PlansFormModal = ({
             helperText={errors.plan_name}
             required
           />
+          <FormControl fullWidth margin="normal">
+            <InputLabel>Type</InputLabel>
+            <Select
+              value={formData.type}
+              label="Type"
+              onChange={(e) => handleInputChange("type", e.target.value)}
+            >
+              <MenuItem value="normal">Normal</MenuItem>
+              <MenuItem value="add-on">Add-on</MenuItem>
+            </Select>
+          </FormControl>
 
           {/* Description */}
           <TextField
@@ -258,12 +282,11 @@ const PlansFormModal = ({
             helperText={errors.description}
           />
 
-          {/* Plan Type */}
           <FormControl fullWidth margin="normal" error={!!errors.plan_type}>
-            <InputLabel>Plan Type</InputLabel>
+            <InputLabel>Classification</InputLabel>
             <Select
               value={formData.plan_type}
-              label="Plan Type"
+              label="Classification"
               onChange={(e) =>
                 handleInputChange("plan_type", e.target.value)
               }
@@ -273,20 +296,21 @@ const PlansFormModal = ({
             </Select>
           </FormControl>
 
-          {/* Trial Type */}
-          <FormControl fullWidth margin="normal" error={!!errors.trial_type}>
-            <InputLabel>Trial Type</InputLabel>
-            <Select
-              value={formData.trial_type}
-              label="Trial Type"
-              onChange={(e) =>
-                handleInputChange("trial_type", e.target.value)
-              }
-            >
-              <MenuItem value="free">Free</MenuItem>
-              <MenuItem value="paid">Paid</MenuItem>
-            </Select>
-          </FormControl>
+          {formData.type === 'normal' && (
+              <FormControl fullWidth margin="normal" error={!!errors.trial_type}>
+                <InputLabel>Trial Type</InputLabel>
+                <Select
+                  value={formData.trial_type}
+                  label="Trial Type"
+                  onChange={(e) =>
+                    handleInputChange("trial_type", e.target.value)
+                  }
+                >
+                  <MenuItem value="free">Free</MenuItem>
+                  <MenuItem value="paid">Paid</MenuItem>
+                </Select>
+              </FormControl>
+          )}
 
           {/* Price */}
           <Box mt={2}>
@@ -356,11 +380,13 @@ const PlansFormModal = ({
             fullWidth
             margin="normal"
             type="number"
-            label="Users Allowed"
+            label={formData.type === 'add-on' ? "User Limit Increment" : "Users Allowed (-1 for Unlimited)"}
             value={formData.users_allowed}
             onChange={(e) =>
               handleInputChange("users_allowed", Number(e.target.value))
             }
+            error={!!errors.users_allowed}
+            helperText={errors.users_allowed}
           />
 
           {/* Organisations */}
@@ -368,7 +394,7 @@ const PlansFormModal = ({
             fullWidth
             margin="normal"
             type="number"
-            label="Organizations Allowed"
+            label={formData.type === 'add-on' ? "Org Limit Increment" : "Organizations Allowed (-1 for Unlimited)"}
             value={formData.organizations_allowed}
             onChange={(e) =>
               handleInputChange(
@@ -376,33 +402,39 @@ const PlansFormModal = ({
                 Number(e.target.value)
               )
             }
+            error={!!errors.organizations_allowed}
+            helperText={errors.organizations_allowed}
           />
 
           {/* Best For */}
-          <TextField
-            fullWidth
-            margin="normal"
-            label="Best For"
-            value={formData.best_for}
-            onChange={(e) =>
-              handleInputChange("best_for", e.target.value)
-            }
-          />
+          {formData.type === 'normal' && (
+              <TextField
+                fullWidth
+                margin="normal"
+                label="Best For"
+                value={formData.best_for}
+                onChange={(e) =>
+                  handleInputChange("best_for", e.target.value)
+                }
+              />
+          )}
 
           {/* Access */}
-          <FormControl fullWidth margin="normal">
-            <InputLabel>Access Level</InputLabel>
-            <Select
-              value={formData.access_level}
-              label="Access Level"
-              onChange={(e) =>
-                handleInputChange("access_level", e.target.value)
-              }
-            >
-              <MenuItem value="basic">Basic</MenuItem>
-              <MenuItem value="core">Core</MenuItem>
-            </Select>
-          </FormControl>
+          {formData.type === 'normal' && (
+              <FormControl fullWidth margin="normal">
+                <InputLabel>Access Level</InputLabel>
+                <Select
+                  value={formData.access_level}
+                  label="Access Level"
+                  onChange={(e) =>
+                    handleInputChange("access_level", e.target.value)
+                  }
+                >
+                  <MenuItem value="basic">Basic</MenuItem>
+                  <MenuItem value="core">Core</MenuItem>
+                </Select>
+              </FormControl>
+          )}
 
           {/* Features */}
           <Box mt={2}>

@@ -145,6 +145,7 @@ const Plans = () => {
 
         const payload = {
           plan_name: values.plan_name,
+          type: values.type || "normal", // Add type field
           description: values.description || "",
           price: {
             monthly: values.price?.monthly ?? null,
@@ -209,8 +210,24 @@ const Plans = () => {
         minWidth: 160,
       },
       {
+        field: "type",
+        headerName: "Type",
+        flex: 0.8,
+        minWidth: 100,
+        align: "center",
+        headerAlign: "center",
+        renderCell: ({ value }) => (
+            <Chip 
+                label={value === 'add-on' ? 'Add-on' : 'Normal'} 
+                color={value === 'add-on' ? 'secondary' : 'primary'} 
+                size="small" 
+                variant="outlined" 
+            />
+        )
+      },
+      {
         field: "plan_type",
-        headerName: "Plan Type",
+        headerName: "Classification",
         flex: 1,
         minWidth: 120,
         align: "center",
@@ -292,8 +309,8 @@ const Plans = () => {
         minWidth: 70,
         align: "center",
         headerAlign: "center",
-        renderCell: ({ value }) => (
-          <Chip label={value || 0} size="small" />
+        renderCell: ({ row, value }) => (
+          <Chip label={row.type === 'add-on' ? `+${value}` : value} size="small" />
         ),
       },
       {

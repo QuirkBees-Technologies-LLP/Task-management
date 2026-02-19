@@ -124,11 +124,17 @@ export async function POST(request: Request) {
       features = [],
       mark_as_popular = false,
       status = 'active',
+      type = 'normal', // 'normal' | 'add-on'
     } = body;
 
     // Normalize potential string inputs to arrays
     if (typeof plan_type === 'string') plan_type = [plan_type];
-    if (typeof trial_type === 'string') trial_type = [trial_type];
+    
+    if (type === 'add-on') {
+        trial_type = [];
+    } else {
+        if (typeof trial_type === 'string') trial_type = [trial_type];
+    }
     
     // Handle 'both' or string conversion for billing_period
     if (typeof billing_period === 'string') {
@@ -213,6 +219,7 @@ export async function POST(request: Request) {
       features: Array.isArray(features) ? features : [],
       mark_as_popular: Boolean(mark_as_popular),
       status: status || 'active',
+      type: type || 'normal',
       createdAt: now,
       updatedAt: now,
       deletedAt: null,
@@ -233,6 +240,8 @@ export async function POST(request: Request) {
           metadata: {
             plan_type: Array.isArray(plan_type) ? plan_type.join(',') : '',
             features: Array.isArray(features) ? features.join(',').substring(0, 500) : '',
+            type: type || 'normal',
+            users_allowed: String(users_allowed || 0),
           },
         });
 

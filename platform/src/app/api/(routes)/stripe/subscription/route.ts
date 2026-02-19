@@ -57,17 +57,37 @@ export async function DELETE(request: Request) {
 
     try {
         const org_id = requireOrgIdFromToken(decoded);
+        const url = new URL(request.url);
+        const targetSubscriptionId = url.searchParams.get('subscriptionId');
+
         const client = await clientPromise;
         const db = client.db(DATABASE_NAME);
         const organizationsCollection = db.collection('organizations');
 
         const organization = await organizationsCollection.findOne({ _id: new ObjectId(org_id) });
 
-        if (!organization || !organization.subscription_id) {
+        if (!organization) {
+             return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
+        }
+
+        let subscriptionIdToCancel = targetSubscriptionId;
+
+        if (!subscriptionIdToCancel) {
+            subscriptionIdToCancel = organization.subscription_id;
+        }
+
+        if (!subscriptionIdToCancel) {
              return NextResponse.json({ error: 'No active subscription found to cancel' }, { status: 404 });
         }
 
-        const subscription = await stripe.subscriptions.update(organization.subscription_id, {
+        const isMain = organization.subscription_id === subscriptionIdToCancel;
+        const isAddon = organization.addons?.some((a: any) => a.subscriptionId === subscriptionIdToCancel);
+
+        if (!isMain && !isAddon) {
+             return NextResponse.json({ error: 'Subscription not found or does not belong to organization' }, { status: 403 });
+        }
+
+        const subscription = await stripe.subscriptions.update(subscriptionIdToCancel, {
             cancel_at_period_end: true,
         }) as any;
 

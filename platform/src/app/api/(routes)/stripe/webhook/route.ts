@@ -39,35 +39,53 @@ export async function POST(request: Request) {
             // Update Organization status
             if (session.metadata?.orgId) {
                 const orgId = new ObjectId(session.metadata.orgId);
-                
-                // Calculate plan start/end dates
-                const startDate = new Date(subscription.current_period_start * 1000);
-                const endDate = new Date(subscription.current_period_end * 1000);
-                
-                // Capture Trial End Date if available
-                const trialEndDate = subscription.trial_end 
-                    ? new Date(subscription.trial_end * 1000) 
-                    : null;
+                const isAddon = session.metadata.type === 'add-on';
 
-                const updateData: any = {
-                    status: 'active', // Mark active so they can access app during trial
-                    subscription_id: subscription.id,
-                    stripe_customer_id: session.customer as string,
-                    planStartDate: startDate,
-                    planEndDate: endDate,
-                    updatedAt: new Date(),
-                };
+                if (isAddon) {
+                    const addonData = {
+                        planId: new ObjectId(session.metadata.planId),
+                        subscriptionId: subscription.id,
+                        status: 'active',
+                        purchaseDate: new Date(),
+                        stripe_customer_id: session.customer as string,
+                        current_period_end: new Date(subscription.current_period_end * 1000),
+                    };
 
-                if (trialEndDate) {
-                    updateData.trialEndDate = trialEndDate;
-                }
+                    await organizationsCollection.updateOne(
+                        { _id: orgId },
+                        {
+                            $push: { addons: addonData } as any
+                        }
+                    );
 
-                await organizationsCollection.updateOne(
-                    { _id: orgId },
-                    {
-                        $set: updateData
+                } else {
+                    const startDate = new Date(subscription.current_period_start * 1000);
+                    const endDate = new Date(subscription.current_period_end * 1000);
+                    
+                    const trialEndDate = subscription.trial_end 
+                        ? new Date(subscription.trial_end * 1000) 
+                        : null;
+    
+                    const updateData: any = {
+                        status: 'active', // Mark active so they can access app during trial
+                        subscription_id: subscription.id,
+                        stripe_customer_id: session.customer as string,
+                        planStartDate: startDate,
+                        planEndDate: endDate,
+                        updatedAt: new Date(),
+                    };
+    
+                    if (trialEndDate) {
+                        updateData.trialEndDate = trialEndDate;
                     }
-                );
+    
+                    await organizationsCollection.updateOne(
+                        { _id: orgId },
+                        {
+                            $set: updateData
+                        }
+                    );
+                }
             }
         }
         break;
@@ -119,10 +137,23 @@ export async function POST(request: Request) {
             { $set: { status: 'canceled', updatedAt: new Date() } }
         );
 
-        await organizationsCollection.updateOne(
-            { stripe_customer_id: subscription.customer as string },
-            { $set: { status: 'canceled' } }
-        );
+        const orgWithAddon = await organizationsCollection.findOne({
+            'addons.subscriptionId': subscription.id
+        });
+
+        if (orgWithAddon) {
+            await organizationsCollection.updateOne(
+                { 'addons.subscriptionId': subscription.id },
+                { 
+                    $set: { 'addons.$.status': 'canceled' } 
+                }
+            );
+        } else {
+            await organizationsCollection.updateOne(
+                { stripe_customer_id: subscription.customer as string },
+                { $set: { status: 'canceled' } }
+            );
+        }
         break;
       }
       

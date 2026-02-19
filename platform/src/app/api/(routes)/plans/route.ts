@@ -16,10 +16,14 @@ export async function GET(request: Request) {
     const db = client.db(DATABASE_NAME);
     const plansCollection = db.collection('plans');
 
-    // Query only active, non-deleted plans
+    // Query only active, non-deleted plans, excluding Add-ons
+    const { searchParams } = new URL(request.url);
+    const isAddOn = searchParams.get('type') === 'add-on';
+
     const query = {
       status: 'active',
       deletedAt: null,
+      type: isAddOn ? 'add-on' : { $ne: 'add-on' },
     };
 
     // Fetch all active plans, sorted by creation date (newest first)
