@@ -54,69 +54,6 @@ const Feedback = () => {
 
   return (
     <>
-      <Box
-        sx={{
-          backgroundColor: (theme) => theme.palette.background.paper,
-          border: (theme) => `1px solid ${theme.palette.divider}`,
-          padding: "16px 24px",
-          borderRadius: "8px",
-          mb: 3,
-        }}
-      >
-        <PageHeader                      
-          title="Support"
-          className="top_header"
-          sx={{ mb: "0 !important" }}
-          action={
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                flexWrap: "wrap",
-                width: "100%",
-                gap: 2,
-              }}
-            >
-              {/* LEFT SIDE SEARCH BAR */}
-              <TextField
-                size="small"
-                placeholder="Search tickets.."
-                type="search"
-                InputProps={{
-                  startAdornment: <Search fontSize="small" />,
-                }}
-                sx={{
-                  width: { xs: "unset", lg: "520px" },
-                  maxWidth: "100%",
-                  borderRadius: "6px",
-
-                  backgroundColor: (theme) =>
-                    theme.palette.mode === "dark"
-                      ? theme.palette.background.default
-                      : "#F9FAFC",
-
-                  "& .MuiOutlinedInput-root": {
-                    gap: 1,
-                    color: (theme) => theme.palette.text.primary,
-
-                    "& fieldset": {
-                      border: (theme) => `1px solid ${theme.palette.divider}`,
-                    },
-
-                    "&:hover fieldset": {
-                      borderColor: (theme) =>
-                        theme.palette.mode === "dark"
-                          ? theme.palette.primary.main
-                          : "#CBD5E1",
-                    },
-                  },
-                }}
-              />
-            </Box>
-          }
-        />
-      </Box>
       <Box>
         {isAdmin ? (
           <>
