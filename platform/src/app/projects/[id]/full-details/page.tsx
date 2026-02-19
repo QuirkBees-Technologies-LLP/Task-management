@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import dynamicImport from 'next/dynamic';
 import {
+  Avatar,
   Box,
   CircularProgress,
   Container,
@@ -116,6 +117,7 @@ export default function ProjectFullDetailsPage() {
   const [loadingTeam, setLoadingTeam] = useState(false);
   const [team, setTeam] = useState<UserSummary[]>([]);
   const [teamLoaded, setTeamLoaded] = useState(false);
+  const [clientPhotoUrl, setClientPhotoUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (!projectId) {
@@ -177,6 +179,46 @@ export default function ProjectFullDetailsPage() {
   const attachments: TaskAttachment[] = useMemo(() => {
     return Array.isArray(project?.attachments) ? project!.attachments! : [];
   }, [project?.attachments]);
+
+  // Fetch client avatar when clientName is available
+  useEffect(() => {
+    const fetchClientAvatar = async () => {
+      try {
+        if (!project?.clientName) {
+          setClientPhotoUrl(null);
+          return;
+        }
+
+        const token = safeLocalStorageGet(accessTokenKey);
+        if (!token) {
+          setClientPhotoUrl(null);
+          return;
+        }
+
+        const params = new URLSearchParams({
+          page: '1',
+          limit: '1',
+          search: project.clientName,
+        });
+
+        const response = await axios.get(`/api/clients?${params.toString()}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (response.data?.success && Array.isArray(response.data.clients) && response.data.clients.length > 0) {
+          const client = response.data.clients[0];
+          setClientPhotoUrl(client.photoUrl || null);
+        } else {
+          setClientPhotoUrl(null);
+        }
+      } catch (error) {
+        console.error('Error fetching client avatar for project details:', error);
+        setClientPhotoUrl(null);
+      }
+    };
+
+    fetchClientAvatar();
+  }, [project?.clientName]);
 
   const handleLoadTeam = async () => {
     if (!project || teamLoaded || loadingTeam) return;
@@ -389,8 +431,19 @@ export default function ProjectFullDetailsPage() {
                 Project Details
               </Typography>
               <Stack spacing={1.5}>
-                <Stack direction="row" spacing={1} alignItems="center">
-                  <PersonOutline fontSize="small" color="action" />
+                <Stack direction="row" spacing={1.5} alignItems="center">
+                  <Avatar
+                    src={clientPhotoUrl || undefined}
+                    sx={{
+                      width: 32,
+                      height: 32,
+                      bgcolor: (theme) =>
+                        clientPhotoUrl ? 'transparent' : theme.palette.primary.main,
+                      fontSize: 14,
+                    }}
+                  >
+                    {!clientPhotoUrl && (project.clientName?.charAt(0) || '?')}
+                  </Avatar>
                   <Box>
                     <Typography variant="caption" color="text.secondary">
                       Client
