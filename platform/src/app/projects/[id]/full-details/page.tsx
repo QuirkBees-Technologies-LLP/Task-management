@@ -60,7 +60,7 @@ interface ProjectResponseProject {
   startDate?: string;
   endDate?: string;
   dueDate?: string;
-   createdAt?: string;
+  createdAt?: string;
   status?: string;
   assignee?: string[] | any[];
   attachments?: TaskAttachment[];
@@ -184,8 +184,8 @@ export default function ProjectFullDetailsPage() {
     const assigneeIdsRaw = project.assignee || [];
     const assigneeIds = Array.isArray(assigneeIdsRaw)
       ? assigneeIdsRaw
-          .map((id: any) => (typeof id === 'string' ? id : id?._id?.toString?.() || id?.toString?.() || ''))
-          .filter(Boolean)
+        .map((id: any) => (typeof id === 'string' ? id : id?._id?.toString?.() || id?.toString?.() || ''))
+        .filter(Boolean)
       : [];
 
     if (assigneeIds.length === 0) {
@@ -313,19 +313,20 @@ export default function ProjectFullDetailsPage() {
 
   if (projectError || !project) {
     return (
-      <Container maxWidth="lg" sx={{ py: 4 }}>
+      <Box>
         <PageHeader title="Project Details" />
         <Paper sx={{ p: 4, mt: 2 }}>
           <Typography color="error" variant="body1">
             {projectError || 'Project not found'}
           </Typography>
         </Paper>
-      </Container>
+      </Box>
+
     );
   }
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
+    <Box>
       <PageHeader
         title={projectTitle}
         action={
@@ -334,8 +335,8 @@ export default function ProjectFullDetailsPage() {
             color={(project.status === 'Completed'
               ? 'success'
               : project.status === 'In Progress'
-              ? 'warning'
-              : 'default') as any}
+                ? 'warning'
+                : 'default') as any}
             size="small"
           />
         }
@@ -484,7 +485,7 @@ export default function ProjectFullDetailsPage() {
             <Typography variant="h6">Project Tasks</Typography>
             <Stack direction="row" spacing={1} alignItems="center">
               <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic', mr: 1 }}>
-               
+
               </Typography>
               <ToggleButtonGroup
                 value={taskView}
@@ -584,7 +585,7 @@ export default function ProjectFullDetailsPage() {
           )}
         </Paper>
       )}
-    </Container>
+    </Box>
   );
 }
 

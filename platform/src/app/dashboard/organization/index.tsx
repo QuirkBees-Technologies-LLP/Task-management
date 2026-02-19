@@ -279,18 +279,6 @@ const Organization = () => {
 
   return (
     <>
-      <Box
-        sx={{
-          backgroundColor: (theme) => theme.palette.background.paper,
-          border: (theme) => `1px solid ${theme.palette.divider}`,
-          padding: '16px 24px',
-          borderRadius: '8px',
-          mb: 3,
-        }}
-      >
-        <PageHeader title="Organization" className="top_header" sx={{ mb: '0 !important' }} />
-      </Box>
-
       <Grid container spacing={3}>
         {/* Stats Cards */}
         <Grid item xs={12} sm={6} md={4}>

@@ -38,6 +38,7 @@ import {
   MoreVert,
   Edit,
   Delete,
+  AccountTree,
 } from '@mui/icons-material';
 import PageHeader from '@/components/PageHeader';
 import axios from 'axios';
@@ -539,10 +540,49 @@ const DepartmentsPage: React.FC = () => {
                 </TableRow>
               ) : departments.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={3} align="center">
-                    <Typography variant="body2" color="text.secondary">
-                      No departments found
-                    </Typography>
+                  <TableCell colSpan={3} align="center" sx={{ py: 4 }}>
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        minHeight: 260,
+                        textAlign: 'center',
+                        py: 2,
+                      }}
+                    >
+                      <AccountTree
+                        sx={{
+                          fontSize: 80,
+                          color: (theme) =>
+                            theme.palette.mode === 'dark'
+                              ? theme.palette.text.secondary
+                              : theme.palette.grey[400],
+                          mb: 2,
+                        }}
+                      />
+                      <Typography
+                        variant="h6"
+                        sx={{
+                          fontWeight: 600,
+                          mb: 1,
+                          color: (theme) => theme.palette.text.primary,
+                        }}
+                      >
+                        No Departments Yet
+                      </Typography>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          color: (theme) => theme.palette.text.secondary,
+                          maxWidth: 480,
+                        }}
+                      >
+                        You haven&apos;t created any departments yet. Use the &quot;Add Department&quot; button to create
+                        your first department and define its positions.
+                      </Typography>
+                    </Box>
                   </TableCell>
                 </TableRow>
               ) : (

@@ -24,7 +24,17 @@ import {
   Skeleton,
   Pagination,
 } from '@mui/material';
-import { Close as CloseIcon, Add as AddIcon, DeleteOutline, ArrowBack, Print, PictureAsPdf, AddOutlined, Search } from '@mui/icons-material';
+import {
+  Close as CloseIcon,
+  Add as AddIcon,
+  DeleteOutline,
+  ArrowBack,
+  Print,
+  PictureAsPdf,
+  AddOutlined,
+  Search,
+  ReceiptLong,
+} from '@mui/icons-material';
 import InvoiceModal from './components/InvoiceModal';
 import InvoiceItem from './components/InvoiceItem';
 import PageHeader from '@/components/PageHeader';
@@ -533,7 +543,7 @@ export default function InvoicesFeature() {
                       <Skeleton variant="text" />
                     </TableCell>
                     <TableCell>
-                      <Skeleton variant="rectangular"/>
+                      <Skeleton variant="rectangular" />
                     </TableCell>
                     <TableCell>
                       <Skeleton variant="text" />
@@ -545,10 +555,49 @@ export default function InvoicesFeature() {
                 ))
               ) : invoices.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} align="center">
-                    <Typography variant="body2" color="text.secondary" sx={{ py: 4 }}>
-                      No invoices found
-                    </Typography>
+                  <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        minHeight: 260,
+                        textAlign: 'center',
+                        py: 2,
+                      }}
+                    >
+                      <ReceiptLong
+                        sx={{
+                          fontSize: 80,
+                          color: (theme) =>
+                            theme.palette.mode === 'dark'
+                              ? theme.palette.text.secondary
+                              : theme.palette.grey[400],
+                          mb: 2,
+                        }}
+                      />
+                      <Typography
+                        variant="h6"
+                        sx={{
+                          fontWeight: 600,
+                          mb: 1,
+                          color: (theme) => theme.palette.text.primary,
+                        }}
+                      >
+                        No Invoices Yet
+                      </Typography>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          color: (theme) => theme.palette.text.secondary,
+                          maxWidth: 480,
+                        }}
+                      >
+                        There are currently no invoices in the system. Create a new invoice to start tracking your billing
+                        and payments here.
+                      </Typography>
+                    </Box>
                   </TableCell>
                 </TableRow>
               ) : (
