@@ -174,6 +174,7 @@ export default function Layout({ children }: LayoutProps) {
       support: 'Support',
       feedback: 'Feedback',
       charts: 'Charts',
+      organization: 'Organization',
     };
 
     // Handle nested admin routes like /dashboard/admin/departments

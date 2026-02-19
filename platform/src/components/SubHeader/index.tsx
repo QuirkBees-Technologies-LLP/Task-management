@@ -28,6 +28,7 @@ const getPageTitle = (path: string): string => {
     support: 'Support',
     feedback: 'Feedback',
     charts: 'Charts',
+    organization: 'Organization',
   };
 
   // Handle nested admin routes like /dashboard/admin/departments

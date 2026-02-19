@@ -15,6 +15,7 @@ import {
   CalendarMonth,
   AdminPanelSettingsOutlined,
   BusinessOutlined,
+  AccountTreeOutlined,
 } from '@mui/icons-material';
 
 // Define the items for the sidebar
@@ -74,6 +75,11 @@ export const superUserItems = [
     title: 'Support',
     icon: <FeedbackOutlined fontSize="small" />,
     key: 'support',
+  },
+  {
+    title: 'Organization',
+    icon: <AccountTreeOutlined fontSize="small" />,
+    key: 'organization',
   },
   {
     title: 'Settings',
@@ -183,5 +189,6 @@ export const regularItems = adminItems.filter(
       'email-templates',
       'invoices',
       'team', // Staff Management
+      'organization', // Organization management
     ].includes(item.key)
 );
