@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
 import clientPromise from '../../lib/mongodb';
 import { DATABASE_NAME } from '../../config';
-import { verifyToken, userRolesServer } from '../../helpers';
+import { verifyToken, userRolesServer, getOrgIdFromToken, requireOrgIdFromToken } from '../../helpers';
+import { addOrgIdToQuery, addOrgIdToDocument } from '../../lib/orgIdHelper';
 
 // GET: Fetch calendar events and tasks
 export async function GET(request: Request) {
@@ -16,14 +17,20 @@ export async function GET(request: Request) {
     const type = searchParams.get('type') || '';
     const includeTasks = searchParams.get('includeTasks') === 'true';
 
+    // Get org_id from token for organization scoping
+    const org_id = getOrgIdFromToken(decoded);
+    if (!org_id) {
+      return NextResponse.json({ error: 'Organization ID is required' }, { status: 403 });
+    }
+
     const client = await clientPromise;
     const db = client.db(DATABASE_NAME);
 
     const allEvents: any[] = [];
 
-    // Fetch calendar events
+    // Fetch calendar events with organization scoping
     const eventsCollection = db.collection('calendarEvents');
-    const query: any = {};
+    const query: any = addOrgIdToQuery({}, org_id);
     if (startDate || endDate) {
       query.startDate = {};
       if (startDate) query.startDate.$gte = new Date(startDate);
@@ -55,10 +62,13 @@ export async function GET(request: Request) {
       const tasksCollection = db.collection('tasks');
       const projectsCollection = db.collection('projects');
 
-      // 1) Find relevant projects:
-      // - Admins/System admins: all projects.
-      // - Regular users: only projects they are assigned to.
-      const projectFilter: any = isAdmin ? {} : { assignee: userObjectId };
+      // 1) Find relevant projects with organization scoping:
+      // - Admins/System admins: all projects in the organization.
+      // - Regular users: only projects they are assigned to in the organization.
+      const projectFilter: any = addOrgIdToQuery({}, org_id);
+      if (!isAdmin) {
+        projectFilter.assignee = userObjectId;
+      }
       const userProjects = await projectsCollection
         .find(projectFilter)
         .project({ _id: 1, name: 1, description: 1, status: 1, priority: 1, dueDate: 1 })
@@ -67,11 +77,12 @@ export async function GET(request: Request) {
       const projectIds = userProjects.map((p) => p._id as ObjectId);
 
       // 2) Add project deadline events (based on dueDate only)
+      // Add org_id filter for extra security even though projectIds are already filtered
       if (projectIds.length > 0) {
-        const projectDeadlineQuery: any = {
+        const projectDeadlineQuery: any = addOrgIdToQuery({
           _id: { $in: projectIds },
           dueDate: { $exists: true, $ne: null },
-        };
+        }, org_id);
 
         const projectsWithDeadlines = await projectsCollection
           .find(projectDeadlineQuery)
@@ -103,11 +114,12 @@ export async function GET(request: Request) {
       }
 
       // 3) Add task deadline events for tasks belonging to the user's projects (based on dueDate only)
+      // Tasks are already scoped by projectIds which are filtered by organization, but add org_id filter for extra safety
       if (projectIds.length > 0) {
-        const taskQuery: any = {
+        const taskQuery: any = addOrgIdToQuery({
           dueDate: { $exists: true, $ne: null },
           projectId: { $in: projectIds },
-        };
+        }, org_id);
 
         const tasks = await tasksCollection
           .find(taskQuery)
@@ -178,11 +190,14 @@ export async function POST(request: Request) {
       );
     }
 
+    // Get org_id from token for organization scoping
+    const org_id = requireOrgIdFromToken(decoded);
+
     const client = await clientPromise;
     const db = client.db(DATABASE_NAME);
     const eventsCollection = db.collection('calendarEvents');
 
-    const newEvent = {
+    const newEvent = addOrgIdToDocument({
       title,
       description: description || '',
       startDate: new Date(startDate),
@@ -193,7 +208,7 @@ export async function POST(request: Request) {
       createdAt: new Date(),
       updatedAt: new Date(),
       createdBy: decoded.id,
-    };
+    }, org_id);
 
     const result = await eventsCollection.insertOne(newEvent);
 
@@ -223,14 +238,17 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'Event ID is required' }, { status: 400 });
     }
 
+    // Get org_id from token for organization scoping
+    const org_id = requireOrgIdFromToken(decoded);
+
     const client = await clientPromise;
     const db = client.db(DATABASE_NAME);
     const eventsCollection = db.collection('calendarEvents');
 
-    // Verify event exists
-    const existingEvent = await eventsCollection.findOne({
-      _id: new ObjectId(eventId)
-    });
+    // Verify event exists and belongs to the user's organization
+    const existingEvent = await eventsCollection.findOne(
+      addOrgIdToQuery({ _id: new ObjectId(eventId) }, org_id)
+    );
     if (!existingEvent) {
       return NextResponse.json({ error: 'Event not found' }, { status: 404 });
     }
@@ -245,7 +263,7 @@ export async function PATCH(request: Request) {
     if (attendees) updateData.attendees = attendees;
 
     const result = await eventsCollection.updateOne(
-      { _id: new ObjectId(eventId) },
+      addOrgIdToQuery({ _id: new ObjectId(eventId) }, org_id),
       { $set: updateData }
     );
 
@@ -273,21 +291,24 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'Event ID is required' }, { status: 400 });
     }
 
+    // Get org_id from token for organization scoping
+    const org_id = requireOrgIdFromToken(decoded);
+
     const client = await clientPromise;
     const db = client.db(DATABASE_NAME);
     const eventsCollection = db.collection('calendarEvents');
 
-    // Verify event exists
-    const existingEvent = await eventsCollection.findOne({
-      _id: new ObjectId(eventId)
-    });
+    // Verify event exists and belongs to the user's organization
+    const existingEvent = await eventsCollection.findOne(
+      addOrgIdToQuery({ _id: new ObjectId(eventId) }, org_id)
+    );
     if (!existingEvent) {
       return NextResponse.json({ error: 'Event not found' }, { status: 404 });
     }
 
-    const result = await eventsCollection.deleteOne({
-      _id: new ObjectId(eventId)
-    });
+    const result = await eventsCollection.deleteOne(
+      addOrgIdToQuery({ _id: new ObjectId(eventId) }, org_id)
+    );
 
     if (result.deletedCount === 0) {
       return NextResponse.json({ error: 'Event not found' }, { status: 404 });

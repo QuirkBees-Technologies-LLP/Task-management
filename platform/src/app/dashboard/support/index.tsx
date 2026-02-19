@@ -2,8 +2,8 @@
 
 import PageHeader from '@/components/PageHeader';
 import FeedbackForm from './components/FeedbackForm';
-import { Box, Grid, TextField } from '@mui/material';
-import { Search } from '@mui/icons-material';
+import { Box, Grid, TextField, Typography } from '@mui/material';
+import { Search, SupportAgent } from '@mui/icons-material';
 import { useSelector } from 'react-redux';
 import { selectCurrentUser, selectSuperuser } from '@/redux/selectors';
 import React, { useEffect, useState } from 'react';
@@ -123,7 +123,46 @@ const Feedback = () => {
             {loading && <div>Loading tickets...</div>}
             {error && <div style={{ color: 'red' }}>Error: {error}</div>}
             {!loading && !error && tickets.length === 0 && (
-              <div></div>
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  minHeight: '400px',
+                  textAlign: 'center',
+                  padding: 4,
+                }}
+              >
+                <SupportAgent
+                  sx={{
+                    fontSize: 80,
+                    color: (theme) => theme.palette.mode === 'dark' 
+                      ? theme.palette.text.secondary 
+                      : theme.palette.grey[400],
+                    mb: 2,
+                  }}
+                />
+                <Typography
+                  variant="h5"
+                  sx={{
+                    fontWeight: 600,
+                    mb: 1,
+                    color: (theme) => theme.palette.text.primary,
+                  }}
+                >
+                  No Support Tickets Yet
+                </Typography>
+                <Typography
+                  variant="body1"
+                  sx={{
+                    color: (theme) => theme.palette.text.secondary,
+                    maxWidth: '500px',
+                  }}
+                >
+                  There are currently no support tickets in the system. New tickets will appear here once users submit support requests.
+                </Typography>
+              </Box>
             )}
             {!loading && !error && tickets.length > 0 && (
               <Grid container spacing={2}>
