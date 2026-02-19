@@ -113,7 +113,13 @@ const ResponsiveTable: React.FC<ResponsiveTableProps> = ({
 
   return (
     <TableContainer>
-      {isSmallScreen ? (
+      <Table
+        data={dataSource}
+        columns={columns}
+        renderActions={renderActions}
+        loading={loading}
+      />
+      {/* {isSmallScreen ? (
         <List
           data={dataSource}
           listKeys={listKeys}
@@ -121,14 +127,9 @@ const ResponsiveTable: React.FC<ResponsiveTableProps> = ({
           loading={loading}
         />
       ) : (
-        <Table
-          data={dataSource}
-          columns={columns}
-          renderActions={renderActions}
-          loading={loading}
-        />
-      )}
-      {isSmallScreen ? (
+        
+      )} */}
+      {/* {isSmallScreen ? (
         <Pagination
           count={Math.ceil(safeData.length / rowsPerPage)}
           page={listPage}
@@ -137,16 +138,23 @@ const ResponsiveTable: React.FC<ResponsiveTableProps> = ({
           color="primary"
         />
       ) : (
-        <TablePagination
-          rowsPerPageOptions={[10, 25, 50]}
-          component="div"
-          count={safeData.length}
-          rowsPerPage={rowsPerPage}
-          page={page}
-          onPageChange={handleChangePage}
-          onRowsPerPageChange={handleChangeRowsPerPage}
-        />
-      )}
+      )} */}
+      {/* <TablePagination
+        rowsPerPageOptions={[10, 25, 50]}
+        component="div"
+        count={safeData.length}
+        rowsPerPage={rowsPerPage}
+        page={page}
+        onPageChange={handleChangePage}
+        onRowsPerPageChange={handleChangeRowsPerPage}
+      /> */}
+      {/* <Pagination
+        count={Math.ceil(safeData.length / rowsPerPage)}
+        page={listPage}
+        onChange={handleChangeListPage}
+        size="small"
+        color="primary"
+      /> */}
     </TableContainer>
   );
 };
@@ -242,6 +250,7 @@ const Table: React.FC<TableProps> = ({ loading, data, columns, renderActions }) 
                     sx={{
                       fontSize: 13,
                       fontWeight: 500,
+                      minWidth: 200,
                       color: (theme) =>
                         theme.palette.mode === 'dark' ? '#94A3B8' : '#64748B',
                       borderBottom: '1px solid',
