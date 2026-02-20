@@ -1,6 +1,6 @@
-# Stripe Setup Guide for OpsDecq Platform
+# Stripe Setup Guide for OpsDeck Platform
 
-This document outlines the steps to set up Stripe for the OpsDecq platform, including creating a sandbox environment, obtaining necessary credentials, and configuring webhooks.
+This document outlines the steps to set up Stripe for the OpsDeck platform, including creating a sandbox environment, obtaining necessary credentials, and configuring webhooks.
 
 ## 1. Create a Stripe Account & Sandbox
 
