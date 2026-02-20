@@ -152,66 +152,35 @@ function* postNewUser({ payload }: any) {
       password: payload.formData.password,
       organizationName: payload.formData.organizationName,
       planId: payload.formData.planId,
-      billingPeriod: payload.formData.billingPeriod, // Added billingPeriod
+      billingPeriod: payload.formData.billingPeriod,
     });
 
-    // New signup endpoint returns token and user info
-    if (response.data.success && response.data.token) {
-      // Store token in localStorage
-      localStorage.setItem(accessTokenKey, response.data.token);
-      
-      // Auto-login the user
-      yield put(loginSuccess({
-        user: response.data.user,
-        token: response.data.token,
-      }));
-      
-      // Fetch user info
-      yield put(fetchUserInfo());
-      
+    // Signup endpoint now only returns checkout URL
+    // Organization and user will be created after payment succeeds
+    if (response.data.success && response.data.checkoutUrl) {
       enqueueSnackbar({
-        message: 'Organization and account created successfully!',
-        variant: 'success',
-      });
-
-      // Redirect to Stripe Checkout if URL is provided
-      if (response.data.checkoutUrl) {
-          enqueueSnackbar({
-            message: 'Redirecting to payment...',
-            variant: 'info',
-          });
-          // Small delay to let snackbar show
-          yield new Promise(resolve => setTimeout(resolve, 1500));
-          window.location.href = response.data.checkoutUrl;
-      } else {
-        // Fallback or free tier (if applicable)
-        if (payload?.router) {
-            payload.router.push('/dashboard/projects');
-        } else {
-            navigateTo('/dashboard/projects');
-        }
-        
-        enqueueSnackbar({
-            message: 'Welcome to NexTask!',
-            variant: 'success',
-        });
-      }
-    } else {
-      // Fallback for old response format (shouldn't happen with new endpoint)
-      yield put(signupSuccess());
-      payload?.router.push('/login');
-      enqueueSnackbar({
-        message: 'Please check your email to activate account!',
+        message: 'Redirecting to payment...',
         variant: 'info',
       });
+      
+      // Small delay to let snackbar show, then redirect to Stripe checkout
+      yield new Promise(resolve => setTimeout(resolve, 1000));
+      window.location.href = response.data.checkoutUrl;
+    } else {
+      // No checkout URL returned - this shouldn't happen
+      yield put(signupFailure('Failed to initiate payment. Please try again.'));
       enqueueSnackbar({
-        message: 'Account created successfully!',
-        variant: 'success',
+        message: response.data.error || 'Failed to initiate payment. Please try again.',
+        variant: 'error',
       });
     }
   } catch (error: any) {
     yield put(signupFailure(error.message));
     handleErrorMessage(error);
+    enqueueSnackbar({
+      message: error.response?.data?.error || 'Failed to initiate signup. Please try again.',
+      variant: 'error',
+    });
   }
 }
 

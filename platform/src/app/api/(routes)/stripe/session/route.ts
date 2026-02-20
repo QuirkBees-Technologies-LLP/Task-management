@@ -19,6 +19,9 @@ export async function GET(req: Request) {
     const price = lineItem?.price;
     const product = price?.product as any;
 
+    // Check if this is a new signup
+    const isNewSignup = session.metadata?.signupType === 'new_organization';
+
     return NextResponse.json({
       amount_total: session.amount_total,
       currency: session.currency,
@@ -29,6 +32,7 @@ export async function GET(req: Request) {
       interval: price?.recurring?.interval,
       trialEnd: subscription?.trial_end,
       nextBillingDate: subscription?.current_period_end,
+      isNewSignup,
     });
   } catch (error: any) {
     console.error('Error retrieving session:', error);

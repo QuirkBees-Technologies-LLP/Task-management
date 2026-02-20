@@ -16,9 +16,9 @@ import { stripe } from '@/utils/stripe';
  * Public Signup API
  * POST /api/auth/signup
  * 
- * Creates a new organization with owner user.
- * Initiates Stripe Checkout for payment/trial.
- * Status starts as 'pending_payment'.
+ * Validates signup data and creates Stripe Checkout session.
+ * Organization and user are created ONLY after successful payment (via webhook).
+ * Signup data is stored in Stripe checkout session metadata.
  */
 export async function POST(request: Request) {
   try {
@@ -70,9 +70,8 @@ export async function POST(request: Request) {
     const usersCollection = db.collection('users');
     const organizationsCollection = db.collection('organizations');
     const plansCollection = db.collection('plans');
-    const templatesCollection = db.collection('emailTemplates');
 
-    // Check if user already exists
+    // Check if user already exists (before creating checkout)
     const existingUser = await usersCollection.findOne({ email });
     if (existingUser) {
       return NextResponse.json({ error: 'User with this email already exists' }, { status: 400 });
@@ -133,101 +132,11 @@ export async function POST(request: Request) {
       );
     }
 
-    // Hash the password
+    // Hash the password (will be stored in metadata, but hashed for security)
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Initial Trial Setup (Will be overwritten by Webhook)
-    const trialStartDate = new Date();
-    // Default 15 days, but real source of truth will be Stripe Webhook
-    const trialEndDate = new Date(); 
-    trialEndDate.setDate(trialEndDate.getDate() + 15);
-
-    // Create owner user first (with Admin role)
-    const ADMIN_ROLE = 'Admin'; 
-    const ownerUser = {
-      firstName,
-      lastName,
-      email,
-      password: hashedPassword,
-      role: ADMIN_ROLE,
-      superuser: false,
-      isTemporaryPassword: false,
-      isEmailVerified: false,
-      emailVerified: false,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-
-    let ownerId: ObjectId;
-    let ownerResult;
-
-    try {
-      ownerResult = await usersCollection.insertOne(ownerUser);
-      ownerId = ownerResult.insertedId;
-    } catch (userError: any) {
-      console.error('Error creating owner user:', userError);
-      return NextResponse.json(
-        { error: 'Failed to create user account' },
-        { status: 500 }
-      );
-    }
-
-    // Create organization
-    // Status is 'pending_payment' until Stripe Webhook activates it
-    const newOrganization = {
-      name: organizationName,
-      slug: normalizedSlug,
-      slug_history: [normalizedSlug],
-      status: 'pending_payment', 
-      ownerId,
-      planId: new ObjectId(planId),
-      planName: plan.plan_name || '',
-      trialStartDate,
-      trialEndDate: null, // Set by webhook
-      planStartDate: null, 
-      planEndDate: null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      deletedAt: null,
-    };
-
-    let orgResult;
-    try {
-      orgResult = await organizationsCollection.insertOne(newOrganization);
-    } catch (orgError: any) {
-      // Rollback: delete the user if org creation fails
-      await usersCollection.deleteOne({ _id: ownerId });
-      console.error('Error creating organization:', orgError);
-      if (orgError.code === 11000) {
-        return NextResponse.json(
-          { error: 'Organization with this slug already exists' },
-          { status: 400 }
-        );
-      }
-      return NextResponse.json(
-        { error: 'Failed to create organization' },
-        { status: 500 }
-      );
-    }
-
-    const org_id = orgResult.insertedId;
-
-    // Update user with org_id
-    try {
-      await usersCollection.updateOne(
-        { _id: ownerId },
-        {
-          $set: {
-            organizationId: org_id,
-            org_id: org_id,
-          },
-        }
-      );
-    } catch (updateError) {
-      console.error('Error updating user with organization ID:', updateError);
-    }
-
-    // Create Stripe Checkout Session
+    // Create Stripe Checkout Session with signup data in metadata
+    // Organization and user will be created in webhook after payment succeeds
     let checkoutUrl = '';
     try {
         const origin = request.headers.get('origin') || 'http://localhost:3000'; // Fallback
@@ -243,14 +152,19 @@ export async function POST(request: Request) {
             ],
             subscription_data: {
                 trial_period_days: 15, // Enforce 15-day trial
-                metadata: {
-                    orgId: org_id.toString(),
-                    userId: ownerId.toString(),
-                }
             },
+            // Store all signup data in metadata for webhook to create org/user
             metadata: {
-                orgId: org_id.toString(),
-                userId: ownerId.toString(),
+                signupType: 'new_organization',
+                firstName: firstName,
+                lastName: lastName,
+                email: email,
+                password: hashedPassword, // Hashed password stored in metadata
+                organizationName: organizationName,
+                slug: normalizedSlug,
+                planId: planId,
+                planName: plan.plan_name || '',
+                billingPeriod: billingPeriod,
             },
             success_url: `${origin}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
             cancel_url: `${origin}/payment/failed`,
@@ -264,99 +178,19 @@ export async function POST(request: Request) {
 
     } catch (stripeError: any) {
         console.error("Stripe Checkout Error:", stripeError);
-        // Rollback? Or allow them to retry payment? 
-        // For now, let's rollback to keep state clean
-        await usersCollection.deleteOne({ _id: ownerId });
-        await organizationsCollection.deleteOne({ _id: org_id });
         return NextResponse.json({ error: 'Failed to initiate payment session' }, { status: 500 });
     }
 
 
-    // Ensure organization indexes
-    try {
-      await ensureOrganizationIndexes();
-    } catch (indexError) {
-      console.warn('Error ensuring organization indexes:', indexError);
-    }
-
-    // Generate JWT token with org_id 
-    const tokenPayload = {
-      id: ownerId.toString(),
-      user_id: ownerId.toString(),
-      email,
-      role: ADMIN_ROLE,
-      org_id: org_id.toString(),
-      superuser: false,
-      isSystemAdmin: false,
-    };
-
-    const token = jwt.sign(tokenPayload, JWT_SECRET!, {
-      expiresIn: tokenExpiry,
-    });
-
-    // Generate email confirmation token
-    const confirmationToken = jwt.sign({ email }, JWT_SECRET!, { expiresIn: '1d' });
-    const confirmationLink = `${request.headers.get('origin')}/confirm-email?token=${confirmationToken}`;
-
-    // Fetch and send confirmation email - Non-blocking
-    (async () => {
-        try {
-          const emailTemplate = await templatesCollection.findOne({
-            emailType: 'emailConfirm',
-          });
-    
-          let emailHtml = '';
-          if (!emailTemplate) {
-            emailHtml = EMAIL_CONFIRMATION_TEXT.replace(
-              emailTemplateVariables.firstName,
-              firstName
-            ).replace(emailTemplateVariables.btnLink, confirmationLink);
-          } else {
-            emailHtml = emailTemplate.htmlString
-              .replace(emailTemplateVariables.firstName, firstName)
-              .replace(emailTemplateVariables.btnLink, confirmationLink);
-          }
-    
-          await sendEmailLib({
-            to: email,
-            subject: emailTemplate?.name ?? 'Confirm Your Email',
-            html: emailHtml,
-          });
-          
-           // Send welcome email
-           const welcomeEmailHtml = getEmailTemplate('welcome', {
-             name: `${firstName} ${lastName}`,
-           });
-           await sendEmail(email, 'Welcome to NexTask!', welcomeEmailHtml);
-
-        } catch (emailError) {
-          console.error('Error sending emails (background):', emailError);
-        }
-    })();
-
-    // Return success with token and checkoutUrl
+    // Return checkout URL only - no token, no user/org data
+    // Organization and user will be created after payment succeeds
     return NextResponse.json(
       {
         success: true,
-        message: 'Account created. Please complete payment to activate.',
-        token,
-        checkoutUrl, // Frontend should redirect here
-        user: {
-          id: ownerId.toString(),
-          email,
-          firstName,
-          lastName,
-          role: ADMIN_ROLE,
-          org_id: org_id.toString(),
-        },
-        organization: {
-          id: org_id.toString(),
-          name: organizationName,
-          slug: normalizedSlug,
-          status: 'pending_payment',
-        },
+        message: 'Please complete payment to create your account.',
+        checkoutUrl, // Frontend should redirect here immediately
       },
-      { status: 201 }
+      { status: 200 }
     );
   } catch (error: any) {
     console.error('Error in signup API:', error);
