@@ -176,12 +176,12 @@ const KeyFeatures: React.FC = () => {
         </Box>
         <Box textAlign={'center'} pt={4}>
           <Link href="/signup">
-            <Button variant="contained" startIcon={<FollowTheSignsOutlined />}>
+            <Button variant="contained" sx={{ background:"linear-gradient(90deg, #005B8E 0%, #03D7FE 100%)" , borderRadius: '5px !important' , py: '10px', }} startIcon={<FollowTheSignsOutlined />}>
               Create account
             </Button>
           </Link>
           <Link href="#contact-form">
-            <Button startIcon={<PhoneOutlined />} variant="outlined" sx={{ ml: 1 }}>
+            <Button startIcon={<PhoneOutlined />} sx={{ml: 1, borderRadius: '5px !important' , py: '10px', }} variant="outlined">
               Contact us
             </Button>
           </Link>

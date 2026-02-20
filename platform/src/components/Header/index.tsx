@@ -132,12 +132,12 @@ const Header: React.FC<HeaderProps> = ({ isAuthHeader = false }) => {
                   }}
                 >
                   <Link href={'/signup'}>
-                    <Button variant="outlined" startIcon={<PersonAddOutlined />}>
+                    <Button variant="outlined" sx={{ borderRadius: '5px !important' , py: '10px', }} startIcon={<PersonAddOutlined />}>
                       Sign Up
                     </Button>
                   </Link>
                   <Link href={'/login'}>
-                    <Button variant="contained">Login</Button>
+                    <Button variant="contained" sx={{ background:"linear-gradient(90deg, #005B8E 0%, #03D7FE 100%)" , borderRadius: '5px !important' , py: '10px', }}>Login</Button>
                   </Link>
                 </Box>
 
@@ -184,12 +184,12 @@ const Header: React.FC<HeaderProps> = ({ isAuthHeader = false }) => {
         <Divider />
         <Box sx={{ px: 1, display: 'flex', flexDirection: 'column', gap: 1 }}>
           <Link href={'/signup'}>
-            <Button variant="outlined" fullWidth startIcon={<PersonAddOutlined />}>
+            <Button variant="outlined" sx={{ borderRadius: '5px !important' , py: '10px', }} fullWidth startIcon={<PersonAddOutlined />}>
               Sign Up
             </Button>
           </Link>
           <Link href={'/login'}>
-            <Button variant="contained" fullWidth>
+            <Button variant="contained" sx={{ background:"linear-gradient(90deg, #005B8E 0%, #03D7FE 100%)" , borderRadius: '5px !important' , py: '10px',  mb: 2}} fullWidth>
               Login
             </Button>
           </Link>

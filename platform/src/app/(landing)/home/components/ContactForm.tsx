@@ -110,7 +110,7 @@ export default function ContactForm({ isPage = false }) {
                         type="submit"
                         variant="contained"
                         color="primary"
-                        sx={{ marginLeft: 'auto' }}
+                        sx={{ marginLeft: 'auto' ,  background:"linear-gradient(90deg, #005B8E 0%, #03D7FE 100%)" , borderRadius: '5px !important' , py: '10px', }}
                       >
                         Send
                       </Button>

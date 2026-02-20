@@ -12,9 +12,10 @@ import {
   CircularProgress,
   InputAdornment,
   IconButton,
+  Paper,
 } from '@mui/material';
 import Link from 'next/link';
-import { LoginOutlined, Visibility, VisibilityOff } from '@mui/icons-material';
+import { EmailOutlined, LockOutlined, LoginOutlined, Visibility, VisibilityOff } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
 import { useDispatch } from 'react-redux';
 import { loginStart } from '@/redux/slices';
@@ -99,123 +100,165 @@ const SignInPage: React.FC = () => {
 
   return (
     <Box
-      sx={{
-        px: { xs: 1, sm: 2 },
-        py: 2,
-      }}
     >
-      <Box mb={4}>
-        <Typography variant="h3" color="primary.main">
-          Sign In
-        </Typography>
-        <Typography variant="subtitle2">Welcome! Please sign in to your account.</Typography>
-      </Box>
-
-      {/* Already created account for testing */}
-      <Box
-        mb={4}
+      {/* Login Card */}
+      <Paper
+        elevation={0}
         sx={{
-          px: 2,
-          py: 1,
-          border: '1px solid',
-          borderColor: 'grey.300',
-          borderRadius: 2,
-          backgroundColor: '#fff9c4', // light yellow background
-          display: 'flex',
+          width: "100%",
+          p: { xs: 3, sm: 5 },
+          borderRadius: "14px",
+          backgroundColor: "#fff",
+          border: "1px solid #e6eaf0",
+          boxShadow: "0 10px 30px rgba(0,0,0,0.06)",
         }}
       >
-        <Box sx={{ mb: 1 }}>
-          <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-            Admin:
+        {/* Heading */}
+        <Box mb={4} textAlign="center">
+          <Typography
+            variant="h4"
+            fontWeight={700}
+            sx={{
+              background: "linear-gradient(90deg, #005B8E 0%, #03D7FE 100%)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+            }}
+          >
+            Sign In
           </Typography>
-          <Typography variant="caption" color="textSecondary" sx={{ mr: 2 }}>
-            Email: <span style={{ fontWeight: 'bold' }}>nxtadm@mailinator.com</span>
-          </Typography>
-          <br />
-          <Typography variant="caption" color="textSecondary">
-            Password: <span style={{ fontWeight: 'bold' }}>password123</span>
-          </Typography>
-        </Box>
-        <Box>
-          <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-            User:
-          </Typography>
-          <Typography variant="caption" color="textSecondary" sx={{ mr: 2 }}>
-            Email: <span style={{ fontWeight: 'bold' }}>nxtuser@mailinator.com</span>
-          </Typography>
-          <br />
-          <Typography variant="caption" color="textSecondary">
-            Password: <span style={{ fontWeight: 'bold' }}>password123</span>
+
+          <Typography variant="body2" color="text.secondary" mt={1}>
+            Welcome! Please sign in to your account.
           </Typography>
         </Box>
-      </Box>
-      <Box component="form" noValidate onSubmit={handleSubmit} sx={{ mt: 2 }}>
-        <TextField
-          required
-          fullWidth
-          id="email"
-          label="Email Address"
-          name="email"
-          autoComplete="email"
-          onChange={handleChange}
-          error={Boolean(errors.email)}
-          helperText={errors.email}
-          value={formData.email}
-          sx={{ mb: 2 }}
-          disabled={loading}
-        />
-        <TextField
-          required
-          fullWidth
-          name="password"
-          label="Password"
-          type="password"
-          id="password"
-          autoComplete="current-password"
-          onChange={handleChange}
-          error={Boolean(errors.password)}
-          helperText={errors.password}
-          value={formData.password}
-          sx={{ mb: 4 }}
-          disabled={loading}
-          slotProps={{
-            input: {
-              type: showPassword ? 'text' : 'password',
+
+        <Box component="form" noValidate onSubmit={handleSubmit} sx={{ mt: 2 }}>
+          <TextField
+            required
+            fullWidth
+            id="email"
+            label="Email Address"
+            name="email"
+            autoComplete="email"
+            onChange={handleChange}
+            error={Boolean(errors.email)}
+            helperText={errors.email}
+            value={formData.email}
+            sx={{ mb: 2 }}
+            disabled={loading}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <EmailOutlined color="action" />
+                </InputAdornment>
+              ),
+            }}
+          />
+          <TextField
+            required
+            fullWidth
+            name="password"
+            label="Password"
+            type={showPassword ? 'text' : 'password'}
+            id="password"
+            autoComplete="current-password"
+            onChange={handleChange}
+            error={Boolean(errors.password)}
+            helperText={errors.password}
+            value={formData.password}
+            sx={{ mb: 1 }}
+            disabled={loading}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <LockOutlined color="action" />
+                </InputAdornment>
+              ),
               endAdornment: (
                 <InputAdornment position="end">
-                  <IconButton color="default" onClick={handleTogglePassword} edge="end">
+                  <IconButton
+                    onClick={() => setShowPassword(!showPassword)}
+                    edge="end"
+                  >
                     {showPassword ? <VisibilityOff /> : <Visibility />}
                   </IconButton>
                 </InputAdornment>
               ),
-            },
-          }}
-        />
-
-        <Button
-          type="submit"
-          fullWidth
-          variant="contained"
-          startIcon={loading ? <CircularProgress size={15} color="inherit" /> : <LoginOutlined />}
-          sx={{
-            mb: 4,
-          }}
-          disabled={loading}
-        >
-          Sign In
-        </Button>
-
-        <Grid2 container justifyContent="center">
-          <Typography variant="body2">
-            Forgot Password?
-            <MuiLink component={Link} href="/change-password" sx={{ ml: 1 }}>
-              Reset
+            }}
+          />
+          {/* Forgot Password */}
+          <Box textAlign="right" mb={3}>
+            <MuiLink
+              component={Link}
+              href="/change-password"
+              underline="hover"
+              sx={{
+                fontSize: 13,
+                color: "#005B8E",
+                fontWeight: 500,
+              }}
+            >
+              Forgot Password?
             </MuiLink>
+          </Box>
+
+          <Button
+            type="submit"
+            fullWidth
+            variant="contained"
+            disabled={loading}
+            startIcon={
+              loading ? <CircularProgress size={16} color="inherit" /> : <LoginOutlined />
+            }
+            sx={{
+              height: 48,
+              borderRadius: "10px",
+              fontSize: 15,
+              fontWeight: 600,
+              textTransform: "none",
+              background: "linear-gradient(90deg, #005B8E 0%, #03D7FE 100%)",
+              boxShadow: "0 6px 18px rgba(3,215,254,0.25)",
+              "&:hover": {
+                background: "linear-gradient(90deg,#00476f,#02c6e7)",
+              },
+            }}
+          >
+            Sign In
+          </Button>
+
+          <Divider sx={{ my: 3 }} />
+
+          <Typography textAlign="center" variant="body2" color="text.secondary">
+            Need help? Contact support@opsdeck.app
           </Typography>
-        </Grid2>
-      </Box>
+        </Box>
+      </Paper>
     </Box>
   );
 };
 
 export default SignInPage;
+
+
+{/* Password */ }
+{/* <TextField
+  fullWidth
+  label="Password"
+  type={showPassword ? "text" : "password"}
+  sx={{ mb: 1 }}
+  InputProps={{
+    startAdornment: (
+      <InputAdornment position="start">
+        <LockOutlined color="action" />
+      </InputAdornment>
+    ),
+    endAdornment: (
+      <InputAdornment position="end">
+        <IconButton onClick={() => setShowPassword(!showPassword)}>
+          {showPassword ? <VisibilityOff /> : <Visibility />}
+        </IconButton>
+      </InputAdornment>
+    ),
+  }}
+/> */}
+

@@ -17,6 +17,7 @@ import {
   Card,
   CardContent,
   Chip,
+  Paper,
   InputAdornment,
   IconButton,
 } from '@mui/material';
@@ -87,7 +88,7 @@ const initialErrors: Errors = {
 const SignupPage: React.FC = () => {
   const dispatch = useDispatch();
   const router = useRouter();
-
+  const [showPassword, setShowPassword] = useState(false);
   const loading = useSelector(selectAuthLoading);
 
   // Initializing form data with default values
@@ -101,7 +102,6 @@ const SignupPage: React.FC = () => {
   const [loadingPlans, setLoadingPlans] = useState(true);
 
   // Password visibility states
-  const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Fetch plans on component mount
@@ -218,134 +218,167 @@ const SignupPage: React.FC = () => {
 
   return (
     <Box
-      sx={{
-        px: { xs: 1, sm: 2 },
-        py: 2,
-      }}
     >
-      <Box mb={4}>
-        <Typography variant="h3" color="primary.main">
-          Create Account
-        </Typography>
-        <Typography variant="subtitle2">
-          Join us to start managing your projects effectively
-        </Typography>
-      </Box>
+      <Paper
+        elevation={0}
+        sx={{
+          width: "100%",
+          borderRadius: "16px",
+          p: { xs: 3, sm: 5 },
+          backgroundColor: "#ffffff",
+          border: "1px solid #e6eaf0",
+          boxShadow: "0 12px 40px rgba(0,0,0,0.06)",
+        }}
+      >
+        <Box mb={4} textAlign="center">
+          <Typography
+            variant="h4"
+            fontWeight={700}
+            sx={{
+              background: "linear-gradient(90deg,#005B8E,#03D7FE)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+            }}
+          >
+            Create Account
+          </Typography>
 
-      <Box component="form" noValidate onSubmit={handleSubmit} sx={{ mt: 1 }}>
-        <Grid2 container spacing={2}>
-          <Grid2 size={6}>
-            <TextField
-              required
-              fullWidth
-              id="firstName"
-              label="First Name"
-              name="firstName"
-              autoComplete="name"
-              sx={{ mb: 2 }}
-              onChange={handleChange}
-              error={Boolean(errors.firstName)}
-              helperText={errors.firstName}
-              disabled={loading}
-            />
-          </Grid2>
-          <Grid2 size={6}>
-            <TextField
-              required
-              fullWidth
-              id="lastName"
-              label="Last Name"
-              name="lastName"
-              autoComplete="name"
-              sx={{ mb: 2 }}
-              onChange={handleChange}
-              error={Boolean(errors.lastName)}
-              helperText={errors.lastName}
-              disabled={loading}
-            />
-          </Grid2>
-        </Grid2>
-        <TextField
-          required
-          fullWidth
-          id="email"
-          label="Email Address"
-          name="email"
-          autoComplete="email"
-          sx={{ mb: 2 }}
-          onChange={handleChange}
-          error={Boolean(errors.email)}
-          helperText={errors.email}
-          disabled={loading}
-        />
-        <TextField
-          required
-          fullWidth
-          name="password"
-          label="Password"
-          type={showPassword ? 'text' : 'password'}
-          id="password"
-          autoComplete="new-password"
-          sx={{ mb: 2 }}
-          onChange={handleChange}
-          error={Boolean(errors.password)}
-          helperText={errors.password}
-          disabled={loading}
-          InputProps={{
-            endAdornment: (
-              <InputAdornment position="end">
-                <IconButton
-                  aria-label="toggle password visibility"
-                  onClick={() => setShowPassword(!showPassword)}
-                  edge="end"
-                >
-                  {showPassword ? <VisibilityOff /> : <Visibility />}
-                </IconButton>
-              </InputAdornment>
-            ),
-          }}
-        />
-        <TextField
-          required
-          fullWidth
-          name="confirmPassword"
-          label="Confirm Password"
-          type={showConfirmPassword ? 'text' : 'password'}
-          id="confirmPassword"
-          autoComplete="new-password"
-          sx={{ mb: 2 }}
-          onChange={handleChange}
-          error={Boolean(errors.confirmPassword)}
-          helperText={errors.confirmPassword}
-          disabled={loading}
-          InputProps={{
-            endAdornment: (
-              <InputAdornment position="end">
-                <IconButton
-                  aria-label="toggle confirm password visibility"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  edge="end"
-                >
-                  {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
-                </IconButton>
-              </InputAdornment>
-            ),
-          }}
-        />
+          <Typography variant="body2" color="text.secondary" mt={1}>
+            Join Opsdeck and start managing your projects efficiently
+          </Typography>
+        </Box>
 
-        <TextField
-          required
-          fullWidth
-          id="organizationName"
-          label="Organization Name"
-          name="organizationName"
-          sx={{ mb: 2 }}
-          onChange={handleChange}
-          error={Boolean(errors.organizationName)}
-          helperText={errors.organizationName}
-          disabled={loading}
-          placeholder="Enter your company or organization name"
-        />
+        <Box component="form" noValidate onSubmit={handleSubmit} sx={{ mt: 1 }}>
+          <Grid2 container spacing={2}>
+            <Grid2 size={6}>
+              <TextField
+                required
+                fullWidth
+                id="firstName"
+                label="First Name"
+                name="firstName"
+                autoComplete="name"
+                sx={{
+                  mb: 2.2,
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: "10px",
+                    backgroundColor: "#fafbfd",
+                  },
+                }}
+                onChange={handleChange}
+                error={Boolean(errors.firstName)}
+                helperText={errors.firstName}
+                disabled={loading}
+              />
+            </Grid2>
+            <Grid2 size={6}>
+              <TextField
+                required
+                fullWidth
+                id="lastName"
+                label="Last Name"
+                name="lastName"
+                autoComplete="name"
+                sx={{
+                  mb: 2.2,
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: "10px",
+                    backgroundColor: "#fafbfd",
+                  },
+                }}
+                onChange={handleChange}
+                error={Boolean(errors.lastName)}
+                helperText={errors.lastName}
+                disabled={loading}
+              />
+            </Grid2>
+          </Grid2>
+          <TextField
+            required
+            fullWidth
+            id="email"
+            label="Email Address"
+            name="email"
+            autoComplete="email"
+            sx={{
+              mb: 2.2,
+              "& .MuiOutlinedInput-root": {
+                borderRadius: "10px",
+                backgroundColor: "#fafbfd",
+              },
+            }}
+            onChange={handleChange}
+            error={Boolean(errors.email)}
+            helperText={errors.email}
+            disabled={loading}
+          />
+          <TextField
+            required
+            fullWidth
+            name="password"
+            label="Password"
+            type={showPassword ? "text" : "password"}
+            onChange={handleChange}
+            error={Boolean(errors.password)}
+            helperText={errors.password}
+            disabled={loading}
+            sx={{
+              mb: 2.2,
+              "& .MuiOutlinedInput-root": {
+                borderRadius: "10px",
+                backgroundColor: "#fafbfd",
+              },
+            }}
+            InputProps={{
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton onClick={() => setShowPassword(!showPassword)}>
+                    {showPassword ? <VisibilityOff /> : <Visibility />}
+                  </IconButton>
+                </InputAdornment>
+              ),
+            }}
+          />
+          <TextField
+            required
+            fullWidth
+            name="confirmPassword"
+            label="Confirm Password"
+            type="password"
+            id="confirmPassword"
+            autoComplete="new-password"
+            sx={{
+              mb: 2.2,
+              "& .MuiOutlinedInput-root": {
+                borderRadius: "10px",
+                backgroundColor: "#fafbfd",
+              },
+            }}
+            onChange={handleChange}
+            error={Boolean(errors.confirmPassword)}
+            helperText={errors.confirmPassword}
+            disabled={loading}
+          />
+
+          <TextField
+            required
+            fullWidth
+            id="organizationName"
+            label="Organization Name"
+            name="organizationName"
+            sx={{
+              mb: 2.2,
+              "& .MuiOutlinedInput-root": {
+                borderRadius: "10px",
+                backgroundColor: "#fafbfd",
+              },
+            }}
+            onChange={handleChange}
+            error={Boolean(errors.organizationName)}
+            helperText={errors.organizationName}
+            disabled={loading}
+            placeholder="Enter your company or organization name"
+          />
 
         {/* Plan Selection */}
         <Box sx={{ mb: 3 }}>
@@ -532,29 +565,40 @@ const SignupPage: React.FC = () => {
           </FormControl>
         </Box>
 
-        <Button
-          type="submit"
-          fullWidth
-          variant="contained"
-          sx={{
-            mt: 2,
-            mb: 4,
-          }}
-          startIcon={loading && <CircularProgress size={15} color="inherit" />}
-          disabled={loading || loadingPlans}
-        >
-          Sign Up
-        </Button>
+          <Button
+            type="submit"
+            fullWidth
+            variant="contained"
+            sx={{
+              mt: 2,
+              mb: 4,
+              height: 50,
+              borderRadius: "10px",
+              fontSize: 15,
+              fontWeight: 600,
+              textTransform: "none",
+              background: "linear-gradient(90deg,#005B8E,#03D7FE)",
+              boxShadow: "0 6px 18px rgba(3,215,254,0.25)",
+              "&:hover": {
+                background: "linear-gradient(90deg,#00476f,#02c6e7)",
+              },
+            }}
+            startIcon={loading && <CircularProgress size={15} color="inherit" />}
+            disabled={loading || loadingPlans}
+          >
+            Sign Up
+          </Button>
 
-        <Grid2 container justifyContent="center">
-          <Typography variant="body2">
-            Already have an account?{' '}
-            <MuiLink component={Link} href="/login" sx={{ ml: 1 }}>
-              Sign in
-            </MuiLink>
-          </Typography>
-        </Grid2>
-      </Box>
+          <Grid2 container justifyContent="center">
+            <Typography variant="body2">
+              Already have an account?{' '}
+              <MuiLink component={Link} href="/login" sx={{ ml: 1 }}>
+                Sign in
+              </MuiLink>
+            </Typography>
+          </Grid2>
+        </Box>
+      </Paper>
     </Box>
   );
 };
