@@ -17,7 +17,10 @@ import {
   Card,
   CardContent,
   Chip,
+  InputAdornment,
+  IconButton,
 } from '@mui/material';
+import { Visibility, VisibilityOff } from '@mui/icons-material';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useDispatch } from 'react-redux';
@@ -34,6 +37,7 @@ interface Plan {
     monthly: number | null;
     yearly: number | null;
   };
+  billing_period?: string[];
   features: string[];
   mark_as_popular?: boolean;
 }
@@ -96,6 +100,10 @@ const SignupPage: React.FC = () => {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loadingPlans, setLoadingPlans] = useState(true);
 
+  // Password visibility states
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
   // Fetch plans on component mount
   useEffect(() => {
     const fetchPlans = async () => {
@@ -114,6 +122,17 @@ const SignupPage: React.FC = () => {
 
     fetchPlans();
   }, []);
+
+  // Helper function to check if a plan supports a billing period
+  const planSupportsBillingPeriod = (plan: Plan, billingPeriod: 'monthly' | 'yearly'): boolean => {
+    if (plan.billing_period && plan.billing_period.length > 0) {
+      return plan.billing_period.includes(billingPeriod);
+    }
+    // Fallback: check if price exists for the selected period
+    return billingPeriod === 'monthly' 
+      ? plan.price.monthly !== null 
+      : plan.price.yearly !== null;
+  };
 
   // Handler for input change to update form data and reset errors
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -264,7 +283,7 @@ const SignupPage: React.FC = () => {
           fullWidth
           name="password"
           label="Password"
-          type="password"
+          type={showPassword ? 'text' : 'password'}
           id="password"
           autoComplete="new-password"
           sx={{ mb: 2 }}
@@ -272,13 +291,26 @@ const SignupPage: React.FC = () => {
           error={Boolean(errors.password)}
           helperText={errors.password}
           disabled={loading}
+          InputProps={{
+            endAdornment: (
+              <InputAdornment position="end">
+                <IconButton
+                  aria-label="toggle password visibility"
+                  onClick={() => setShowPassword(!showPassword)}
+                  edge="end"
+                >
+                  {showPassword ? <VisibilityOff /> : <Visibility />}
+                </IconButton>
+              </InputAdornment>
+            ),
+          }}
         />
         <TextField
           required
           fullWidth
           name="confirmPassword"
           label="Confirm Password"
-          type="password"
+          type={showConfirmPassword ? 'text' : 'password'}
           id="confirmPassword"
           autoComplete="new-password"
           sx={{ mb: 2 }}
@@ -286,6 +318,19 @@ const SignupPage: React.FC = () => {
           error={Boolean(errors.confirmPassword)}
           helperText={errors.confirmPassword}
           disabled={loading}
+          InputProps={{
+            endAdornment: (
+              <InputAdornment position="end">
+                <IconButton
+                  aria-label="toggle confirm password visibility"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  edge="end"
+                >
+                  {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
+                </IconButton>
+              </InputAdornment>
+            ),
+          }}
         />
 
         <TextField
@@ -324,7 +369,23 @@ const SignupPage: React.FC = () => {
                 <Button
                   size="small"
                   variant={formData.billingPeriod === 'monthly' ? 'contained' : 'text'}
-                  onClick={() => setFormData({ ...formData, billingPeriod: 'monthly' })}
+                  onClick={() => {
+                    const newBillingPeriod = 'monthly';
+                    // Check if current selected plan supports the new billing period
+                    const currentPlan = plans.find((p) => p._id === formData.planId);
+                    const supportsNewPeriod = currentPlan 
+                      ? planSupportsBillingPeriod(currentPlan, newBillingPeriod)
+                      : false;
+                    
+                    setFormData({ 
+                      ...formData, 
+                      billingPeriod: newBillingPeriod,
+                      planId: supportsNewPeriod ? formData.planId : ''
+                    });
+                    if (!supportsNewPeriod) {
+                      setErrors({ ...errors, planId: '' });
+                    }
+                  }}
                   sx={{ 
                     textTransform: 'none', 
                     borderRadius: 1,
@@ -337,7 +398,23 @@ const SignupPage: React.FC = () => {
                 <Button
                   size="small"
                   variant={formData.billingPeriod === 'yearly' ? 'contained' : 'text'}
-                  onClick={() => setFormData({ ...formData, billingPeriod: 'yearly' })}
+                  onClick={() => {
+                    const newBillingPeriod = 'yearly';
+                    // Check if current selected plan supports the new billing period
+                    const currentPlan = plans.find((p) => p._id === formData.planId);
+                    const supportsNewPeriod = currentPlan 
+                      ? planSupportsBillingPeriod(currentPlan, newBillingPeriod)
+                      : false;
+                    
+                    setFormData({ 
+                      ...formData, 
+                      billingPeriod: newBillingPeriod,
+                      planId: supportsNewPeriod ? formData.planId : ''
+                    });
+                    if (!supportsNewPeriod) {
+                      setErrors({ ...errors, planId: '' });
+                    }
+                  }}
                   sx={{ 
                     textTransform: 'none', 
                     borderRadius: 1,
@@ -364,7 +441,9 @@ const SignupPage: React.FC = () => {
                 onChange={handlePlanChange}
                 sx={{ gap: 2 }}
               >
-                {plans.map((plan) => (
+                {plans
+                  .filter((plan) => planSupportsBillingPeriod(plan, formData.billingPeriod))
+                  .map((plan) => (
                   <Card
                     key={plan._id}
                     sx={{
