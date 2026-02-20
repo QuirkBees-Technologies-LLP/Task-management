@@ -115,7 +115,6 @@ function ProjectModalWithFields({ content, mode, visible, onClose }) {
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        pb: 1,
       }}>{mode === 'add' ? 'Add Project' : 'Edit Project'}
         <IconButton onClick={onClose} size="small">
           <CloseOutlined />
@@ -126,7 +125,6 @@ function ProjectModalWithFields({ content, mode, visible, onClose }) {
         sx={{
           px: 3,
           py: 2,
-          borderTop: '1px solid',
           borderColor: 'divider',
         }}
       >

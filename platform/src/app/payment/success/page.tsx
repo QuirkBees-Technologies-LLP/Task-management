@@ -59,11 +59,11 @@ export default function PaymentSuccessPage() {
   return (
     <Container maxWidth="sm" sx={{ mt: 8, textAlign: 'center' }}>
       <Card sx={{ p: 4, boxShadow: 3 }}>
-        <CardContent>
+        <CardContent sx={{p: '0 !important' }}>
           <Box display="flex" justifyContent="center" mb={2}>
             <CheckCircleOutlineIcon color="success" sx={{ fontSize: 60 }} />
           </Box>
-          <Typography variant="h4" component="h1" gutterBottom color="success.main">
+          <Typography variant="h4" component="h1" gutterBottom color="success.main" sx={{mb: '0 !important'}}>
             Payment Successful!
           </Typography>
           
@@ -94,7 +94,7 @@ export default function PaymentSuccessPage() {
                     
                     {details.trialEnd && (
                         <Grid item xs={12}>
-                             <Box bgcolor="success.light" p={2} borderRadius={2} mt={1}>
+                             <Box bgcolor="success.light" p={2} borderRadius={1} mt={1}>
                                 <Typography variant="body2" color="success.contrastText">
                                     <strong>Trial Active:</strong> Your free trial ends on {formatDate(details.trialEnd)}.
                                     You will not be charged until then.
@@ -122,7 +122,7 @@ export default function PaymentSuccessPage() {
             component={Link} 
             href="/dashboard"
             fullWidth
-            sx={{ mt: 2 }}
+            sx={{ background: 'linear-gradient(90deg, #005B8E 0%, #03D7FE 100%)' }}
           >
             Go to Dashboard
           </Button>

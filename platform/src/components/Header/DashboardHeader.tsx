@@ -324,7 +324,7 @@ const DashboardAppbar: React.FC<DashboardAppbarProps> = ({
             <ListItemText>Change Password</ListItemText>
           </MenuItem>
         </Box>
-        <Box mx={2}>
+        <Box mx={2} mb={2}>
           <Button
             fullWidth
             color="error"

@@ -29,12 +29,14 @@ import {
   Pagination,
   InputAdornment,
   Menu,
+  Grid2,
 } from '@mui/material';
 import {
   AddOutlined,
   EditOutlined,
   DeleteOutline,
   Search as SearchIcon,
+  CloseOutlined,
   Search,
   MoreVert,
   Edit,
@@ -493,10 +495,10 @@ const StaffManagementPage: React.FC = () => {
                     },
                   })}
                 >
-                  <TableCell sx={{minWidth: '220px'}}>Staff</TableCell>
+                  <TableCell sx={{ minWidth: '220px' }}>Staff</TableCell>
                   <TableCell>Email</TableCell>
                   <TableCell>Role</TableCell>
-                  <TableCell sx={{minWidth: '200px'}}>Department</TableCell>
+                  <TableCell sx={{ minWidth: '200px' }}>Department</TableCell>
                   <TableCell>Position</TableCell>
                   <TableCell align="left">Actions</TableCell>
                 </TableRow>
@@ -744,102 +746,181 @@ const StaffManagementPage: React.FC = () => {
 
       {/* Create/Edit Dialog */}
       < Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth >
-        <DialogTitle>{selectedStaff ? 'Edit Staff' : 'Add Staff'}</DialogTitle>
-        <DialogContent>
-          <Stack spacing={3} sx={{ pt: 2 }}>
-            <TextField
-              label="First Name"
-              value={formData.firstName}
-              onChange={(e) => setFormData((prev) => ({ ...prev, firstName: e.target.value }))}
-              required
-              fullWidth
-            />
-            <TextField
-              label="Last Name"
-              value={formData.lastName}
-              onChange={(e) => setFormData((prev) => ({ ...prev, lastName: e.target.value }))}
-              required
-              fullWidth
-            />
-            <TextField
-              label="Email"
-              type="email"
-              value={formData.email}
-              onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
-              required
-              fullWidth
-            />
-            <TextField
-              label="Password"
-              type="text"
-              value={formData.password}
-              onChange={(e) => setFormData((prev) => ({ ...prev, password: e.target.value }))}
-              required={!selectedStaff}
-              fullWidth
-              helperText={selectedStaff ? 'Password is visible to admin. Enter new password to update.' : 'Password will be visible to admin'}
-            />
-            <FormControl fullWidth>
-              <InputLabel>Role</InputLabel>
-              <Select
-                value={formData.role}
-                onChange={(e) => setFormData((prev) => ({ ...prev, role: e.target.value }))}
-                label="Role"
-              >
-                <MenuItem value="Regular">Regular</MenuItem>
-                <MenuItem value="Admin">Admin</MenuItem>
-              </Select>
-            </FormControl>
-            <TextField
-              label="Phone"
-              value={formData.phone}
-              onChange={(e) => setFormData((prev) => ({ ...prev, phone: e.target.value }))}
-              fullWidth
-            />
-            <FormControl fullWidth>
-              <InputLabel>Department</InputLabel>
-              <Select
-                value={formData.departmentId}
-                onChange={(e) => setFormData((prev) => ({ ...prev, departmentId: e.target.value, positionId: '' }))}
-                label="Department"
-              >
-                <MenuItem value="">
-                  <em>None</em>
-                </MenuItem>
-                {departments.map((dept) => (
-                  <MenuItem key={dept._id} value={dept._id}>
-                    {dept.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <FormControl fullWidth disabled={!formData.departmentId}>
-              <InputLabel>Position</InputLabel>
-              <Select
-                value={formData.positionId}
-                onChange={(e) => setFormData((prev) => ({ ...prev, positionId: e.target.value }))}
-                label="Position"
-              >
-                <MenuItem value="">
-                  <em>None</em>
-                </MenuItem>
-                {availablePositions.map((pos) => (
-                  <MenuItem key={pos._id} value={pos._id}>
-                    {pos.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+        <DialogTitle sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+        }}>
+          {selectedStaff ? 'Edit Staff' : 'Add Staff'}
+          <IconButton onClick={() => setDialogOpen(false)} size="small">
+            <CloseOutlined />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent style={{ paddingBlock: 24 }} dividers>
+          <Stack spacing={3}>
+            <Grid2 container spacing={2}>
+              <Grid2 size={{ xs: 12, md: 6 }}>
+                <TextField
+                  label="First Name"
+                  value={formData.firstName}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, firstName: e.target.value }))}
+                  required
+                  fullWidth
+                />
+              </Grid2>
+              <Grid2 size={{ xs: 12, md: 6 }}>
+                <TextField
+                  label="Last Name"
+                  value={formData.lastName}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, lastName: e.target.value }))}
+                  required
+                  fullWidth
+                />
+              </Grid2>
+              <Grid2 size={{ xs: 12, md: 6 }}>
+                <TextField
+                  label="Email"
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
+                  required
+                  fullWidth
+                />
+              </Grid2>
+              <Grid2 size={{ xs: 12, md: 6 }}>
+                <TextField
+                  label="Password"
+                  type="text"
+                  value={formData.password}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, password: e.target.value }))}
+                  required={!selectedStaff}
+                  fullWidth
+                  helperText={selectedStaff ? 'Password is visible to admin. Enter new password to update.' : 'Password will be visible to admin'}
+                />
+              </Grid2>
+              <FormControl fullWidth>
+                <InputLabel>Role</InputLabel>
+                <Select
+                  value={formData.role}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, role: e.target.value }))}
+                  label="Role"
+                >
+                  <MenuItem value="Regular">Regular</MenuItem>
+                  <MenuItem value="Admin">Admin</MenuItem>
+                </Select>
+              </FormControl>
+              <TextField
+                label="Phone"
+                value={formData.phone}
+                onChange={(e) => setFormData((prev) => ({ ...prev, phone: e.target.value }))}
+                fullWidth
+              />
+              <Grid2 size={{ xs: 12, md: 6 }}>
+                <FormControl fullWidth>
+                  <InputLabel>Department</InputLabel>
+                  <Select
+                    value={formData.departmentId}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, departmentId: e.target.value, positionId: '' }))}
+                    label="Department"
+                  >
+                    <MenuItem value="">
+                      <em>None</em>
+                    </MenuItem>
+                    {departments.map((dept) => (
+                      <MenuItem key={dept._id} value={dept._id}>
+                        {dept.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid2>
+              <Grid2 size={{ xs: 12, md: 6 }}>
+                <FormControl fullWidth disabled={!formData.departmentId}>
+                  <InputLabel>Position</InputLabel>
+                  <Select
+                    value={formData.positionId}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, positionId: e.target.value }))}
+                    label="Position"
+                  >
+                    <MenuItem value="">
+                      <em>None</em>
+                    </MenuItem>
+                    {availablePositions.map((pos) => (
+                      <MenuItem key={pos._id} value={pos._id}>
+                        {pos.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid2>
+            </Grid2>
           </Stack>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDialogOpen(false)} disabled={saving}>
-            Cancel
+        <DialogActions
+          sx={{
+            px: 3,
+            py: 2,
+            borderColor: 'divider',
+          }}
+        >
+          {/* ================= CLOSE ================= */}
+          <Button
+            onClick={() => setDialogOpen(false)} disabled={saving}
+            variant="outlined"
+            sx={{
+              textTransform: 'none',
+              borderRadius: '8px',
+              px: 3,
+              py: 1.25,
+              fontWeight: 500,
+
+              color: (theme) => theme.palette.text.primary,
+              borderColor: (theme) => theme.palette.divider,
+
+              backgroundColor: 'transparent',
+
+              '&:hover': {
+                backgroundColor: (theme) => theme.palette.action.hover,
+                borderColor: (theme) => theme.palette.text.secondary,
+              },
+            }}
+          >
+            Close
           </Button>
+
+          {/* ================= SAVE ================= */}
           <Button
             onClick={handleSave}
+            type="submit"
             variant="contained"
             disabled={saving || !formData.firstName || !formData.lastName || !formData.email || (!selectedStaff && !formData.password)}
             startIcon={saving && <CircularProgress size={15} color="inherit" />}
+            sx={{
+              textTransform: 'none',
+              borderRadius: '8px',
+              px: 3,
+              py: 1.25,
+              fontWeight: 500,
+              backgroundColor: (theme) =>
+                theme.palette.mode === 'dark'
+                  ? theme.palette.grey[100]
+                  : theme.palette.grey[900],
+
+              color: (theme) =>
+                theme.palette.mode === 'dark'
+                  ? theme.palette.grey[900]
+                  : '#ffffff',
+
+              boxShadow: 'none',
+
+              '&:hover': {
+                backgroundColor: (theme) =>
+                  theme.palette.mode === 'dark'
+                    ? theme.palette.grey[200]
+                    : '#000000',
+                boxShadow: 'none',
+              },
+            }}
           >
             {selectedStaff ? 'Update' : 'Create'}
           </Button>

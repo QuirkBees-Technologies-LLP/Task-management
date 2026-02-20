@@ -34,6 +34,7 @@ import {
   DeleteOutline,
   Search as SearchIcon,
   Close as CloseIcon,
+  CloseOutlined,
   Search,
   MoreVert,
   Edit,
@@ -730,10 +731,18 @@ const DepartmentsPage: React.FC = () => {
 
       {/* Create/Edit Dialog */}
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>
+
+        <DialogTitle sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+        }}>
           {selectedDepartment ? 'Edit Department' : 'Add New Department'}
+          <IconButton onClick={() => setDialogOpen(false)} size="small">
+            <CloseOutlined />
+          </IconButton>
         </DialogTitle>
-        <DialogContent>
+        <DialogContent style={{ paddingBlock: 24 }} dividers>
           <Stack spacing={3} sx={{ mt: 1 }}>
             <TextField
               label="Department Name"
@@ -788,22 +797,79 @@ const DepartmentsPage: React.FC = () => {
             </Box>
           </Stack>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDialogOpen(false)} disabled={saving}>
-            Cancel
+        <DialogActions
+          sx={{
+            px: 3,
+            py: 2,
+            borderColor: 'divider',
+          }}
+        >
+          {/* ================= CLOSE ================= */}
+          <Button
+            onClick={() => setDialogOpen(false)} disabled={saving}
+            variant="outlined"
+            sx={{
+              textTransform: 'none',
+              borderRadius: '8px',
+              px: 3,
+              py: 1.25,
+              fontWeight: 500,
+
+              color: (theme) => theme.palette.text.primary,
+              borderColor: (theme) => theme.palette.divider,
+
+              backgroundColor: 'transparent',
+
+              '&:hover': {
+                backgroundColor: (theme) => theme.palette.action.hover,
+                borderColor: (theme) => theme.palette.text.secondary,
+              },
+            }}
+          >
+            Close
           </Button>
+
+          {/* ================= SAVE ================= */}
           <Button
             onClick={handleSave}
+            type="submit"
             variant="contained"
             disabled={
               saving ||
               !departmentName.trim() ||
               positions.filter((pos) => pos.name.trim()).length === 0
             }
+            sx={{
+              textTransform: 'none',
+              borderRadius: '8px',
+              px: 3,
+              py: 1.25,
+              fontWeight: 500,
+              backgroundColor: (theme) =>
+                theme.palette.mode === 'dark'
+                  ? theme.palette.grey[100]
+                  : theme.palette.grey[900],
+
+              color: (theme) =>
+                theme.palette.mode === 'dark'
+                  ? theme.palette.grey[900]
+                  : '#ffffff',
+
+              boxShadow: 'none',
+
+              '&:hover': {
+                backgroundColor: (theme) =>
+                  theme.palette.mode === 'dark'
+                    ? theme.palette.grey[200]
+                    : '#000000',
+                boxShadow: 'none',
+              },
+            }}
           >
             {saving ? <CircularProgress size={20} /> : selectedDepartment ? 'Update' : 'Create'}
           </Button>
         </DialogActions>
+
       </Dialog>
 
       {/* Delete Confirmation Dialog */}

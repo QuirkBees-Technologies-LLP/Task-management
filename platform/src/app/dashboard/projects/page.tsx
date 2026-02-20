@@ -519,7 +519,6 @@ export default function Projects() {
           </Typography>
           {isAdmin && (
             <Button
-              variant="outlined"
               startIcon={<AddOutlined />}
               onClick={() => {
                 setSelectedProject({
@@ -533,7 +532,7 @@ export default function Projects() {
                 });
                 setProjectModalVisible(true);
               }}
-              sx={{ mt: 2 }}
+              sx={{ mt: 2 , py:1,px:2, background: 'linear-gradient(90deg, #005B8E 0%, #03D7FE 100%)' , borderRadius:'5px' , color:'#fff'}}
             >
               Create Your First Project
             </Button>
